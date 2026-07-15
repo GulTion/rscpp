@@ -14,7 +14,7 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 
 | # | Crate | Status |
 |---|-------|--------|
-| 1 | `rscpp-lexer` | in progress |
+| 1 | `rscpp-lexer` | done |
 | 2 | parser | planned |
 | 3 | AST | planned |
 | 4 | semantic analysis | planned |
