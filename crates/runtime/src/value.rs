@@ -101,7 +101,44 @@ impl Object {
 /// Heap object identity.
 pub type ObjId = u64;
 
-/// Runtime values (by-value primitives + heap handles).
+/// Address of a storage location (visualizer-friendly ADT, not raw bytes).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Address {
+    Null,
+    /// Slot in call stack frame `frame` (0 = oldest).
+    Stack {
+        frame: usize,
+        name: String,
+    },
+    Heap(ObjId),
+    Index {
+        obj: ObjId,
+        index: usize,
+    },
+    Field {
+        obj: ObjId,
+        field: String,
+    },
+    MapEntry {
+        obj: ObjId,
+        key: String,
+    },
+}
+
+impl fmt::Display for Address {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Address::Null => write!(f, "null"),
+            Address::Stack { frame, name } => write!(f, "stack[{frame}].{name}"),
+            Address::Heap(id) => write!(f, "heap#{id}"),
+            Address::Index { obj, index } => write!(f, "heap#{obj}[{index}]"),
+            Address::Field { obj, field } => write!(f, "heap#{obj}.{field}"),
+            Address::MapEntry { obj, key } => write!(f, "heap#{obj}[{key}]"),
+        }
+    }
+}
+
+/// Runtime values (by-value primitives + heap handles + pointers/refs).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Void,
@@ -111,6 +148,10 @@ pub enum Value {
     Char(char),
     Nullptr,
     Object(ObjId),
+    /// Reseating pointer.
+    Ptr(Address),
+    /// Non-reseating reference (alias).
+    Ref(Address),
 }
 
 impl Value {
@@ -122,6 +163,8 @@ impl Value {
             Value::Char(c) => *c != '\0',
             Value::Nullptr => false,
             Value::Object(_) => true,
+            Value::Ptr(Address::Null) => false,
+            Value::Ptr(_) | Value::Ref(_) => true,
             Value::Void => return Err("void is not truthy".into()),
         })
     }
@@ -133,6 +176,14 @@ impl Value {
             Value::Char(c) => Ok(*c as i64),
             Value::Float(f) => Ok(*f as i64),
             other => Err(format!("cannot convert `{other}` to int")),
+        }
+    }
+
+    pub fn as_address(&self) -> Option<&Address> {
+        match self {
+            Value::Ptr(a) | Value::Ref(a) => Some(a),
+            Value::Nullptr => Some(&Address::Null),
+            _ => None,
         }
     }
 }
@@ -147,6 +198,8 @@ impl fmt::Display for Value {
             Value::Char(c) => write!(f, "{c:?}"),
             Value::Nullptr => write!(f, "nullptr"),
             Value::Object(id) => write!(f, "obj#{id}"),
+            Value::Ptr(a) => write!(f, "ptr->{a}"),
+            Value::Ref(a) => write!(f, "ref->{a}"),
         }
     }
 }

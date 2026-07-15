@@ -2,7 +2,7 @@
 
 use crate::error::RuntimeError;
 use crate::event::{Event, Slot};
-use crate::value::{Heap, MapKey, Object, ObjId, Value};
+use crate::value::{Address, Heap, MapKey, Object, ObjId, Value};
 use rscpp_ast::*;
 use rscpp_parser::parse;
 use rscpp_sema::analyze;
@@ -203,10 +203,11 @@ impl Engine {
         }
         for (p, a) in func.params.iter().zip(args.iter()) {
             if let Some(n) = &p.name {
-                locals.insert(n.name.clone(), a.clone());
+                let bound = self.bind_param_value(&p.ty, a, &n.name, n.span)?;
+                locals.insert(n.name.clone(), bound.clone());
                 self.emit(Event::VarCreate {
                     name: n.name.clone(),
-                    value: a.clone(),
+                    value: bound,
                     span: n.span,
                 });
             }
@@ -217,8 +218,6 @@ impl Engine {
             locals,
         });
         let flow = self.exec_block(&func.body)?;
-        self.stack.pop();
-
         let ret = match flow {
             Flow::Return(v) => v,
             Flow::Next => Value::Int(0),
@@ -226,6 +225,9 @@ impl Engine {
                 return Err(RuntimeError::new("break/continue outside loop"));
             }
         };
+        if let Some(frame) = self.stack.pop() {
+            self.dealloc_owned_locals(&frame.locals, Some(&ret));
+        }
 
         self.emit(Event::FnExit {
             name: name.to_string(),
@@ -261,12 +263,8 @@ impl Engine {
             Stmt::Block(b) => self.exec_block(b),
             Stmt::Decl(d) => {
                 for decl in &d.declarators {
-                    let val = if let Some(init) = &decl.init {
-                        self.eval_expr(init)?
-                    } else {
-                        self.default_value_for_type(&d.ty)?
-                    };
-                    self.define_local(&decl.name.name, val.clone(), decl.span);
+                    let val = self.eval_decl_init(&d.ty, decl)?;
+                    self.define_local(&decl.name.name, val, decl.span)?;
                 }
                 Ok(Flow::Next)
             }
@@ -376,7 +374,23 @@ impl Engine {
         }
     }
 
-    fn define_local(&mut self, name: &str, val: Value, span: Span) {
+    fn define_local(&mut self, name: &str, val: Value, span: Span) -> Result<()> {
+        if let Value::Ref(addr) = &val {
+            if let Some(slot) = Self::address_to_slot(addr) {
+                self.emit(Event::RefBind {
+                    name: name.to_string(),
+                    target: slot,
+                    span,
+                });
+            }
+        }
+        if let Value::Ptr(addr) = &val {
+            self.emit(Event::PtrMove {
+                name: name.to_string(),
+                to: Value::Ptr(addr.clone()),
+                span,
+            });
+        }
         if let Some(frame) = self.stack.last_mut() {
             frame.locals.insert(name.to_string(), val.clone());
         } else {
@@ -387,9 +401,10 @@ impl Engine {
             value: val,
             span,
         });
+        Ok(())
     }
 
-    fn lookup(&self, name: &str) -> Result<Value> {
+    fn lookup_raw(&self, name: &str) -> Result<Value> {
         for frame in self.stack.iter().rev() {
             if let Some(v) = frame.locals.get(name) {
                 return Ok(v.clone());
@@ -401,13 +416,35 @@ impl Engine {
         Err(RuntimeError::new(format!("undefined variable `{name}`")))
     }
 
+    #[allow(dead_code)]
+    fn lookup(&self, name: &str) -> Result<Value> {
+        let v = self.lookup_raw(name)?;
+        match v {
+            Value::Ref(addr) => self.load_address(&addr),
+            other => Ok(other),
+        }
+    }
+
     fn assign_name(&mut self, name: &str, val: Value, span: Span) -> Result<()> {
-        for frame in self.stack.iter_mut().rev() {
-            if let Some(old) = frame.locals.get(name).cloned() {
-                frame.locals.insert(name.to_string(), val.clone());
+        // Write-through references.
+        if let Ok(Value::Ref(addr)) = self.lookup_raw(name) {
+            return self.store_address(&addr, val, span);
+        }
+
+        for i in (0..self.stack.len()).rev() {
+            if self.stack[i].locals.contains_key(name) {
+                let old = self.stack[i].locals.get(name).cloned();
+                if matches!(val, Value::Ptr(_)) {
+                    self.emit(Event::PtrMove {
+                        name: name.to_string(),
+                        to: val.clone(),
+                        span,
+                    });
+                }
+                self.stack[i].locals.insert(name.to_string(), val.clone());
                 self.emit(Event::VarAssign {
                     name: name.to_string(),
-                    old: Some(old.clone()),
+                    old: old.clone(),
                     value: val.clone(),
                     span,
                 });
@@ -415,18 +452,26 @@ impl Engine {
                     slot: Slot::Local {
                         name: name.to_string(),
                     },
-                    old: Some(old),
+                    old,
                     value: val,
                     span,
                 });
                 return Ok(());
             }
         }
-        if let Some(old) = self.globals.get(name).cloned() {
+        if self.globals.contains_key(name) {
+            let old = self.globals.get(name).cloned();
+            if matches!(val, Value::Ptr(_)) {
+                self.emit(Event::PtrMove {
+                    name: name.to_string(),
+                    to: val.clone(),
+                    span,
+                });
+            }
             self.globals.insert(name.to_string(), val.clone());
             self.emit(Event::VarAssign {
                 name: name.to_string(),
-                old: Some(old.clone()),
+                old: old.clone(),
                 value: val.clone(),
                 span,
             });
@@ -434,7 +479,7 @@ impl Engine {
                 slot: Slot::Global {
                     name: name.to_string(),
                 },
-                old: Some(old),
+                old,
                 value: val,
                 span,
             });
@@ -576,6 +621,309 @@ impl Engine {
         }
     }
 
+    fn address_to_slot(addr: &Address) -> Option<Slot> {
+        Some(match addr {
+            Address::Null => return None,
+            Address::Stack { name, .. } => Slot::Local {
+                name: name.clone(),
+            },
+            Address::Heap(id) => Slot::Object { obj: *id },
+            Address::Index { obj, index } => Slot::Index {
+                obj: *obj,
+                index: *index,
+            },
+            Address::Field { obj, field } => Slot::Field {
+                obj: *obj,
+                field: field.clone(),
+            },
+            Address::MapEntry { obj, key } => Slot::MapEntry {
+                obj: *obj,
+                key: key.clone(),
+            },
+        })
+    }
+
+    fn lvalue_to_address(&self, lv: &LValue) -> Result<Address> {
+        Ok(match lv {
+            LValue::Name(n) => {
+                // Find which frame owns n
+                for (i, frame) in self.stack.iter().enumerate().rev() {
+                    if frame.locals.contains_key(n) {
+                        // If local is already a Ref, address is the target
+                        if let Some(Value::Ref(a)) = frame.locals.get(n) {
+                            return Ok(a.clone());
+                        }
+                        return Ok(Address::Stack {
+                            frame: i,
+                            name: n.clone(),
+                        });
+                    }
+                }
+                if self.globals.contains_key(n) {
+                    // treat as frame 0 global name via Stack depth usize::MAX? use name-only
+                    return Ok(Address::Stack {
+                        frame: usize::MAX,
+                        name: n.clone(),
+                    });
+                }
+                return Err(RuntimeError::new(format!(
+                    "cannot take address of `{n}`"
+                )));
+            }
+            LValue::Index { obj, index } => Address::Index {
+                obj: *obj,
+                index: *index,
+            },
+            LValue::MapEntry { obj, key } => Address::MapEntry {
+                obj: *obj,
+                key: key.to_string(),
+            },
+            LValue::Field { obj, field } => Address::Field {
+                obj: *obj,
+                field: field.clone(),
+            },
+        })
+    }
+
+    fn address_to_lvalue(&self, addr: &Address) -> Option<LValue> {
+        match addr {
+            Address::Stack { name, frame } if *frame == usize::MAX || self.stack.get(*frame).is_some() => {
+                Some(LValue::Name(name.clone()))
+            }
+            Address::Index { obj, index } => Some(LValue::Index {
+                obj: *obj,
+                index: *index,
+            }),
+            Address::MapEntry { obj, key } => {
+                // rebuild MapKey from string — int keys only for now
+                let key = if let Ok(i) = key.parse::<i64>() {
+                    MapKey::Int(i)
+                } else {
+                    MapKey::Str(key.clone())
+                };
+                Some(LValue::MapEntry { obj: *obj, key })
+            }
+            Address::Field { obj, field } => Some(LValue::Field {
+                obj: *obj,
+                field: field.clone(),
+            }),
+            Address::Heap(_) | Address::Null | Address::Stack { .. } => None,
+        }
+    }
+
+    fn load_address(&self, addr: &Address) -> Result<Value> {
+        match addr {
+            Address::Null => Err(RuntimeError::new("null pointer dereference")),
+            Address::Stack { frame, name } if *frame == usize::MAX => self
+                .globals
+                .get(name)
+                .cloned()
+                .ok_or_else(|| RuntimeError::new(format!("dangling ref `{name}`"))),
+            Address::Stack { frame, name } => {
+                let frame = self
+                    .stack
+                    .get(*frame)
+                    .ok_or_else(|| RuntimeError::new("dangling stack address"))?;
+                frame
+                    .locals
+                    .get(name)
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::new(format!("dangling ref `{name}`")))
+            }
+            Address::Heap(id) => Ok(Value::Object(*id)),
+            Address::Index { obj, index } => match self.heap.get(*obj) {
+                Some(Object::Vector(e)) => e
+                    .get(*index)
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::new("index out of bounds")),
+                _ => Err(RuntimeError::new("bad index address")),
+            },
+            Address::Field { obj, field } => match self.heap.get(*obj) {
+                Some(Object::Class { fields, .. }) => Ok(fields
+                    .get(field)
+                    .cloned()
+                    .unwrap_or(Value::Int(0))),
+                Some(Object::Pair { first, second }) => match field.as_str() {
+                    "first" => Ok(first.clone()),
+                    "second" => Ok(second.clone()),
+                    _ => Err(RuntimeError::new("bad field")),
+                },
+                _ => Err(RuntimeError::new("bad field address")),
+            },
+            Address::MapEntry { obj, key } => {
+                let mk = if let Ok(i) = key.parse::<i64>() {
+                    MapKey::Int(i)
+                } else {
+                    MapKey::Str(key.clone())
+                };
+                match self.heap.get(*obj) {
+                    Some(Object::Map(m)) => Ok(m.get(&mk).cloned().unwrap_or(Value::Int(0))),
+                    Some(Object::UnorderedMap(m)) => {
+                        Ok(m.get(&mk).cloned().unwrap_or(Value::Int(0)))
+                    }
+                    _ => Err(RuntimeError::new("bad map address")),
+                }
+            }
+        }
+    }
+
+    fn store_address(&mut self, addr: &Address, val: Value, span: Span) -> Result<()> {
+        match addr {
+            Address::Null => Err(RuntimeError::at(span, "null pointer write")),
+            Address::Stack { frame, name } if *frame == usize::MAX => {
+                self.globals.insert(name.clone(), val.clone());
+                self.emit(Event::Write {
+                    slot: Slot::Global { name: name.clone() },
+                    old: None,
+                    value: val,
+                    span,
+                });
+                Ok(())
+            }
+            Address::Stack { frame, name } => {
+                let frame = self
+                    .stack
+                    .get_mut(*frame)
+                    .ok_or_else(|| RuntimeError::at(span, "dangling stack address"))?;
+                let old = frame.locals.insert(name.clone(), val.clone());
+                self.emit(Event::Write {
+                    slot: Slot::Local { name: name.clone() },
+                    old,
+                    value: val,
+                    span,
+                });
+                Ok(())
+            }
+            Address::Heap(_) => Err(RuntimeError::at(span, "cannot store through object address")),
+            other => {
+                let Some(lv) = self.address_to_lvalue(other) else {
+                    return Err(RuntimeError::at(span, "cannot store to address"));
+                };
+                self.write_lvalue(&lv, val, span)
+            }
+        }
+    }
+
+    fn type_is_ref(ty: &Type) -> bool {
+        match ty {
+            Type::Reference { .. } => true,
+            Type::Const { inner, .. } => Self::type_is_ref(inner),
+            _ => false,
+        }
+    }
+
+    fn type_is_ptr(ty: &Type) -> bool {
+        match ty {
+            Type::Pointer { .. } => true,
+            Type::Const { inner, .. } => Self::type_is_ptr(inner),
+            Type::Reference { inner, .. } => Self::type_is_ptr(inner),
+            _ => false,
+        }
+    }
+
+    fn bind_param_value(
+        &mut self,
+        ty: &Type,
+        arg: &Value,
+        name: &str,
+        span: Span,
+    ) -> Result<Value> {
+        if Self::type_is_ref(ty) {
+            let addr = match arg {
+                Value::Object(id) => Address::Heap(*id),
+                Value::Ref(a) | Value::Ptr(a) => a.clone(),
+                Value::Nullptr => Address::Null,
+                other => {
+                    return Err(RuntimeError::at(
+                        span,
+                        format!("cannot bind reference parameter to `{other}`"),
+                    ))
+                }
+            };
+            if let Some(slot) = Self::address_to_slot(&addr) {
+                self.emit(Event::RefBind {
+                    name: name.to_string(),
+                    target: slot,
+                    span,
+                });
+            }
+            return Ok(Value::Ref(addr));
+        }
+        Ok(arg.clone())
+    }
+
+    fn eval_decl_init(&mut self, ty: &Type, decl: &InitDeclarator) -> Result<Value> {
+        if Self::type_is_ref(ty) {
+            let init = decl
+                .init
+                .as_ref()
+                .ok_or_else(|| RuntimeError::at(decl.span, "reference must be initialized"))?;
+            let (_v, lv) = self.eval_expr_lv(init)?;
+            let lv = lv.ok_or_else(|| RuntimeError::at(decl.span, "cannot bind ref to rvalue"))?;
+            let addr = self.lvalue_to_address(&lv)?;
+            return Ok(Value::Ref(addr));
+        }
+        if let Some(init) = &decl.init {
+            let v = self.eval_expr(init)?;
+            if Self::type_is_ptr(ty) {
+                return Ok(match v {
+                    Value::Ptr(a) => Value::Ptr(a),
+                    Value::Nullptr => Value::Ptr(Address::Null),
+                    Value::Object(id) => Value::Ptr(Address::Heap(id)),
+                    Value::Ref(a) => Value::Ptr(a),
+                    other => {
+                        return Err(RuntimeError::at(
+                            decl.span,
+                            format!("cannot initialize pointer from `{other}`"),
+                        ))
+                    }
+                });
+            }
+            return Ok(v);
+        }
+        if Self::type_is_ptr(ty) {
+            return Ok(Value::Ptr(Address::Null));
+        }
+        self.default_value_for_type(ty)
+    }
+
+    fn dealloc_owned_locals(&mut self, locals: &HashMap<String, Value>, keep: Option<&Value>) {
+        let keep_id = match keep {
+            Some(Value::Object(id)) => Some(*id),
+            Some(Value::Ref(Address::Heap(id)) | Value::Ptr(Address::Heap(id))) => Some(*id),
+            _ => None,
+        };
+        for (_name, v) in locals {
+            if let Value::Object(id) = v {
+                if Some(*id) == keep_id {
+                    continue;
+                }
+                // Only free if no other references remain — check stack/globals roughly
+                if self.value_mentions_obj(*id) {
+                    continue;
+                }
+                if self.heap.free(*id).is_some() {
+                    self.emit(Event::Dealloc {
+                        id: *id,
+                        span: Span::new(0, 0),
+                    });
+                }
+            }
+        }
+    }
+
+    fn value_mentions_obj(&self, id: ObjId) -> bool {
+        let check = |v: &Value| matches!(v, Value::Object(x) if *x == id)
+            || matches!(v, Value::Ptr(Address::Heap(x) | Address::Index { obj: x, .. } | Address::Field { obj: x, .. } | Address::MapEntry { obj: x, .. }) if *x == id)
+            || matches!(v, Value::Ref(Address::Heap(x) | Address::Index { obj: x, .. } | Address::Field { obj: x, .. } | Address::MapEntry { obj: x, .. }) if *x == id);
+        for f in &self.stack {
+            if f.locals.values().any(check) {
+                return true;
+            }
+        }
+        self.globals.values().any(check)
+    }
+
     fn builtin_swap(&mut self, a: &Expr, b: &Expr, span: Span) -> Result<Value> {
         let (va, la) = self.eval_expr_lv(a)?;
         let (vb, lb) = self.eval_expr_lv(b)?;
@@ -621,10 +969,15 @@ impl Engine {
             Expr::Name(path) => {
                 if path.segments.len() == 1 {
                     let n = &path.segments[0].name;
-                    let v = self.lookup(n)?;
-                    Ok((v, Some(LValue::Name(n.clone()))))
+                    let raw = self.lookup_raw(n)?;
+                    match raw {
+                        Value::Ref(addr) => {
+                            let v = self.load_address(&addr)?;
+                            Ok((v, self.address_to_lvalue(&addr)))
+                        }
+                        other => Ok((other, Some(LValue::Name(n.clone())))),
+                    }
                 } else {
-                    // For now only simple names as values; Class::static later
                     Err(RuntimeError::at(
                         path.span,
                         "qualified names in expressions not supported yet",
@@ -670,9 +1023,29 @@ impl Engine {
                         }
                         old
                     }
-                    UnaryOp::Deref | UnaryOp::AddrOf => {
-                        return Err(RuntimeError::at(*span, "pointers not fully supported yet"));
+                    UnaryOp::AddrOf => {
+                        let Some(lv) = lv else {
+                            return Err(RuntimeError::at(*span, "cannot take address of rvalue"));
+                        };
+                        let addr = self.lvalue_to_address(&lv)?;
+                        Value::Ptr(addr)
                     }
+                    UnaryOp::Deref => match &v {
+                        Value::Ptr(addr) | Value::Ref(addr) => {
+                            let loaded = self.load_address(addr)?;
+                            let out_lv = self.address_to_lvalue(addr);
+                            return Ok((loaded, out_lv));
+                        }
+                        Value::Nullptr => {
+                            return Err(RuntimeError::at(*span, "null pointer dereference"));
+                        }
+                        other => {
+                            return Err(RuntimeError::at(
+                                *span,
+                                format!("cannot dereference `{other}`"),
+                            ));
+                        }
+                    },
                 };
                 Ok((out, None))
             }
@@ -1449,9 +1822,19 @@ impl Engine {
                 Ok(Value::Int(n))
             }
             Lt | Gt | Le | Ge | Eq | Ne => {
-                let result = match (l, r) {
-                    (Value::Int(a), Value::Int(b)) => cmp_ord(op, a.cmp(b)),
-                    (Value::Float(a), Value::Float(b)) => {
+                let result = match (l, r, op) {
+                    (Value::Ptr(a), Value::Ptr(b), Eq) => a == b,
+                    (Value::Ptr(a), Value::Ptr(b), Ne) => a != b,
+                    (Value::Ptr(a), Value::Nullptr, Eq) | (Value::Nullptr, Value::Ptr(a), Eq) => {
+                        *a == Address::Null
+                    }
+                    (Value::Ptr(a), Value::Nullptr, Ne) | (Value::Nullptr, Value::Ptr(a), Ne) => {
+                        *a != Address::Null
+                    }
+                    (Value::Nullptr, Value::Nullptr, Eq) => true,
+                    (Value::Nullptr, Value::Nullptr, Ne) => false,
+                    (Value::Int(a), Value::Int(b), _) => cmp_ord(op, a.cmp(b)),
+                    (Value::Float(a), Value::Float(b), _) => {
                         cmp_ord(op, a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                     }
                     _ => {

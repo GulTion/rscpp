@@ -10,6 +10,9 @@ pub enum Slot {
     Global {
         name: String,
     },
+    Object {
+        obj: ObjId,
+    },
     Index {
         obj: ObjId,
         index: usize,
