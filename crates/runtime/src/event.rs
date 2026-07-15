@@ -14,6 +14,10 @@ pub enum Slot {
         obj: ObjId,
         index: usize,
     },
+    MapEntry {
+        obj: ObjId,
+        key: String,
+    },
     Field {
         obj: ObjId,
         field: String,

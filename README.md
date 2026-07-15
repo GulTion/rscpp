@@ -19,7 +19,7 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 | 3 | `rscpp-ast` | done |
 | 4 | `rscpp-sema` | done |
 | 5 | `rscpp-runtime` | done |
-| 6 | STL | planned |
+| 6 | STL (in runtime) | done |
 | 7 | memory model | planned |
 | 8 | VM | planned |
 | 9 | WASM bindings | planned |

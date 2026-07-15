@@ -2,7 +2,7 @@
 
 use crate::error::RuntimeError;
 use crate::event::{Event, Slot};
-use crate::value::{Heap, Object, ObjId, Value};
+use crate::value::{Heap, MapKey, Object, ObjId, Value};
 use rscpp_ast::*;
 use rscpp_parser::parse;
 use rscpp_sema::analyze;
@@ -29,6 +29,7 @@ enum Flow {
 enum LValue {
     Name(String),
     Index { obj: ObjId, index: usize },
+    MapEntry { obj: ObjId, key: MapKey },
     Field { obj: ObjId, field: String },
 }
 
@@ -476,6 +477,41 @@ impl Engine {
                 });
                 Ok(())
             }
+            LValue::MapEntry { obj, key } => {
+                let key_s = key.to_string();
+                let old = match self.heap.get(*obj) {
+                    Some(Object::Map(m)) => m.get(key).cloned(),
+                    Some(Object::UnorderedMap(m)) => m.get(key).cloned(),
+                    _ => None,
+                };
+                match self.heap.get_mut(*obj) {
+                    Some(Object::Map(m)) => {
+                        m.insert(key.clone(), val.clone());
+                    }
+                    Some(Object::UnorderedMap(m)) => {
+                        m.insert(key.clone(), val.clone());
+                    }
+                    _ => return Err(RuntimeError::at(span, "map entry assign on non-map")),
+                }
+                self.emit(Event::Write {
+                    slot: Slot::MapEntry {
+                        obj: *obj,
+                        key: key_s,
+                    },
+                    old: old.clone(),
+                    value: val.clone(),
+                    span,
+                });
+                self.emit(Event::ContainerMod {
+                    container: Value::Object(*obj),
+                    kind: "map_assign".into(),
+                    index: None,
+                    old,
+                    value: Some(val),
+                    span,
+                });
+                Ok(())
+            }
             LValue::Field { obj, field } => {
                 let old = match self.heap.get(*obj) {
                     Some(Object::Class { fields, .. }) => fields.get(field).cloned(),
@@ -528,6 +564,10 @@ impl Engine {
             LValue::Index { obj, index } => Slot::Index {
                 obj: *obj,
                 index: *index,
+            },
+            LValue::MapEntry { obj, key } => Slot::MapEntry {
+                obj: *obj,
+                key: key.to_string(),
             },
             LValue::Field { obj, field } => Slot::Field {
                 obj: *obj,
@@ -736,12 +776,13 @@ impl Engine {
                 span,
             } => {
                 let b = self.eval_expr(base)?;
-                let i = self.eval_expr(index)?.as_int().map_err(RuntimeError::new)? as usize;
+                let idx_val = self.eval_expr(index)?;
                 let Value::Object(id) = b else {
                     return Err(RuntimeError::at(*span, "cannot index non-object"));
                 };
-                match self.heap.get(id) {
+                match self.heap.get(id).cloned() {
                     Some(Object::Vector(elems)) => {
+                        let i = idx_val.as_int().map_err(RuntimeError::new)? as usize;
                         let v = elems
                             .get(i)
                             .cloned()
@@ -749,11 +790,23 @@ impl Engine {
                         Ok((v, Some(LValue::Index { obj: id, index: i })))
                     }
                     Some(Object::String(s)) => {
+                        let i = idx_val.as_int().map_err(RuntimeError::new)? as usize;
                         let ch = s
                             .chars()
                             .nth(i)
                             .ok_or_else(|| RuntimeError::at(*span, "index out of bounds"))?;
                         Ok((Value::Char(ch), None))
+                    }
+                    Some(Object::Map(_)) | Some(Object::UnorderedMap(_)) => {
+                        let key = self.value_to_key(&idx_val)?;
+                        let v = match self.heap.get(id) {
+                            Some(Object::Map(m)) => m.get(&key).cloned().unwrap_or(Value::Int(0)),
+                            Some(Object::UnorderedMap(m)) => {
+                                m.get(&key).cloned().unwrap_or(Value::Int(0))
+                            }
+                            _ => Value::Int(0),
+                        };
+                        Ok((v, Some(LValue::MapEntry { obj: id, key })))
                     }
                     _ => Err(RuntimeError::at(*span, "type not subscriptable")),
                 }
@@ -826,6 +879,10 @@ impl Engine {
         }
     }
 
+    fn value_to_key(&self, v: &Value) -> Result<MapKey> {
+        MapKey::from_value(v, |id| self.heap.string_value(id)).map_err(RuntimeError::new)
+    }
+
     fn call_member(
         &mut self,
         base: Value,
@@ -836,6 +893,12 @@ impl Engine {
         let Value::Object(id) = base.clone() else {
             return Err(RuntimeError::at(span, "method call on non-object"));
         };
+        let kind = self
+            .heap
+            .get(id)
+            .map(|o| o.kind_name())
+            .unwrap_or("?");
+
         match self.heap.get(id).cloned() {
             Some(Object::Vector(elems)) => match method {
                 "size" => Ok(Value::Int(elems.len() as i64)),
@@ -889,18 +952,468 @@ impl Engine {
                 )),
             },
             Some(Object::String(s)) => match method {
-                "size" => Ok(Value::Int(s.len() as i64)),
+                "size" | "length" => Ok(Value::Int(s.len() as i64)),
                 "empty" => Ok(Value::Bool(s.is_empty())),
+                "clear" => {
+                    if let Some(Object::String(s)) = self.heap.get_mut(id) {
+                        s.clear();
+                    }
+                    Ok(Value::Void)
+                }
+                "push_back" => {
+                    let ch = match args.first() {
+                        Some(Value::Char(c)) => *c,
+                        Some(v) => {
+                            return Err(RuntimeError::at(
+                                span,
+                                format!("string::push_back expects char, got {v}"),
+                            ))
+                        }
+                        None => {
+                            return Err(RuntimeError::at(span, "push_back needs an argument"))
+                        }
+                    };
+                    if let Some(Object::String(s)) = self.heap.get_mut(id) {
+                        s.push(ch);
+                    }
+                    Ok(Value::Void)
+                }
                 _ => Err(RuntimeError::at(
                     span,
                     format!("unknown string method `{method}`"),
                 )),
             },
+            Some(Object::Map(_)) | Some(Object::UnorderedMap(_)) => {
+                self.call_map_method(id, base, kind, method, args, span)
+            }
+            Some(Object::Set(_)) | Some(Object::UnorderedSet(_)) => {
+                self.call_set_method(id, base, method, args, span)
+            }
+            Some(Object::Stack(_)) => self.call_stack_method(id, base, method, args, span),
+            Some(Object::Queue(_)) => self.call_queue_method(id, base, method, args, span),
+            Some(Object::PriorityQueue(_)) => {
+                self.call_pq_method(id, base, method, args, span)
+            }
             Some(Object::Class { name, .. }) => {
                 let q = format!("{name}::{method}");
                 self.call_fn(&q, args, Some(base))
             }
-            _ => Err(RuntimeError::at(span, "unsupported method receiver")),
+            Some(Object::Pair { .. }) => Err(RuntimeError::at(
+                span,
+                format!("pair has no method `{method}` (use .first / .second)"),
+            )),
+            None => Err(RuntimeError::at(span, "dangling object")),
+        }
+    }
+
+    fn call_map_method(
+        &mut self,
+        id: ObjId,
+        base: Value,
+        kind: &str,
+        method: &str,
+        args: &[Value],
+        span: Span,
+    ) -> Result<Value> {
+        match method {
+            "size" => {
+                let n = match self.heap.get(id) {
+                    Some(Object::Map(m)) => m.len(),
+                    Some(Object::UnorderedMap(m)) => m.len(),
+                    _ => 0,
+                };
+                Ok(Value::Int(n as i64))
+            }
+            "empty" => {
+                let e = match self.heap.get(id) {
+                    Some(Object::Map(m)) => m.is_empty(),
+                    Some(Object::UnorderedMap(m)) => m.is_empty(),
+                    _ => true,
+                };
+                Ok(Value::Bool(e))
+            }
+            "clear" => {
+                match self.heap.get_mut(id) {
+                    Some(Object::Map(m)) => m.clear(),
+                    Some(Object::UnorderedMap(m)) => m.clear(),
+                    _ => {}
+                }
+                Ok(Value::Void)
+            }
+            "count" => {
+                let key = self.value_to_key(
+                    args.first()
+                        .ok_or_else(|| RuntimeError::at(span, "count needs a key"))?,
+                )?;
+                let c = match self.heap.get(id) {
+                    Some(Object::Map(m)) => m.contains_key(&key),
+                    Some(Object::UnorderedMap(m)) => m.contains_key(&key),
+                    _ => false,
+                };
+                Ok(Value::Int(if c { 1 } else { 0 }))
+            }
+            "erase" => {
+                let key = self.value_to_key(
+                    args.first()
+                        .ok_or_else(|| RuntimeError::at(span, "erase needs a key"))?,
+                )?;
+                let old = match self.heap.get_mut(id) {
+                    Some(Object::Map(m)) => m.remove(&key),
+                    Some(Object::UnorderedMap(m)) => m.remove(&key),
+                    _ => None,
+                };
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: format!("{kind}::erase"),
+                    index: None,
+                    old,
+                    value: None,
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            "insert" => {
+                let (k, v) = self.pair_or_args_as_kv(args, span)?;
+                match self.heap.get_mut(id) {
+                    Some(Object::Map(m)) => {
+                        m.insert(k.clone(), v.clone());
+                    }
+                    Some(Object::UnorderedMap(m)) => {
+                        m.insert(k.clone(), v.clone());
+                    }
+                    _ => {}
+                }
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: format!("{kind}::insert"),
+                    index: None,
+                    old: None,
+                    value: Some(v),
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            _ => Err(RuntimeError::at(
+                span,
+                format!("unknown {kind} method `{method}`"),
+            )),
+        }
+    }
+
+    fn pair_or_args_as_kv(&self, args: &[Value], span: Span) -> Result<(MapKey, Value)> {
+        if args.len() == 1 {
+            let Value::Object(pid) = &args[0] else {
+                return Err(RuntimeError::at(span, "insert expects pair or (key,value)"));
+            };
+            match self.heap.get(*pid) {
+                Some(Object::Pair { first, second }) => {
+                    Ok((self.value_to_key(first)?, second.clone()))
+                }
+                _ => Err(RuntimeError::at(span, "insert expects a pair")),
+            }
+        } else if args.len() >= 2 {
+            Ok((self.value_to_key(&args[0])?, args[1].clone()))
+        } else {
+            Err(RuntimeError::at(span, "insert needs arguments"))
+        }
+    }
+
+    fn call_set_method(
+        &mut self,
+        id: ObjId,
+        base: Value,
+        method: &str,
+        args: &[Value],
+        span: Span,
+    ) -> Result<Value> {
+        match method {
+            "size" => {
+                let n = match self.heap.get(id) {
+                    Some(Object::Set(s)) => s.len(),
+                    Some(Object::UnorderedSet(s)) => s.len(),
+                    _ => 0,
+                };
+                Ok(Value::Int(n as i64))
+            }
+            "empty" => {
+                let e = match self.heap.get(id) {
+                    Some(Object::Set(s)) => s.is_empty(),
+                    Some(Object::UnorderedSet(s)) => s.is_empty(),
+                    _ => true,
+                };
+                Ok(Value::Bool(e))
+            }
+            "clear" => {
+                match self.heap.get_mut(id) {
+                    Some(Object::Set(s)) => s.clear(),
+                    Some(Object::UnorderedSet(s)) => s.clear(),
+                    _ => {}
+                }
+                Ok(Value::Void)
+            }
+            "count" => {
+                let key = self.value_to_key(
+                    args.first()
+                        .ok_or_else(|| RuntimeError::at(span, "count needs a key"))?,
+                )?;
+                let c = match self.heap.get(id) {
+                    Some(Object::Set(s)) => s.contains(&key),
+                    Some(Object::UnorderedSet(s)) => s.contains(&key),
+                    _ => false,
+                };
+                Ok(Value::Int(if c { 1 } else { 0 }))
+            }
+            "insert" => {
+                let key = self.value_to_key(
+                    args.first()
+                        .ok_or_else(|| RuntimeError::at(span, "insert needs a value"))?,
+                )?;
+                match self.heap.get_mut(id) {
+                    Some(Object::Set(s)) => {
+                        s.insert(key.clone());
+                    }
+                    Some(Object::UnorderedSet(s)) => {
+                        s.insert(key.clone());
+                    }
+                    _ => {}
+                }
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: "set::insert".into(),
+                    index: None,
+                    old: None,
+                    value: Some(Value::Int(match &key {
+                        MapKey::Int(i) => *i,
+                        _ => 1,
+                    })),
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            "erase" => {
+                let key = self.value_to_key(
+                    args.first()
+                        .ok_or_else(|| RuntimeError::at(span, "erase needs a value"))?,
+                )?;
+                match self.heap.get_mut(id) {
+                    Some(Object::Set(s)) => {
+                        s.remove(&key);
+                    }
+                    Some(Object::UnorderedSet(s)) => {
+                        s.remove(&key);
+                    }
+                    _ => {}
+                }
+                Ok(Value::Void)
+            }
+            _ => Err(RuntimeError::at(
+                span,
+                format!("unknown set method `{method}`"),
+            )),
+        }
+    }
+
+    fn call_stack_method(
+        &mut self,
+        id: ObjId,
+        base: Value,
+        method: &str,
+        args: &[Value],
+        span: Span,
+    ) -> Result<Value> {
+        match method {
+            "size" => match self.heap.get(id) {
+                Some(Object::Stack(s)) => Ok(Value::Int(s.len() as i64)),
+                _ => Ok(Value::Int(0)),
+            },
+            "empty" => match self.heap.get(id) {
+                Some(Object::Stack(s)) => Ok(Value::Bool(s.is_empty())),
+                _ => Ok(Value::Bool(true)),
+            },
+            "top" => match self.heap.get(id) {
+                Some(Object::Stack(s)) => s
+                    .last()
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::at(span, "top on empty stack")),
+                _ => Err(RuntimeError::at(span, "not a stack")),
+            },
+            "push" => {
+                let v = args
+                    .first()
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::at(span, "push needs a value"))?;
+                if let Some(Object::Stack(s)) = self.heap.get_mut(id) {
+                    s.push(v.clone());
+                }
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: "stack::push".into(),
+                    index: None,
+                    old: None,
+                    value: Some(v),
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            "pop" => {
+                let old = if let Some(Object::Stack(s)) = self.heap.get_mut(id) {
+                    s.pop()
+                } else {
+                    None
+                };
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: "stack::pop".into(),
+                    index: None,
+                    old,
+                    value: None,
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            _ => Err(RuntimeError::at(
+                span,
+                format!("unknown stack method `{method}`"),
+            )),
+        }
+    }
+
+    fn call_queue_method(
+        &mut self,
+        id: ObjId,
+        base: Value,
+        method: &str,
+        args: &[Value],
+        span: Span,
+    ) -> Result<Value> {
+        match method {
+            "size" => match self.heap.get(id) {
+                Some(Object::Queue(q)) => Ok(Value::Int(q.len() as i64)),
+                _ => Ok(Value::Int(0)),
+            },
+            "empty" => match self.heap.get(id) {
+                Some(Object::Queue(q)) => Ok(Value::Bool(q.is_empty())),
+                _ => Ok(Value::Bool(true)),
+            },
+            "front" => match self.heap.get(id) {
+                Some(Object::Queue(q)) => q
+                    .front()
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::at(span, "front on empty queue")),
+                _ => Err(RuntimeError::at(span, "not a queue")),
+            },
+            "back" => match self.heap.get(id) {
+                Some(Object::Queue(q)) => q
+                    .back()
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::at(span, "back on empty queue")),
+                _ => Err(RuntimeError::at(span, "not a queue")),
+            },
+            "push" => {
+                let v = args
+                    .first()
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::at(span, "push needs a value"))?;
+                if let Some(Object::Queue(q)) = self.heap.get_mut(id) {
+                    q.push_back(v.clone());
+                }
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: "queue::push".into(),
+                    index: None,
+                    old: None,
+                    value: Some(v),
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            "pop" => {
+                let old = if let Some(Object::Queue(q)) = self.heap.get_mut(id) {
+                    q.pop_front()
+                } else {
+                    None
+                };
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: "queue::pop".into(),
+                    index: None,
+                    old,
+                    value: None,
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            _ => Err(RuntimeError::at(
+                span,
+                format!("unknown queue method `{method}`"),
+            )),
+        }
+    }
+
+    fn call_pq_method(
+        &mut self,
+        id: ObjId,
+        base: Value,
+        method: &str,
+        args: &[Value],
+        span: Span,
+    ) -> Result<Value> {
+        match method {
+            "size" => match self.heap.get(id) {
+                Some(Object::PriorityQueue(h)) => Ok(Value::Int(h.len() as i64)),
+                _ => Ok(Value::Int(0)),
+            },
+            "empty" => match self.heap.get(id) {
+                Some(Object::PriorityQueue(h)) => Ok(Value::Bool(h.is_empty())),
+                _ => Ok(Value::Bool(true)),
+            },
+            "top" => match self.heap.get(id) {
+                Some(Object::PriorityQueue(h)) => h
+                    .peek()
+                    .copied()
+                    .map(Value::Int)
+                    .ok_or_else(|| RuntimeError::at(span, "top on empty priority_queue")),
+                _ => Err(RuntimeError::at(span, "not a priority_queue")),
+            },
+            "push" => {
+                let n = args
+                    .first()
+                    .ok_or_else(|| RuntimeError::at(span, "push needs a value"))?
+                    .as_int()
+                    .map_err(RuntimeError::new)?;
+                if let Some(Object::PriorityQueue(h)) = self.heap.get_mut(id) {
+                    h.push(n);
+                }
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: "priority_queue::push".into(),
+                    index: None,
+                    old: None,
+                    value: Some(Value::Int(n)),
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            "pop" => {
+                let old = if let Some(Object::PriorityQueue(h)) = self.heap.get_mut(id) {
+                    h.pop().map(Value::Int)
+                } else {
+                    None
+                };
+                self.emit(Event::ContainerMod {
+                    container: base,
+                    kind: "priority_queue::pop".into(),
+                    index: None,
+                    old,
+                    value: None,
+                    span,
+                });
+                Ok(Value::Void)
+            }
+            _ => Err(RuntimeError::at(
+                span,
+                format!("unknown priority_queue method `{method}`"),
+            )),
         }
     }
 
@@ -982,31 +1495,24 @@ impl Engine {
                     .last()
                     .map(|s| s.name.as_str())
                     .unwrap_or("");
-                match name {
-                    "vector" => Ok(self.make_vector(vec![])),
-                    "string" => {
-                        let id = self.heap.alloc(Object::String(String::new()));
-                        Ok(Value::Object(id))
-                    }
-                    "pair" => {
-                        let id = self.heap.alloc(Object::Pair {
-                            first: Value::Int(0),
-                            second: Value::Int(0),
-                        });
-                        Ok(Value::Object(id))
-                    }
-                    other => {
-                        if self.classes.contains_key(other) {
-                            let id = self.heap.alloc(Object::Class {
-                                name: other.into(),
-                                fields: HashMap::new(),
-                            });
-                            Ok(Value::Object(id))
-                        } else {
-                            Ok(Value::Int(0))
-                        }
-                    }
+                if let Some(obj) = Object::empty_named(name) {
+                    let kind = obj.kind_name().to_string();
+                    let id = self.heap.alloc(obj);
+                    self.emit(Event::Alloc {
+                        id,
+                        kind,
+                        span: path.span,
+                    });
+                    return Ok(Value::Object(id));
                 }
+                if self.classes.contains_key(name) {
+                    let id = self.heap.alloc(Object::Class {
+                        name: name.into(),
+                        fields: std::collections::HashMap::new(),
+                    });
+                    return Ok(Value::Object(id));
+                }
+                Ok(Value::Int(0))
             }
             Type::Pointer { .. } => Ok(Value::Nullptr),
             Type::Reference { inner, .. } => self.default_value_for_type(inner),
