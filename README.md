@@ -15,8 +15,8 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 | # | Crate | Status |
 |---|-------|--------|
 | 1 | `rscpp-lexer` | done |
-| 2 | parser | planned |
-| 3 | AST | planned |
+| 2 | `rscpp-parser` | done |
+| 3 | `rscpp-ast` | done |
 | 4 | semantic analysis | planned |
 | 5 | runtime | planned |
 | 6 | STL | planned |
@@ -27,7 +27,7 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 ## Develop
 
 ```bash
-cargo test -p rscpp-lexer
+cargo test -p rscpp-lexer -p rscpp-ast -p rscpp-parser
 ```
 
 ## Scope

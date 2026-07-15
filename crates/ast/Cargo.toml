@@ -1,0 +1,9 @@
+[package]
+name = "rscpp-ast"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Typed C++ AST nodes for the rscpp interpreter (LeetCode subset)"
+
+[dependencies]
+rscpp-lexer = { path = "../lexer" }
