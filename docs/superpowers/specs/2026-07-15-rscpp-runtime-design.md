@@ -13,7 +13,8 @@ JSCPP executes via generator visitors over a dynamically typed `CRuntime`. That 
 - Tree-walk `TranslationUnit` / call a named function (e.g. `main`, `Solution::twoSum`).
 - Values: primitives, references, heap objects (`vector`, `pair`, `string`, class instances).
 - Emit events: var create/assign, fn enter/exit, comparisons, container mods, alloc/dealloc.
-- Interpreter never imports UI code — only pushes to an `EventSink`.
+- **v1 (visualizer):** `Step`, `ScopeEnter`/`ScopeExit`, `Branch`, `LoopIter`, `Write` (slot + old/new), `Swap`, richer `ContainerMod`, stubs for `RefBind`/`PtrMove`.
+- Interpreter never imports UI code — only pushes to an event log.
 
 ## Non-goals (this phase)
 

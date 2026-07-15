@@ -7,5 +7,5 @@ mod value;
 
 pub use engine::Engine;
 pub use error::RuntimeError;
-pub use event::Event;
+pub use event::{Event, Slot};
 pub use value::{Heap, Object, ObjId, Value};

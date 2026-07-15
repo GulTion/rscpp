@@ -1,7 +1,7 @@
 //! Tree-walking interpreter.
 
 use crate::error::RuntimeError;
-use crate::event::Event;
+use crate::event::{Event, Slot};
 use crate::value::{Heap, Object, ObjId, Value};
 use rscpp_ast::*;
 use rscpp_parser::parse;
@@ -235,19 +235,27 @@ impl Engine {
     }
 
     fn exec_block(&mut self, block: &Block) -> Result<Flow> {
-        // Block scope: snapshot? For simplicity share frame and remove names after.
-        let introduced: Vec<String> = Vec::new();
-        let _ = introduced;
+        self.emit(Event::ScopeEnter { span: block.span });
         for stmt in &block.stmts {
             match self.exec_stmt(stmt)? {
                 Flow::Next => {}
-                other => return Ok(other),
+                other => {
+                    self.emit(Event::ScopeExit { span: block.span });
+                    return Ok(other);
+                }
             }
         }
+        self.emit(Event::ScopeExit { span: block.span });
         Ok(Flow::Next)
     }
 
     fn exec_stmt(&mut self, stmt: &Stmt) -> Result<Flow> {
+        // Nested blocks emit ScopeEnter instead of a single Step.
+        if !matches!(stmt, Stmt::Block(_)) {
+            self.emit(Event::Step {
+                span: stmt.span(),
+            });
+        }
         match stmt {
             Stmt::Block(b) => self.exec_block(b),
             Stmt::Decl(d) => {
@@ -278,10 +286,15 @@ impl Engine {
                 cond,
                 then_branch,
                 else_branch,
-                ..
+                span,
             } => {
                 let c = self.eval_expr(cond)?;
-                if c.as_bool().map_err(RuntimeError::new)? {
+                let then_taken = c.as_bool().map_err(RuntimeError::new)?;
+                self.emit(Event::Branch {
+                    then_taken,
+                    span: *span,
+                });
+                if then_taken {
                     self.exec_stmt(then_branch)
                 } else if let Some(e) = else_branch {
                     self.exec_stmt(e)
@@ -289,12 +302,15 @@ impl Engine {
                     Ok(Flow::Next)
                 }
             }
-            Stmt::While { cond, body, .. } => {
+            Stmt::While {
+                cond, body, span, ..
+            } => {
                 loop {
                     let c = self.eval_expr(cond)?;
                     if !c.as_bool().map_err(RuntimeError::new)? {
                         break;
                     }
+                    self.emit(Event::LoopIter { span: *span });
                     match self.exec_stmt(body)? {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
@@ -303,8 +319,11 @@ impl Engine {
                 }
                 Ok(Flow::Next)
             }
-            Stmt::DoWhile { body, cond, .. } => {
+            Stmt::DoWhile {
+                body, cond, span, ..
+            } => {
                 loop {
+                    self.emit(Event::LoopIter { span: *span });
                     match self.exec_stmt(body)? {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
@@ -322,6 +341,7 @@ impl Engine {
                 cond,
                 step,
                 body,
+                span,
                 ..
             } => {
                 match init {
@@ -340,6 +360,7 @@ impl Engine {
                             break;
                         }
                     }
+                    self.emit(Event::LoopIter { span: *span });
                     match self.exec_stmt(body)? {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
@@ -381,26 +402,43 @@ impl Engine {
 
     fn assign_name(&mut self, name: &str, val: Value, span: Span) -> Result<()> {
         for frame in self.stack.iter_mut().rev() {
-            if frame.locals.contains_key(name) {
+            if let Some(old) = frame.locals.get(name).cloned() {
                 frame.locals.insert(name.to_string(), val.clone());
                 self.emit(Event::VarAssign {
                     name: name.to_string(),
+                    old: Some(old.clone()),
+                    value: val.clone(),
+                    span,
+                });
+                self.emit(Event::Write {
+                    slot: Slot::Local {
+                        name: name.to_string(),
+                    },
+                    old: Some(old),
                     value: val,
                     span,
                 });
                 return Ok(());
             }
         }
-        if self.globals.contains_key(name) {
+        if let Some(old) = self.globals.get(name).cloned() {
             self.globals.insert(name.to_string(), val.clone());
             self.emit(Event::VarAssign {
                 name: name.to_string(),
+                old: Some(old.clone()),
+                value: val.clone(),
+                span,
+            });
+            self.emit(Event::Write {
+                slot: Slot::Global {
+                    name: name.to_string(),
+                },
+                old: Some(old),
                 value: val,
                 span,
             });
             return Ok(());
         }
-        // Lexical assign creates local (C++ wouldn't) — treat as error
         Err(RuntimeError::at(
             span,
             format!("assignment to undeclared `{name}`"),
@@ -417,16 +455,37 @@ impl Engine {
                 if *index >= elems.len() {
                     return Err(RuntimeError::at(span, "index out of bounds"));
                 }
+                let old = elems[*index].clone();
                 elems[*index] = val.clone();
+                self.emit(Event::Write {
+                    slot: Slot::Index {
+                        obj: *obj,
+                        index: *index,
+                    },
+                    old: Some(old.clone()),
+                    value: val.clone(),
+                    span,
+                });
                 self.emit(Event::ContainerMod {
                     container: Value::Object(*obj),
                     kind: "index_assign".into(),
-                    detail: format!("[{index}] = {val}"),
+                    index: Some(*index),
+                    old: Some(old),
+                    value: Some(val),
                     span,
                 });
                 Ok(())
             }
             LValue::Field { obj, field } => {
+                let old = match self.heap.get(*obj) {
+                    Some(Object::Class { fields, .. }) => fields.get(field).cloned(),
+                    Some(Object::Pair { first, second }) => match field.as_str() {
+                        "first" => Some(first.clone()),
+                        "second" => Some(second.clone()),
+                        _ => None,
+                    },
+                    _ => None,
+                };
                 match self.heap.get_mut(*obj) {
                     Some(Object::Class { fields, .. }) => {
                         fields.insert(field.clone(), val.clone());
@@ -435,19 +494,67 @@ impl Engine {
                         "first" => *first = val.clone(),
                         "second" => *second = val.clone(),
                         _ => {
-                            return Err(RuntimeError::at(span, format!("no field `{field}` on pair")));
+                            return Err(RuntimeError::at(
+                                span,
+                                format!("no field `{field}` on pair"),
+                            ));
                         }
                     },
                     _ => return Err(RuntimeError::at(span, "field assign on bad object")),
                 }
+                self.emit(Event::Write {
+                    slot: Slot::Field {
+                        obj: *obj,
+                        field: field.clone(),
+                    },
+                    old: old.clone(),
+                    value: val.clone(),
+                    span,
+                });
                 self.emit(Event::VarAssign {
                     name: field.clone(),
+                    old,
                     value: val,
                     span,
                 });
                 Ok(())
             }
         }
+    }
+
+    fn slot_of(lv: &LValue) -> Slot {
+        match lv {
+            LValue::Name(n) => Slot::Local { name: n.clone() },
+            LValue::Index { obj, index } => Slot::Index {
+                obj: *obj,
+                index: *index,
+            },
+            LValue::Field { obj, field } => Slot::Field {
+                obj: *obj,
+                field: field.clone(),
+            },
+        }
+    }
+
+    fn builtin_swap(&mut self, a: &Expr, b: &Expr, span: Span) -> Result<Value> {
+        let (va, la) = self.eval_expr_lv(a)?;
+        let (vb, lb) = self.eval_expr_lv(b)?;
+        let Some(la) = la else {
+            return Err(RuntimeError::at(span, "swap arg is not an lvalue"));
+        };
+        let Some(lb) = lb else {
+            return Err(RuntimeError::at(span, "swap arg is not an lvalue"));
+        };
+        self.write_lvalue(&la, vb.clone(), span)?;
+        self.write_lvalue(&lb, va.clone(), span)?;
+        self.emit(Event::Swap {
+            a: Self::slot_of(&la),
+            b: Self::slot_of(&lb),
+            value_a: va,
+            value_b: vb,
+            span,
+        });
+        Ok(Value::Void)
     }
 
     fn eval_expr(&mut self, expr: &Expr) -> Result<Value> {
@@ -600,6 +707,10 @@ impl Engine {
                         .map(|s| s.name.as_str())
                         .collect::<Vec<_>>()
                         .join("::");
+                    if (name == "swap" || name == "std::swap") && args.len() == 2 {
+                        let ret = self.builtin_swap(&args[0], &args[1], *span)?;
+                        return Ok((ret, None));
+                    }
                     // Type-construction: vector / pair as function name
                     if name == "pair" && arg_vals.len() == 2 {
                         let id = self.heap.alloc(Object::Pair {
@@ -734,25 +845,34 @@ impl Engine {
                         .first()
                         .cloned()
                         .ok_or_else(|| RuntimeError::at(span, "push_back needs an argument"))?;
-                    if let Some(Object::Vector(e)) = self.heap.get_mut(id) {
+                    let idx = if let Some(Object::Vector(e)) = self.heap.get_mut(id) {
                         e.push(v.clone());
-                    }
+                        e.len() - 1
+                    } else {
+                        0
+                    };
                     self.emit(Event::ContainerMod {
                         container: base,
                         kind: "push_back".into(),
-                        detail: format!("{v}"),
+                        index: Some(idx),
+                        old: None,
+                        value: Some(v),
                         span,
                     });
                     Ok(Value::Void)
                 }
                 "pop_back" => {
-                    if let Some(Object::Vector(e)) = self.heap.get_mut(id) {
-                        e.pop();
-                    }
+                    let old = if let Some(Object::Vector(e)) = self.heap.get_mut(id) {
+                        e.pop()
+                    } else {
+                        None
+                    };
                     self.emit(Event::ContainerMod {
                         container: base,
                         kind: "pop_back".into(),
-                        detail: String::new(),
+                        index: None,
+                        old,
+                        value: None,
                         span,
                     });
                     Ok(Value::Void)

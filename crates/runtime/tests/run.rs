@@ -1,4 +1,4 @@
-use rscpp_runtime::{Engine, Event, Value};
+use rscpp_runtime::{Engine, Event, Slot, Value};
 
 #[test]
 fn run_main_returns() {
@@ -7,6 +7,7 @@ fn run_main_returns() {
     assert_eq!(v, Value::Int(42));
     assert!(eng.events().iter().any(|e| matches!(e, Event::FnEnter { .. })));
     assert!(eng.events().iter().any(|e| matches!(e, Event::FnExit { .. })));
+    assert!(eng.events().iter().any(|e| matches!(e, Event::Step { .. })));
 }
 
 #[test]
@@ -26,10 +27,23 @@ int main() {
         .events()
         .iter()
         .any(|e| matches!(e, Event::VarCreate { name, .. } if name == "x")));
-    assert!(eng
-        .events()
-        .iter()
-        .any(|e| matches!(e, Event::VarAssign { name, .. } if name == "x")));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::VarAssign {
+            name,
+            old: Some(Value::Int(1)),
+            value: Value::Int(3),
+            ..
+        } if name == "x"
+    )));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::Write {
+            slot: Slot::Local { name },
+            value: Value::Int(3),
+            ..
+        } if name == "x"
+    )));
 }
 
 #[test]
@@ -47,6 +61,13 @@ int main() {
     )
     .unwrap();
     assert_eq!(eng.run_main().unwrap(), Value::Int(10));
+    assert!(
+        eng.events()
+            .iter()
+            .filter(|e| matches!(e, Event::LoopIter { .. }))
+            .count()
+            >= 5
+    );
 }
 
 #[test]
@@ -63,10 +84,15 @@ int main() {
     )
     .unwrap();
     assert_eq!(eng.run_main().unwrap(), Value::Int(32));
-    assert!(eng
-        .events()
-        .iter()
-        .any(|e| matches!(e, Event::ContainerMod { kind, .. } if kind == "push_back")));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::ContainerMod {
+            kind,
+            index: Some(0),
+            value: Some(Value::Int(10)),
+            ..
+        } if kind == "push_back"
+    )));
 }
 
 #[test]
@@ -84,12 +110,15 @@ public:
 "#;
     let mut eng = Engine::from_source(src).unwrap();
     let nums = eng.make_vector(vec![Value::Int(2), Value::Int(7), Value::Int(11)]);
-    // Find index of 7
     let ret = eng
         .call("Solution::twoSum", &[nums, Value::Int(7)])
         .unwrap();
     let idxs = eng.vector_as_ints(&ret).unwrap();
     assert_eq!(idxs, vec![1]);
+    assert!(eng
+        .events()
+        .iter()
+        .any(|e| matches!(e, Event::Branch { then_taken: true, .. })));
 }
 
 #[test]
@@ -101,4 +130,45 @@ fn compare_emits_event() {
         .events()
         .iter()
         .any(|e| matches!(e, Event::Compare { result: true, .. })));
+}
+
+#[test]
+fn swap_emits_event() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  int a = 1;
+  int b = 2;
+  swap(a, b);
+  return a * 10 + b;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(21));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::Swap {
+            value_a: Value::Int(1),
+            value_b: Value::Int(2),
+            ..
+        }
+    )));
+}
+
+#[test]
+fn branch_else_path() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  if (0) { return 1; } else { return 2; }
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(2));
+    assert!(eng
+        .events()
+        .iter()
+        .any(|e| matches!(e, Event::Branch { then_taken: false, .. })));
 }
