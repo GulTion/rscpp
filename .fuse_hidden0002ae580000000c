@@ -1,8 +1,0 @@
-[workspace]
-resolver = "2"
-members = ["crates/lexer", "crates/ast", "crates/parser", "crates/sema"]
-
-[workspace.package]
-edition = "2021"
-license = "MIT"
-version = "0.1.0"
