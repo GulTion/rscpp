@@ -27,7 +27,7 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 ## Develop
 
 ```bash
-cargo test -p rscpp-lexer -p rscpp-ast -p rscpp-parser -p rscpp-sema
+cargo test -p rscpp-lexer -p rscpp-ast -p rscpp-parser -p rscpp-sema -p rscpp-runtime
 ```
 
 ## Scope

@@ -12,6 +12,7 @@ type Result<T> = std::result::Result<T, RuntimeError>;
 
 #[derive(Debug)]
 struct Frame {
+    #[allow(dead_code)]
     name: String,
     locals: HashMap<String, Value>,
 }
