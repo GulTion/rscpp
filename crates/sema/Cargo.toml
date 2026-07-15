@@ -1,0 +1,12 @@
+[package]
+name = "rscpp-sema"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Name resolution and type checking for the rscpp interpreter"
+
+[dependencies]
+rscpp-ast = { path = "../ast" }
+
+[dev-dependencies]
+rscpp-parser = { path = "../parser" }

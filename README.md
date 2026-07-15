@@ -17,7 +17,7 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 | 1 | `rscpp-lexer` | done |
 | 2 | `rscpp-parser` | done |
 | 3 | `rscpp-ast` | done |
-| 4 | semantic analysis | planned |
+| 4 | `rscpp-sema` | done |
 | 5 | runtime | planned |
 | 6 | STL | planned |
 | 7 | memory model | planned |
