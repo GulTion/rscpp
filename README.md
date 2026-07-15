@@ -18,7 +18,7 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 | 2 | `rscpp-parser` | done |
 | 3 | `rscpp-ast` | done |
 | 4 | `rscpp-sema` | done |
-| 5 | runtime | planned |
+| 5 | `rscpp-runtime` | done |
 | 6 | STL | planned |
 | 7 | memory model | planned |
 | 8 | VM | planned |
@@ -27,7 +27,7 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 ## Develop
 
 ```bash
-cargo test -p rscpp-lexer -p rscpp-ast -p rscpp-parser
+cargo test -p rscpp-lexer -p rscpp-ast -p rscpp-parser -p rscpp-sema
 ```
 
 ## Scope
