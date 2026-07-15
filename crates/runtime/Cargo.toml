@@ -9,3 +9,4 @@ description = "Tree-walking C++ interpreter with event stream for rscpp"
 rscpp-ast = { path = "../ast" }
 rscpp-parser = { path = "../parser" }
 rscpp-sema = { path = "../sema" }
+serde = { version = "1", features = ["derive"] }

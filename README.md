@@ -22,12 +22,26 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 | 6 | STL (in runtime) | done |
 | 7 | memory model | done |
 | 8 | `rscpp-vm` | done |
-| 9 | WASM bindings | planned |
+| 9 | `rscpp-wasm` | done |
 
 ## Develop
 
 ```bash
-cargo test -p rscpp-lexer -p rscpp-ast -p rscpp-parser -p rscpp-sema -p rscpp-runtime
+cargo test --workspace
+
+# CLI phase dump
+cargo run -p rscpp-pipeline -- examples/main.cpp
+
+# Browser demo
+wasm-pack build crates/wasm --target web
+python3 -m http.server 8080   # from repo root
+# open http://localhost:8080/examples/web/
+```
+
+```js
+import init, { run } from "./pkg/rscpp_wasm.js";
+await init();
+const { ok, value, events, error } = run("int main() { return 42; }");
 ```
 
 ## Scope

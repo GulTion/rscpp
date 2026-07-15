@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
 use std::fmt;
 
+use serde::Serialize;
+
 /// Hashable / ordered key for map & set (LeetCode subset).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MapKey {
@@ -102,7 +104,8 @@ impl Object {
 pub type ObjId = u64;
 
 /// Address of a storage location (visualizer-friendly ADT, not raw bytes).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(tag = "kind", content = "value")]
 pub enum Address {
     Null,
     /// Slot in call stack frame `frame` (0 = oldest).
@@ -139,7 +142,8 @@ impl fmt::Display for Address {
 }
 
 /// Runtime values (by-value primitives + heap handles + pointers/refs).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "kind", content = "value")]
 pub enum Value {
     Void,
     Bool(bool),

@@ -1,0 +1,18 @@
+[package]
+name = "rscpp-pipeline"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CLI to inspect each rscpp pipeline phase on a .cpp file"
+
+[[bin]]
+name = "rscpp-pipeline"
+path = "src/main.rs"
+
+[dependencies]
+rscpp-lexer = { path = "../lexer" }
+rscpp-parser = { path = "../parser" }
+rscpp-ast = { path = "../ast" }
+rscpp-sema = { path = "../sema" }
+rscpp-runtime = { path = "../runtime" }
+rscpp-vm = { path = "../vm" }

@@ -1,7 +1,9 @@
 //! Byte offsets into the original source.
 
+use serde::Serialize;
+
 /// Half-open byte range `[start, end)` into the source string.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct Span {
     pub start: usize,
     pub end: usize,

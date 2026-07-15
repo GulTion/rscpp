@@ -3,6 +3,7 @@
 mod engine;
 mod error;
 mod event;
+pub mod stl;
 mod value;
 
 pub use engine::Engine;

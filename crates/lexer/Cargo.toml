@@ -6,3 +6,4 @@ license.workspace = true
 description = "Hand-written C++ lexer for the rscpp interpreter (LeetCode subset)"
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }

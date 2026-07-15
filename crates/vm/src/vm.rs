@@ -415,135 +415,18 @@ impl Vm {
         let Value::Object(id) = base.clone() else {
             return Err(VmError::at(span, "method on non-object"));
         };
-        match self.heap.get(id).map(|o| o.kind_name()) {
-            Some("vector") => match method {
-                "size" => match self.heap.get(id) {
-                    Some(Object::Vector(e)) => Ok(Value::Int(e.len() as i64)),
-                    _ => Ok(Value::Int(0)),
-                },
-                "empty" => match self.heap.get(id) {
-                    Some(Object::Vector(e)) => Ok(Value::Bool(e.is_empty())),
-                    _ => Ok(Value::Bool(true)),
-                },
-                "push_back" => {
-                    let v = args
-                        .first()
-                        .cloned()
-                        .ok_or_else(|| VmError::at(span, "push_back arg"))?;
-                    let idx = if let Some(Object::Vector(e)) = self.heap.get_mut(id) {
-                        e.push(v.clone());
-                        e.len() - 1
-                    } else {
-                        0
-                    };
-                    self.emit(Event::ContainerMod {
-                        container: base,
-                        kind: "push_back".into(),
-                        index: Some(idx),
-                        old: None,
-                        value: Some(v),
-                        span,
-                    });
-                    Ok(Value::Void)
-                }
-                "pop_back" => {
-                    let old = if let Some(Object::Vector(e)) = self.heap.get_mut(id) {
-                        e.pop()
-                    } else {
-                        None
-                    };
-                    self.emit(Event::ContainerMod {
-                        container: base,
-                        kind: "pop_back".into(),
-                        index: None,
-                        old,
-                        value: None,
-                        span,
-                    });
-                    Ok(Value::Void)
-                }
-                _ => Err(VmError::at(span, format!("unknown vector::{method}"))),
-            },
-            Some("map") | Some("unordered_map") => match method {
-                "size" => {
-                    let n = match self.heap.get(id) {
-                        Some(Object::Map(m)) => m.len(),
-                        Some(Object::UnorderedMap(m)) => m.len(),
-                        _ => 0,
-                    };
-                    Ok(Value::Int(n as i64))
-                }
-                "count" => {
-                    let k = map_key(args.first().ok_or_else(|| VmError::at(span, "count"))?)?;
-                    let c = match self.heap.get(id) {
-                        Some(Object::Map(m)) => m.contains_key(&k),
-                        Some(Object::UnorderedMap(m)) => m.contains_key(&k),
-                        _ => false,
-                    };
-                    Ok(Value::Int(if c { 1 } else { 0 }))
-                }
-                "insert" => {
-                    // pair or (k,v)
-                    let (k, v) = if args.len() == 1 {
-                        let Value::Object(pid) = &args[0] else {
-                            return Err(VmError::at(span, "insert pair"));
-                        };
-                        match self.heap.get(*pid) {
-                            Some(Object::Pair { first, second }) => {
-                                (map_key(first)?, second.clone())
-                            }
-                            _ => return Err(VmError::at(span, "insert pair")),
-                        }
-                    } else if args.len() >= 2 {
-                        (map_key(&args[0])?, args[1].clone())
-                    } else {
-                        return Err(VmError::at(span, "insert args"));
-                    };
-                    match self.heap.get_mut(id) {
-                        Some(Object::Map(m)) => {
-                            m.insert(k, v);
-                        }
-                        Some(Object::UnorderedMap(m)) => {
-                            m.insert(k, v);
-                        }
-                        _ => {}
-                    }
-                    Ok(Value::Void)
-                }
-                _ => Err(VmError::at(span, format!("unknown map::{method}"))),
-            },
-            Some("stack") => match method {
-                "push" => {
-                    let v = args.first().cloned().ok_or_else(|| VmError::at(span, "push"))?;
-                    if let Some(Object::Stack(s)) = self.heap.get_mut(id) {
-                        s.push(v);
-                    }
-                    Ok(Value::Void)
-                }
-                "pop" => {
-                    if let Some(Object::Stack(s)) = self.heap.get_mut(id) {
-                        s.pop();
-                    }
-                    Ok(Value::Void)
-                }
-                "top" => match self.heap.get(id) {
-                    Some(Object::Stack(s)) => s
-                        .last()
-                        .cloned()
-                        .ok_or_else(|| VmError::at(span, "empty stack")),
-                    _ => Err(VmError::at(span, "not stack")),
-                },
-                "size" => match self.heap.get(id) {
-                    Some(Object::Stack(s)) => Ok(Value::Int(s.len() as i64)),
-                    _ => Ok(Value::Int(0)),
-                },
-                _ => Err(VmError::at(span, format!("unknown stack::{method}"))),
-            },
-            other => Err(VmError::at(
-                span,
-                format!("method `{method}` on {:?}", other),
-            )),
-        }
+        let kind = self
+            .heap
+            .get(id)
+            .map(|o| o.kind_name())
+            .ok_or_else(|| VmError::at(span, "dangling object"))?;
+
+        let mut ctx = rscpp_runtime::stl::Ctx {
+            heap: &mut self.heap,
+            events: &mut self.events,
+        };
+        rscpp_runtime::stl::call_method(&mut ctx, id, base, kind, method, args, span)
+            .map_err(VmError::from)
     }
 
     pub fn make_vector(&mut self, elems: Vec<Value>) -> Value {

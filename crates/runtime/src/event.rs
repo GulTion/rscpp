@@ -1,8 +1,10 @@
 use crate::value::{ObjId, Value};
 use rscpp_ast::Span;
+use serde::Serialize;
 
 /// Identity of a mutable storage location (for visualizer highlighting).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind")]
 pub enum Slot {
     Local {
         name: String,
@@ -28,7 +30,8 @@ pub enum Slot {
 }
 
 /// Runtime events for visualizers / debuggers. No UI coupling.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "kind")]
 pub enum Event {
     /// About to execute a statement (primary stepping hook).
     Step {
@@ -95,6 +98,7 @@ pub enum Event {
     /// Coarse container mutation (push/pop/clear). Prefer `Write` for index stores.
     ContainerMod {
         container: Value,
+        #[serde(rename = "op")]
         kind: String,
         index: Option<usize>,
         old: Option<Value>,
@@ -103,6 +107,7 @@ pub enum Event {
     },
     Alloc {
         id: u64,
+        #[serde(rename = "type_name")]
         kind: String,
         span: Span,
     },
