@@ -1,0 +1,11 @@
+[package]
+name = "rscpp-vm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Bytecode VM for the rscpp C++ interpreter"
+
+[dependencies]
+rscpp-ast = { path = "../ast" }
+rscpp-parser = { path = "../parser" }
+rscpp-runtime = { path = "../runtime" }
