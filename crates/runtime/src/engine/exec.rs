@@ -216,7 +216,7 @@ impl Engine {
                 Ok(Flow::Next)
             }
             Stmt::ForRange {
-                name,
+                names,
                 iter,
                 body,
                 span,
@@ -247,7 +247,12 @@ impl Engine {
                         call_id: self.current_call_id(),
                         span: *span,
                     });
-                    self.define_local(&name.name, item, name.span)?;
+                    if let Some(first) = names.first() {
+                        self.define_local(&first.name, item, first.span)?;
+                    }
+                    for n in names.iter().skip(1) {
+                        self.define_local(&n.name, Value::Int(0), n.span)?;
+                    }
                     match self.exec_stmt(body)? {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
@@ -257,6 +262,20 @@ impl Engine {
                 self.destroy_scope_locals(&before, *span);
                 Ok(Flow::Next)
             }
+            Stmt::Destructure {
+                names, init, span, ..
+            } => {
+                let v = self.eval_expr(init)?;
+                if let Some(first) = names.first() {
+                    self.define_local(&first.name, v, first.span)?;
+                }
+                for n in names.iter().skip(1) {
+                    self.define_local(&n.name, Value::Int(0), n.span)?;
+                }
+                let _ = span;
+                Ok(Flow::Next)
+            }
+            Stmt::TypeAlias { .. } => Ok(Flow::Next),
         }
     }
 }

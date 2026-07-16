@@ -34,6 +34,16 @@ impl Context {
             }
             return Ty::named(&last.name, vec![]);
         }
+        // Class::static_member / nested name (e.g. numeric_limits::max)
+        if path.segments.len() == 2 {
+            let first = &path.segments[0];
+            let base = if let Some(sym) = self.symbols.lookup(&first.name) {
+                sym.ty.clone()
+            } else {
+                Ty::named(&first.name, vec![])
+            };
+            return self.lookup_member(&base, &last.name, last.span);
+        }
         // Class::method
         let q = path
             .segments
@@ -78,7 +88,7 @@ impl Context {
                 let _ = (name, targs, arg_tys);
                 ct.strip_cv_ref().clone()
             }
-            Ty::Unknown | Ty::Error => Ty::Error,
+            Ty::Unknown | Ty::Error | Ty::Auto => Ty::Unknown,
             other => {
                 self.err(span, format!("cannot call value of type `{other}`"));
                 Ty::Error
@@ -129,7 +139,7 @@ impl Context {
                 }
             }
             Ty::Pointer(inner) => *inner.clone(),
-            Ty::Unknown => Ty::Unknown,
+            Ty::Unknown | Ty::Auto => Ty::Unknown,
             Ty::Error => Ty::Error,
             other => {
                 self.err(span, format!("type `{other}` is not subscriptable"));

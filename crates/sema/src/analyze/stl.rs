@@ -114,6 +114,12 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             ret: Box::new(Ty::Pointer(Box::new(Ty::Char))),
             params: vec![],
         }),
+        ("numeric_limits", "max") | ("numeric_limits", "min") | ("numeric_limits", "lowest") => {
+            Some(Ty::Function {
+                ret: Box::new(Ty::Int),
+                params: vec![],
+            })
+        }
         ("ostream", "operator<<") | ("istream", "operator>>") => Some(Ty::Unknown),
         _ => None,
     }

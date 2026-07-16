@@ -80,7 +80,10 @@ impl Context {
             Expr::Index { base, index, span } => {
                 let bt = self.check_expr(base);
                 let it = self.check_expr(index);
-                if !it.is_integral() && it != Ty::Error && it != Ty::Unknown {
+                let it = it.strip_cv_ref();
+                if matches!(it, Ty::Auto | Ty::Unknown) {
+                    // structured bindings / auto params — allow for now
+                } else if !it.is_integral() && *it != Ty::Error {
                     self.err(*span, format!("array index must be integral, got `{it}`"));
                 }
                 self.elem_type(&bt, *span)
@@ -130,6 +133,22 @@ impl Context {
                 } else {
                     Ty::Unknown
                 }
+            }
+            Expr::Lambda { params, body, .. } => {
+                self.symbols.push();
+                for p in params {
+                    let ty = self.resolve_ast_type(&p.ty);
+                    if let Some(n) = &p.name {
+                        let _ = self.symbols.define(Symbol {
+                            name: n.name.clone(),
+                            ty,
+                            kind: SymbolKind::Var,
+                        });
+                    }
+                }
+                self.check_block(body);
+                self.symbols.pop();
+                Ty::Unknown
             }
         }
     }

@@ -230,3 +230,29 @@ fn vector_paren_init() {
     };
     assert!(matches!(d.declarators[0].init, Some(Expr::Call { .. })));
 }
+
+#[test]
+fn lambda_and_structured_binding() {
+    let src = r#"
+    int f() {
+        auto fn = [&](int x) { return x; };
+        auto [a, b] = p;
+        return 0;
+    }
+    "#;
+    let tu = parse(src).unwrap();
+    let Item::Function(f) = &tu.items[0] else {
+        panic!();
+    };
+    assert!(matches!(
+        &f.body.stmts[0],
+        Stmt::Decl(d) if matches!(d.declarators[0].init, Some(Expr::Lambda { .. }))
+    ));
+    assert!(matches!(f.body.stmts[1], Stmt::Destructure { .. }));
+}
+
+#[test]
+fn numeric_limits_template() {
+    let tu = parse("int f() { return numeric_limits<int>::max(); }").unwrap();
+    assert_eq!(tu.items.len(), 1);
+}

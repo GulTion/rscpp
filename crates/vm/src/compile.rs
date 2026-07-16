@@ -210,6 +210,10 @@ fn compile_stmt(c: &mut Compiler, stmt: &Stmt) -> Result<()> {
         Stmt::ForRange { span, .. } => {
             Err(VmError::at(*span, "range-for not supported in VM yet"))
         }
+        Stmt::Destructure { span, .. } => {
+            Err(VmError::at(*span, "structured bindings not supported in VM yet"))
+        }
+        Stmt::TypeAlias { .. } => Ok(()),
     }
 }
 
@@ -446,6 +450,9 @@ fn compile_expr(c: &mut Compiler, expr: &Expr) -> Result<()> {
         Expr::Cast { expr, .. } => compile_expr(c, expr)?,
         Expr::Conditional { span, .. } => {
             return Err(VmError::at(*span, "ternary ?: not supported in VM yet"));
+        }
+        Expr::Lambda { span, .. } => {
+            return Err(VmError::at(*span, "lambda not supported in VM yet"));
         }
     }
     Ok(())

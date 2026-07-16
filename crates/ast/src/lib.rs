@@ -121,9 +121,22 @@ pub enum Stmt {
     /// `for (T x : container)`
     ForRange {
         ty: Type,
-        name: Ident,
+        /// One name, or several for `for (auto& [a, b] : m)`.
+        names: Vec<Ident>,
         iter: Expr,
         body: Box<Stmt>,
+        span: Span,
+    },
+    /// `auto [a, b, c] = expr;`
+    Destructure {
+        names: Vec<Ident>,
+        init: Expr,
+        span: Span,
+    },
+    /// `using Name = Type;`
+    TypeAlias {
+        name: Ident,
+        ty: Type,
         span: Span,
     },
     Return {
@@ -222,6 +235,12 @@ pub enum Expr {
         cond: Box<Expr>,
         then_branch: Box<Expr>,
         else_branch: Box<Expr>,
+        span: Span,
+    },
+    /// `[captures](params) { body }` — captures ignored at runtime for now.
+    Lambda {
+        params: Vec<Param>,
+        body: Block,
         span: Span,
     },
 }
@@ -361,7 +380,8 @@ impl Expr {
             | Self::Member { span, .. }
             | Self::Cast { span, .. }
             | Self::InitList { span, .. }
-            | Self::Conditional { span, .. } => *span,
+            | Self::Conditional { span, .. }
+            | Self::Lambda { span, .. } => *span,
             Self::Name(p) => p.span,
         }
     }
@@ -388,6 +408,8 @@ impl Stmt {
             | Self::DoWhile { span, .. }
             | Self::For { span, .. }
             | Self::ForRange { span, .. }
+            | Self::Destructure { span, .. }
+            | Self::TypeAlias { span, .. }
             | Self::Return { span, .. }
             | Self::Break { span }
             | Self::Continue { span }

@@ -435,6 +435,10 @@ impl Engine {
                     Ok((v, None))
                 }
             }
+            Expr::Lambda { span, .. } => Err(RuntimeError::at(
+                *span,
+                "lambda call/value not supported at runtime yet",
+            )),
         }
     }
 

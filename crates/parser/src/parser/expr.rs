@@ -49,6 +49,38 @@ impl Parser {
         let mut lhs = self.parse_prefix()?;
 
         loop {
+            // `numeric_limits<int>::max` — treat `<...>` after a name as template-args (erase).
+            if matches!(lhs, Expr::Name(_))
+                && self.at_punct(Punct::Lt)
+                && self.looks_like_template_args()
+            {
+                self.bump();
+                if !self.at_punct(Punct::Gt) && !self.at_punct(Punct::GtGt) {
+                    loop {
+                        let _ = self.parse_type()?;
+                        if self.at_punct(Punct::Comma) {
+                            self.bump();
+                            continue;
+                        }
+                        break;
+                    }
+                }
+                self.bump_template_gt()?;
+                continue;
+            }
+            // Continue `name::member` after template args erased above.
+            if let Expr::Name(path) = &lhs {
+                if self.at_punct(Punct::Scope) {
+                    self.bump();
+                    let field = self.parse_ident()?;
+                    let mut path = path.clone();
+                    let end = field.span.end;
+                    path.segments.push(field);
+                    path.span = Span::new(path.span.start, end);
+                    lhs = Expr::Name(path);
+                    continue;
+                }
+            }
             // Postfix
             if self.at_punct(Punct::LParen) {
                 lhs = self.parse_call(lhs)?;
@@ -134,6 +166,9 @@ impl Parser {
     pub(super) fn parse_prefix(&mut self) -> Result<Expr, ParseError> {
         if self.at_punct(Punct::LBrace) {
             return self.parse_init_list();
+        }
+        if self.at_punct(Punct::LBracket) {
+            return self.parse_lambda();
         }
         match self.peek_kind() {
             TokenKind::Punct(Punct::Plus)
@@ -432,6 +467,98 @@ impl Parser {
             _ => return None,
         };
         Some((kind, l, r))
+    }
+
+    /// `name<Type, ...>` vs `a < b` comparison.
+    pub(super) fn looks_like_template_args(&self) -> bool {
+        let Some(t) = self.tokens.get(self.pos + 1) else {
+            return false;
+        };
+        match &t.kind {
+            TokenKind::Keyword(
+                Keyword::Void
+                    | Keyword::Bool
+                    | Keyword::Char
+                    | Keyword::Int
+                    | Keyword::Long
+                    | Keyword::Short
+                    | Keyword::Float
+                    | Keyword::Double
+                    | Keyword::Unsigned
+                    | Keyword::Signed
+                    | Keyword::Const
+                    | Keyword::Auto,
+            ) => true,
+            TokenKind::Ident(_) => matches!(
+                self.tokens.get(self.pos + 2).map(|t| &t.kind),
+                Some(
+                    TokenKind::Punct(
+                        Punct::Gt
+                            | Punct::GtGt
+                            | Punct::Comma
+                            | Punct::Scope
+                            | Punct::Lt
+                            | Punct::Star
+                            | Punct::Amp
+                    ) | TokenKind::Keyword(_)
+                )
+            ),
+            _ => false,
+        }
+    }
+
+    pub(super) fn parse_lambda(&mut self) -> Result<Expr, ParseError> {
+        let start = self.expect_punct(Punct::LBracket)?.span.start;
+        // Skip capture list (ignored for now).
+        let mut depth = 1i32;
+        while depth > 0 {
+            if self.at_eof() {
+                return Err(self.err("unterminated lambda capture list"));
+            }
+            match self.peek_kind() {
+                TokenKind::Punct(Punct::LBracket) => {
+                    depth += 1;
+                    self.bump();
+                }
+                TokenKind::Punct(Punct::RBracket) => {
+                    depth -= 1;
+                    self.bump();
+                }
+                _ => {
+                    self.bump();
+                }
+            }
+        }
+        let mut params = Vec::new();
+        if self.at_punct(Punct::LParen) {
+            self.bump();
+            if !self.at_punct(Punct::RParen) {
+                loop {
+                    params.push(self.parse_param()?);
+                    if self.at_punct(Punct::Comma) {
+                        self.bump();
+                        continue;
+                    }
+                    break;
+                }
+            }
+            self.expect_punct(Punct::RParen)?;
+        }
+        // optional `mutable` / trailing return — skip `-> type`
+        if self.at_keyword(Keyword::Mutable) {
+            self.bump();
+        }
+        if self.at_punct(Punct::Arrow) {
+            self.bump();
+            let _ = self.parse_type()?;
+        }
+        let body = self.parse_block()?;
+        let end = body.span.end;
+        Ok(Expr::Lambda {
+            params,
+            body,
+            span: Span::new(start, end),
+        })
     }
 }
 

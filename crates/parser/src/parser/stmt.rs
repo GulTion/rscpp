@@ -62,10 +62,34 @@ impl Parser {
             });
         }
 
+        if self.at_keyword(Keyword::Using) {
+            let start = self.bump().span.start;
+            let name = self.parse_ident()?;
+            self.expect_punct(Punct::Eq)?;
+            let ty = self.parse_type()?;
+            let end = self.expect_punct(Punct::Semi)?.span.end;
+            return Ok(Stmt::TypeAlias {
+                name,
+                ty,
+                span: Span::new(start, end),
+            });
+        }
+
         if self.at_declaration_start() {
             let start = self.peek_span().start;
             self.skip_decl_specs();
             let ty = self.parse_type()?;
+            if self.at_punct(Punct::LBracket) {
+                let names = self.parse_binding_names()?;
+                self.expect_punct(Punct::Eq)?;
+                let init = self.parse_expr()?;
+                let end = self.expect_punct(Punct::Semi)?.span.end;
+                return Ok(Stmt::Destructure {
+                    names,
+                    init,
+                    span: Span::new(start, end),
+                });
+            }
             let name = self.parse_ident()?;
             return Ok(Stmt::Decl(self.parse_decl_rest(start, ty, name)?));
         }
@@ -170,11 +194,26 @@ impl Parser {
         let start = self.expect_keyword(Keyword::For)?.span.start;
         self.expect_punct(Punct::LParen)?;
 
-        // Range-for: `for (T name : expr)`
+        // Range-for: `for (T name : expr)` or `for (T [a, b] : expr)`
         if self.at_declaration_start() {
             let dstart = self.peek_span().start;
             self.skip_decl_specs();
             let ty = self.parse_type()?;
+            if self.at_punct(Punct::LBracket) {
+                let names = self.parse_binding_names()?;
+                self.expect_punct(Punct::Colon)?;
+                let iter = self.parse_expr()?;
+                self.expect_punct(Punct::RParen)?;
+                let body = Box::new(self.parse_stmt()?);
+                let end = body.span().end;
+                return Ok(Stmt::ForRange {
+                    ty,
+                    names,
+                    iter,
+                    body,
+                    span: Span::new(start, end),
+                });
+            }
             let name = self.parse_ident()?;
             if self.at_punct(Punct::Colon) {
                 self.bump();
@@ -184,7 +223,7 @@ impl Parser {
                 let end = body.span().end;
                 return Ok(Stmt::ForRange {
                     ty,
-                    name,
+                    names: vec![name],
                     iter,
                     body,
                     span: Span::new(start, end),
@@ -248,5 +287,25 @@ impl Parser {
             body,
             span: Span::new(start, end),
         })
+    }
+
+    pub(super) fn parse_binding_names(&mut self) -> Result<Vec<Ident>, ParseError> {
+        self.expect_punct(Punct::LBracket)?;
+        let mut names = Vec::new();
+        if !self.at_punct(Punct::RBracket) {
+            loop {
+                names.push(self.parse_ident()?);
+                if self.at_punct(Punct::Comma) {
+                    self.bump();
+                    continue;
+                }
+                break;
+            }
+        }
+        self.expect_punct(Punct::RBracket)?;
+        if names.is_empty() {
+            return Err(self.err("structured binding needs at least one name"));
+        }
+        Ok(names)
     }
 }

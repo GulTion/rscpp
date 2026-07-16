@@ -62,6 +62,7 @@ impl Context {
             "uint64_t",
             "int32_t",
             "uint32_t",
+            "numeric_limits",
         ] {
             let _ = self.symbols.define(Symbol {
                 name: name.into(),
@@ -125,6 +126,10 @@ impl Context {
             ("empty", 1),
             ("begin", 1),
             ("end", 1),
+            ("cbegin", 1),
+            ("cend", 1),
+            ("rbegin", 1),
+            ("rend", 1),
             ("to_string", 1),
         ] {
             let params = vec![Ty::Unknown; arity];

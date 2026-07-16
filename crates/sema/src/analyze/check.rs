@@ -101,7 +101,7 @@ impl Context {
             }
             Stmt::ForRange {
                 ty,
-                name,
+                names,
                 iter,
                 body,
                 ..
@@ -109,13 +109,33 @@ impl Context {
                 self.symbols.push();
                 let _ = self.check_expr(iter);
                 let t = self.resolve_ast_type(ty);
+                for name in names {
+                    let _ = self.symbols.define(Symbol {
+                        name: name.name.clone(),
+                        ty: t.clone(),
+                        kind: SymbolKind::Var,
+                    });
+                }
+                self.check_stmt(body);
+                self.symbols.pop();
+            }
+            Stmt::Destructure { names, init, .. } => {
+                let _ = self.check_expr(init);
+                for name in names {
+                    let _ = self.symbols.define(Symbol {
+                        name: name.name.clone(),
+                        ty: Ty::Auto,
+                        kind: SymbolKind::Var,
+                    });
+                }
+            }
+            Stmt::TypeAlias { name, ty, .. } => {
+                let t = self.resolve_ast_type(ty);
                 let _ = self.symbols.define(Symbol {
                     name: name.name.clone(),
                     ty: t,
-                    kind: SymbolKind::Var,
+                    kind: SymbolKind::Class,
                 });
-                self.check_stmt(body);
-                self.symbols.pop();
             }
             Stmt::Return { value, span } => {
                 if let Some(v) = value {
