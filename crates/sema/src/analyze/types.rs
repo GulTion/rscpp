@@ -214,6 +214,11 @@ impl Context {
             }
             UnaryOp::Deref => match t.strip_cv_ref() {
                 Ty::Pointer(inner) => *inner.clone(),
+                Ty::Named { name, args }
+                    if name == "shared_ptr" || name == "unique_ptr" || name == "optional" =>
+                {
+                    args.first().cloned().unwrap_or(Ty::Unknown)
+                }
                 // Structured bindings often leave `auto` until we improve deduction.
                 Ty::Error | Ty::Unknown | Ty::Auto => Ty::Unknown,
                 other => {
