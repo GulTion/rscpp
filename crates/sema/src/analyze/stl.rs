@@ -181,7 +181,46 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
                 params: vec![],
             })
         }
-        ("ostream", "operator<<") | ("istream", "operator>>") => Some(Ty::Unknown),
+        ("ostream", "operator<<") | ("istream", "operator>>")
+        | ("stringstream", "operator<<") | ("stringstream", "operator>>")
+        | ("istringstream", "operator>>") | ("ostringstream", "operator<<") => Some(Ty::Unknown),
+        ("bitset", "to_string") => Some(Ty::Function {
+            ret: Box::new(Ty::named("string", vec![])),
+            params: vec![],
+        }),
+        ("bitset", "count") | ("bitset", "size") => Some(Ty::Function {
+            ret: Box::new(Ty::UInt),
+            params: vec![],
+        }),
+        ("bitset", "test") | ("bitset", "any") | ("bitset", "none") | ("bitset", "all") => {
+            Some(Ty::Function {
+                ret: Box::new(Ty::Bool),
+                params: vec![],
+            })
+        }
+        ("bitset", "set") | ("bitset", "reset") | ("bitset", "flip") => Some(Ty::Function {
+            ret: Box::new(Ty::named("bitset", vec![])),
+            params: vec![],
+        }),
+        ("condition_variable", "wait")
+        | ("condition_variable", "wait_for")
+        | ("condition_variable", "wait_until") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![],
+        }),
+        ("condition_variable", "notify_one") | ("condition_variable", "notify_all") => {
+            Some(Ty::Function {
+                ret: Box::new(Ty::Void),
+                params: vec![],
+            })
+        }
+        ("mutex", "lock") | ("mutex", "unlock") | ("mutex", "try_lock")
+        | ("lock_guard", "lock") | ("unique_lock", "lock") | ("unique_lock", "unlock")
+        | ("unique_lock", "owns_lock") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![],
+        }),
+        ("numbers", "pi") | ("numbers", "e") => Some(Ty::Double),
         _ => None,
     }
 }

@@ -82,7 +82,16 @@ impl Parser {
             self.bump();
             if !self.at_punct(Punct::Gt) && !self.at_punct(Punct::GtGt) {
                 loop {
-                    args.push(self.parse_type_ext(true)?);
+                    // Non-type template args: `bitset<32>`, `array<int,4>`
+                    if matches!(self.peek_kind(), TokenKind::IntLit { .. }) {
+                        let tok = self.bump();
+                        args.push(Type::Builtin {
+                            kind: BuiltinType::Int,
+                            span: tok.span,
+                        });
+                    } else {
+                        args.push(self.parse_type_ext(true)?);
+                    }
                     if self.at_punct(Punct::Comma) {
                         self.bump();
                         continue;

@@ -35,6 +35,26 @@ int main() {
 }
 
 #[test]
+fn std_algorithm_and_comparator_stubs() {
+    let tu = parse(
+        r#"
+int main() {
+  vector<int> v;
+  sort(v.begin(), v.end(), greater<int>());
+  auto it = prev(v.end());
+  transform(v.begin(), v.end(), v.begin(), [](int x) { return x; });
+  assert(true);
+  bitset<32> b(1);
+  return b.count();
+}
+"#,
+    )
+    .unwrap();
+    let r = analyze(&tu);
+    assert!(r.ok(), "{:?}", r.errors);
+}
+
+#[test]
 fn vector_members_and_index() {
     let tu = parse(
         r#"

@@ -196,6 +196,11 @@ impl Parser {
                     | Keyword::Const
                     | Keyword::Auto,
             ) => true,
+            // Non-type template args: `bitset<32>`, `array<int, 4>`
+            TokenKind::IntLit { .. } => matches!(
+                self.tokens.get(lt_pos + 2).map(|t| &t.kind),
+                Some(TokenKind::Punct(Punct::Gt | Punct::GtGt | Punct::Comma))
+            ),
             TokenKind::Ident(_) => matches!(
                 self.tokens.get(lt_pos + 2).map(|t| &t.kind),
                 Some(

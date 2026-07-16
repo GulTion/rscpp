@@ -57,7 +57,12 @@ impl Parser {
                 self.bump();
                 if !self.at_punct(Punct::Gt) && !self.at_punct(Punct::GtGt) {
                     loop {
-                        let _ = self.parse_type()?;
+                        // NTTP: `bitset<32>(i)` — int lit is not a type
+                        if matches!(self.peek_kind(), TokenKind::IntLit { .. }) {
+                            self.bump();
+                        } else {
+                            let _ = self.parse_type()?;
+                        }
                         if self.at_punct(Punct::Comma) {
                             self.bump();
                             continue;

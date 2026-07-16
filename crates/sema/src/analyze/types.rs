@@ -257,6 +257,22 @@ impl Context {
                 {
                     return Ty::named("string", vec![]);
                 }
+                // iostream extract/insert: `ssa >> x`, `cout << x`
+                if matches!(op, Shl | Shr) {
+                    if let Ty::Named { name, .. } = ls {
+                        if matches!(
+                            name.as_str(),
+                            "istream"
+                                | "ostream"
+                                | "iostream"
+                                | "stringstream"
+                                | "istringstream"
+                                | "ostringstream"
+                        ) {
+                            return lt.strip_cv_ref().clone();
+                        }
+                    }
+                }
                 if (!lt.is_numeric() || !rt.is_numeric())
                     && *lt != Ty::Error
                     && *rt != Ty::Error
