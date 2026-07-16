@@ -12,20 +12,8 @@ pub fn call(
     span: Span,
 ) -> Result<Value> {
     match method {
-        "size" => {
-            let n = match ctx.heap.get(id) {
-                Some(Object::Queue(q)) => q.len() as i64,
-                _ => 0,
-            };
-            Ok(ctx.query(base, "size", None, Value::Int(n), span))
-        }
-        "empty" => {
-            let e = match ctx.heap.get(id) {
-                Some(Object::Queue(q)) => q.is_empty(),
-                _ => true,
-            };
-            Ok(ctx.query(base, "empty", None, Value::Bool(e), span))
-        }
+        "size" => Ok(ctx.size(id, base, span)),
+        "empty" => Ok(ctx.empty(id, base, span)),
         "front" => {
             let v = match ctx.heap.get(id) {
                 Some(Object::Queue(q)) => q
@@ -46,16 +34,12 @@ pub fn call(
             };
             Ok(ctx.query(base, "back", None, v, span))
         }
-        "push" => {
-            let v = args
-                .first()
-                .cloned()
-                .ok_or_else(|| RuntimeError::at(span, "push needs a value"))?;
+        "push" | "emplace" => {
+            let v = Ctx::require_arg(args, method, span)?;
             if let Some(Object::Queue(q)) = ctx.heap.get_mut(id) {
                 q.push_back(v.clone());
             }
-            ctx.modify(base, "queue::push", None, None, None, Some(v), span);
-            Ok(Value::Void)
+            Ok(ctx.pushed(base, format!("queue::{method}"), None, None, v, span))
         }
         "pop" => {
             let old = if let Some(Object::Queue(q)) = ctx.heap.get_mut(id) {
@@ -63,8 +47,7 @@ pub fn call(
             } else {
                 None
             };
-            ctx.modify(base, "queue::pop", None, None, old, None, span);
-            Ok(Value::Void)
+            Ok(ctx.popped(base, "queue::pop", None, old, span))
         }
         _ => Err(RuntimeError::at(
             span,

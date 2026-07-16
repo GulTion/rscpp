@@ -170,6 +170,62 @@ int main() {
 }
 
 #[test]
+fn solution_is_valid_parentheses() {
+    let src = include_str!("../../../examples/valid_parentheses.cpp");
+    let mut eng = Engine::from_source(src).unwrap();
+    let s_ok = eng.make_string("()[]{}".into());
+    let ret = eng.call("Solution::isValid", &[s_ok]).unwrap();
+    assert_eq!(ret, Value::Bool(true));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::FnEnter { name, .. } if name == "Solution::isValid"
+    )));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::FnExit { name, .. } if name == "Solution::isValid"
+    )));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::ContainerMod { kind, .. } if kind == "stack::emplace" || kind == "stack::push"
+    )));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::ContainerMod { kind, .. } if kind == "stack::pop"
+    )));
+
+    let mut eng = Engine::from_source(src).unwrap();
+    let s_bad = eng.make_string("(]".into());
+    let ret = eng.call("Solution::isValid", &[s_bad]).unwrap();
+    assert_eq!(ret, Value::Bool(false));
+}
+
+#[test]
+fn solution_count_components_run_method() {
+    let src = include_str!("../../../examples/dfs.cpp");
+    let mut eng = Engine::from_source(src).unwrap();
+    // Graph: 0—1—2   3—4   5  → 3 components
+    let r0 = eng.make_vector(vec![Value::Int(1)]);
+    let r1 = eng.make_vector(vec![Value::Int(0), Value::Int(2)]);
+    let r2 = eng.make_vector(vec![Value::Int(1)]);
+    let r3 = eng.make_vector(vec![Value::Int(4)]);
+    let r4 = eng.make_vector(vec![Value::Int(3)]);
+    let r5 = eng.make_vector(vec![]);
+    let adj = eng.make_vector(vec![r0, r1, r2, r3, r4, r5]);
+    let ret = eng
+        .call("Solution::countComponents", &[Value::Int(6), adj])
+        .unwrap();
+    assert_eq!(ret, Value::Int(3));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::FnEnter { name, .. } if name == "Solution::countComponents"
+    )));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::FnEnter { name, .. } if name == "Solution::dfs"
+    )));
+}
+
+#[test]
 fn solution_two_sum_linear() {
     let src = r#"
 class Solution {

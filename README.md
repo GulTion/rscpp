@@ -56,8 +56,11 @@ await init();
 const { ok, value, events, error } = run("int main() { return 42; }");
 // LeetCode style (no main):
 const r2 = run_method(source, "Solution::twoSum", [[2, 7, 11, 15], 9]);
+const r3 = run_method(source, "Solution::isValid", ["()[]{}"]);
 // error: { message, span?: { start, end } }
 ```
+
+CLI demos: `examples/two_sum.cpp`, `examples/valid_parentheses.cpp`, `examples/dfs.cpp`.
 
 ## Scope
 

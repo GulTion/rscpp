@@ -84,6 +84,15 @@ impl Engine {
         }
     }
 
+    pub(super) fn alloc_empty_named(&mut self, name: &str, span: Span) -> Result<ObjId> {
+        let obj = Object::empty_named(name)
+            .ok_or_else(|| RuntimeError::at(span, format!("cannot default-construct `{name}`")))?;
+        let kind = obj.kind_name().to_string();
+        let id = self.heap.alloc(obj);
+        self.emit_alloc(id, kind, span);
+        Ok(id)
+    }
+
     pub(super) fn default_value_for_type(&mut self, ty: &Type) -> Result<Value> {
         match ty {
             Type::Builtin { kind, .. } => Ok(match kind {

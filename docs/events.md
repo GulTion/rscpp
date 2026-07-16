@@ -210,6 +210,19 @@ Pure assignment `nums[i] = x` does **not** emit a LHS `ContainerLookup` (only `W
 
 Note: pure assignment `nums[i] = x` does **not** emit a pre-store `ContainerLookup`; you only see `Write` / `ContainerMod`. Reads like `x = nums[i]` still emit `ContainerLookup` with `op: "index"`.
 
+#### Common `ContainerMod` / `ContainerLookup` `op` strings
+
+| op | container | notes |
+|----|-----------|--------|
+| `push_back` / `emplace_back` | vector | append |
+| `stack::push` / `stack::emplace` | stack | same semantics; `emplace` is an alias of `push` |
+| `stack::pop` | stack | |
+| `set::insert` / `set::emplace` | set / unordered_set | same semantics |
+| `partial_sum` | vector (via begin/end) | in-place prefix sums |
+| `numeric_limits::min` / `max` / `lowest` | — | treated as `int` limits (`INT_MIN`/`INT_MAX`) |
+
+Demos: `examples/two_sum.cpp` (`Solution::twoSum`), `examples/valid_parentheses.cpp` (`Solution::isValid` — stack events), `examples/dfs.cpp` (`Solution::countComponents`). Local `testing/` smoke: `cargo test -p rscpp-runtime --test corpus_run`.
+
 ---
 
 ## Shadow-heap recipe (recommended UI model)

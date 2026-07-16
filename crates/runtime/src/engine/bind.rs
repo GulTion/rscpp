@@ -26,6 +26,25 @@ impl Engine {
         }
     }
 
+    /// Apply declarator `*`/`&` layers onto the decl base type (C++ grammar).
+    pub(super) fn decl_type(ty: &Type, decl: &InitDeclarator) -> Type {
+        let mut t = ty.clone();
+        for p in &decl.ptrs {
+            let span = t.span();
+            t = match p {
+                PtrKind::Pointer => Type::Pointer {
+                    inner: Box::new(t),
+                    span,
+                },
+                PtrKind::Reference => Type::Reference {
+                    inner: Box::new(t),
+                    span,
+                },
+            };
+        }
+        t
+    }
+
     pub(super) fn bind_param_value(
         &mut self,
         ty: &Type,
@@ -59,20 +78,24 @@ impl Engine {
     }
 
     pub(super) fn eval_decl_init(&mut self, ty: &Type, decl: &InitDeclarator) -> Result<Value> {
-        if Self::type_is_ref(ty) {
+        let ty = Self::decl_type(ty, decl);
+        if Self::type_is_ref(&ty) {
             let init = decl
                 .init
                 .as_ref()
                 .ok_or_else(|| RuntimeError::at(decl.span, "reference must be initialized"))?;
-            let (_v, lv) = self.eval_expr_lv(init)?;
-            let lv = lv.ok_or_else(|| RuntimeError::at(decl.span, "cannot bind ref to rvalue"))?;
-            let addr = self.lvalue_to_address(&lv)?;
-            return Ok(Value::Ref(addr));
+            let (v, lv) = self.eval_expr_lv(init)?;
+            if let Some(lv) = lv {
+                let addr = self.lvalue_to_address(&lv)?;
+                return Ok(Value::Ref(addr));
+            }
+            // `const T& x = temporary;` — own the value (LeetCode-common).
+            return Ok(v);
         }
         if let Some(init) = &decl.init {
             // `pair<K,V> p = {a, b};`
             if let Expr::InitList { elems, span } = init {
-                if let Type::Named { path, .. } = ty {
+                if let Type::Named { path, .. } = &ty {
                     let tname = path
                         .segments
                         .last()
@@ -85,34 +108,141 @@ impl Engine {
                         self.emit_alloc(id, "pair", *span);
                         return Ok(Value::Object(id));
                     }
+                    // `map` / `unordered_map` brace init: {{k,v}, ...}
+                    if tname == "map" || tname == "unordered_map" {
+                        let id = self.alloc_empty_named(tname, *span)?;
+                        if let Type::Named { args: targs, .. } = &ty {
+                            if targs.len() >= 2 {
+                                self.map_value_tys.insert(id, targs[1].clone());
+                            }
+                        }
+                        for e in elems {
+                            let (k, v) = match e {
+                                Expr::InitList { elems: kv, .. } if kv.len() == 2 => {
+                                    (self.eval_expr(&kv[0])?, self.eval_expr(&kv[1])?)
+                                }
+                                other => {
+                                    let pv = self.eval_expr(other)?;
+                                    match &pv {
+                                        Value::Object(pid) => match self.heap.get(*pid) {
+                                            Some(Object::Pair { first, second }) => {
+                                                (first.clone(), second.clone())
+                                            }
+                                            _ => {
+                                                return Err(RuntimeError::at(
+                                                    *span,
+                                                    "map init expects {key, value} pairs",
+                                                ))
+                                            }
+                                        },
+                                        _ => {
+                                            return Err(RuntimeError::at(
+                                                *span,
+                                                "map init expects {key, value} pairs",
+                                            ))
+                                        }
+                                    }
+                                }
+                            };
+                            let key = self.value_to_key(&k)?;
+                            match self.heap.get_mut(id) {
+                                Some(Object::Map(m)) => {
+                                    m.insert(key, v);
+                                }
+                                Some(Object::UnorderedMap(m)) => {
+                                    m.insert(key, v);
+                                }
+                                _ => {}
+                            }
+                        }
+                        return Ok(Value::Object(id));
+                    }
+                    // `set` / `unordered_set` brace init: {a, b, c}
+                    if tname == "set" || tname == "unordered_set" {
+                        let id = self.alloc_empty_named(tname, *span)?;
+                        for e in elems {
+                            let v = self.eval_expr(e)?;
+                            let key = self.value_to_key(&v)?;
+                            match self.heap.get_mut(id) {
+                                Some(Object::Set(s)) => {
+                                    s.insert(key);
+                                }
+                                Some(Object::UnorderedSet(s)) => {
+                                    s.insert(key);
+                                }
+                                _ => {}
+                            }
+                        }
+                        return Ok(Value::Object(id));
+                    }
                 }
             }
-            // `vector<T> v(n);` / `vector<T> v(n, fill)`
+            // `vector<T> v(n);` / `vector<T> v(n, fill)` / set from iterators
             if let Expr::Call { args, span, .. } = init {
-                if let Type::Named { path, args: targs, .. } = ty {
+                if let Type::Named { path, args: targs, .. } = &ty {
                     let tname = path
                         .segments
                         .last()
                         .map(|s| s.name.as_str())
                         .unwrap_or("");
                     if tname == "vector" && (args.len() == 1 || args.len() == 2) {
-                        let n = self.eval_expr(&args[0])?.as_int().map_err(RuntimeError::new)? as usize;
-                        let fill = if args.len() == 2 {
-                            self.eval_expr(&args[1])?
-                        } else if let Some(et) = targs.first() {
-                            self.default_value_for_type(et)?
-                        } else {
-                            Value::Int(0)
+                        // Prefer size ctor when first arg is an integer expression, not begin/end.
+                        let first_is_range = matches!(
+                            &args[0],
+                            Expr::Call { callee, .. } if matches!(
+                                callee.as_ref(),
+                                Expr::Member { field, .. } if field.name == "begin" || field.name == "cbegin"
+                            ) || matches!(
+                                callee.as_ref(),
+                                Expr::Name(p) if matches!(
+                                    p.segments.last().map(|s| s.name.as_str()),
+                                    Some("begin" | "cbegin" | "std::begin" | "std::cbegin")
+                                )
+                            )
+                        );
+                        if !first_is_range {
+                            let n = self.eval_expr(&args[0])?.as_int().map_err(RuntimeError::new)? as usize;
+                            let fill = if args.len() == 2 {
+                                self.eval_expr(&args[1])?
+                            } else if let Some(et) = targs.first() {
+                                self.default_value_for_type(et)?
+                            } else {
+                                Value::Int(0)
+                            };
+                            let elems = vec![fill; n];
+                            let id = self.heap.alloc(Object::Vector(elems));
+                            self.emit_alloc(id, "vector", *span);
+                            return Ok(Value::Object(id));
+                        }
+                    }
+                    // `unordered_set<T> s(v.begin(), v.end())` / free begin/end
+                    if (tname == "set" || tname == "unordered_set") && args.len() == 2 {
+                        let vid = self.resolve_vector_range(&args[0], &args[1], *span)?;
+                        let elems = match self.heap.get(vid) {
+                            Some(Object::Vector(e)) => e.clone(),
+                            _ => {
+                                return Err(RuntimeError::at(*span, "set range ctor needs a vector"))
+                            }
                         };
-                        let elems = vec![fill; n];
-                        let id = self.heap.alloc(Object::Vector(elems));
-                        self.emit_alloc(id, "vector", *span);
+                        let id = self.alloc_empty_named(tname, *span)?;
+                        for v in elems {
+                            let key = self.value_to_key(&v)?;
+                            match self.heap.get_mut(id) {
+                                Some(Object::Set(s)) => {
+                                    s.insert(key);
+                                }
+                                Some(Object::UnorderedSet(s)) => {
+                                    s.insert(key);
+                                }
+                                _ => {}
+                            }
+                        }
                         return Ok(Value::Object(id));
                     }
                 }
             }
             let v = self.eval_expr(init)?;
-            if Self::type_is_ptr(ty) {
+            if Self::type_is_ptr(&ty) {
                 return Ok(match v {
                     Value::Ptr(a) => Value::Ptr(a),
                     Value::Nullptr => Value::Ptr(Address::Null),
@@ -128,10 +258,10 @@ impl Engine {
             }
             return Ok(v);
         }
-        if Self::type_is_ptr(ty) {
+        if Self::type_is_ptr(&ty) {
             return Ok(Value::Ptr(Address::Null));
         }
-        self.default_value_for_type(ty)
+        self.default_value_for_type(&ty)
     }
 
     pub(super) fn dealloc_owned_locals(&mut self, locals: &HashMap<String, Value>, keep: Option<&Value>) {

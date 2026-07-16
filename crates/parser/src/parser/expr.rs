@@ -668,8 +668,21 @@ impl Parser {
     }
 
     /// `name<Type, ...>` vs `a < b` comparison.
+    ///
+    /// In expressions, only treat as template args when the `>` is followed by
+    /// `::`, `(`, or `{` — so `result < numeric_limits<int>::min()` stays a comparison.
     pub(super) fn looks_like_template_args(&self) -> bool {
-        self.looks_like_template_args_at(self.pos)
+        let lt_pos = self.pos;
+        if !self.looks_like_template_args_at(lt_pos) {
+            return false;
+        }
+        let Some(after) = self.skip_template_args(lt_pos) else {
+            return false;
+        };
+        matches!(
+            self.tokens.get(after).map(|t| &t.kind),
+            Some(TokenKind::Punct(Punct::Scope | Punct::LParen | Punct::LBrace))
+        )
     }
 
     pub(super) fn parse_lambda(&mut self) -> Result<Expr, ParseError> {

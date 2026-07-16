@@ -101,57 +101,64 @@ impl Engine {
     }
 
     pub(super) fn resolve_vector_range(&mut self, begin: &Expr, end: &Expr, span: Span) -> Result<ObjId> {
-        match (begin, end) {
-            (
-                Expr::Call {
-                    callee: bcal, args: ba, ..
-                },
-                Expr::Call {
-                    callee: ecal, args: ea, ..
-                },
-            ) if ba.is_empty() && ea.is_empty() => {
-                let bbase = match bcal.as_ref() {
-                    Expr::Member {
-                        base,
-                        field,
-                        arrow: false,
-                        ..
-                    } if field.name == "begin" => base.as_ref(),
-                    _ => return Err(RuntimeError::at(span, "expected v.begin()")),
-                };
-                let ebase = match ecal.as_ref() {
-                    Expr::Member {
-                        base,
-                        field,
-                        arrow: false,
-                        ..
-                    } if field.name == "end" => base.as_ref(),
-                    _ => return Err(RuntimeError::at(span, "expected v.end()")),
-                };
-                let b = self.eval_expr(bbase)?;
-                let e = self.eval_expr(ebase)?;
-                if b != e {
-                    return Err(RuntimeError::at(span, "begin/end from different objects"));
+        /// `v.begin()` / `begin(v)` / `cbegin(v)` → container expr
+        fn range_base<'a>(call: &'a Expr) -> Option<&'a Expr> {
+            let Expr::Call { callee, args, .. } = call else {
+                return None;
+            };
+            match callee.as_ref() {
+                Expr::Member {
+                    base,
+                    field,
+                    arrow: false,
+                    ..
+                } if matches!(field.name.as_str(), "begin" | "end" | "cbegin" | "cend")
+                    && args.is_empty() =>
+                {
+                    Some(base.as_ref())
                 }
-                let Value::Object(id) = b else {
-                    return Err(RuntimeError::at(span, "range must be vector"));
-                };
-                match self.heap.get(id) {
-                    Some(Object::Vector(_)) => Ok(id),
-                    _ => Err(RuntimeError::at(span, "range must be vector")),
+                Expr::Name(path)
+                    if args.len() == 1
+                        && matches!(
+                            path.segments.last().map(|s| s.name.as_str()),
+                            Some("begin" | "end" | "cbegin" | "cend")
+                        ) =>
+                {
+                    Some(&args[0])
                 }
+                _ => None,
             }
-            _ => Err(RuntimeError::at(
+        }
+
+        let (Some(bbase), Some(ebase)) = (range_base(begin), range_base(end)) else {
+            return Err(RuntimeError::at(
                 span,
-                "algorithm expects (v.begin(), v.end())",
-            )),
+                "algorithm expects (v.begin(), v.end()) or (begin(v), end(v))",
+            ));
+        };
+        let b = self.eval_expr(bbase)?;
+        let e = self.eval_expr(ebase)?;
+        if b != e {
+            return Err(RuntimeError::at(span, "begin/end from different objects"));
+        }
+        let Value::Object(id) = b else {
+            return Err(RuntimeError::at(span, "range must be a container"));
+        };
+        match self.heap.get(id) {
+            Some(Object::Vector(_)) | Some(Object::String(_)) => Ok(id),
+            _ => Err(RuntimeError::at(span, "range must be vector or string")),
         }
     }
 
     pub(super) fn builtin_reverse(&mut self, begin: &Expr, end: &Expr, span: Span) -> Result<Value> {
         let id = self.resolve_vector_range(begin, end, span)?;
-        if let Some(Object::Vector(elems)) = self.heap.get_mut(id) {
-            elems.reverse();
+        match self.heap.get_mut(id) {
+            Some(Object::Vector(elems)) => elems.reverse(),
+            Some(Object::String(s)) => {
+                let rev: String = s.chars().rev().collect();
+                *s = rev;
+            }
+            _ => {}
         }
         self.emit(Event::ContainerMod {
             call_id: self.current_call_id(),
@@ -223,12 +230,49 @@ impl Engine {
             .map(|v| v.as_int().map_err(RuntimeError::new))
             .transpose()?
             .unwrap_or(0);
-        if let Some(Object::Vector(elems)) = self.heap.get(id) {
-            for v in elems {
-                sum += v.as_int().map_err(RuntimeError::new)?;
+        match self.heap.get(id) {
+            Some(Object::Vector(elems)) => {
+                for v in elems {
+                    sum += v.as_int().map_err(RuntimeError::new)?;
+                }
             }
+            Some(Object::String(s)) => {
+                for c in s.chars() {
+                    sum += c as i64;
+                }
+            }
+            _ => {}
         }
         Ok(Value::Int(sum))
+    }
+
+    /// `partial_sum(begin, end, begin)` — in-place prefix sums (LeetCode runningSum style).
+    pub(super) fn builtin_partial_sum(
+        &mut self,
+        begin: &Expr,
+        end: &Expr,
+        _out: &Expr,
+        span: Span,
+    ) -> Result<Value> {
+        let id = self.resolve_vector_range(begin, end, span)?;
+        if let Some(Object::Vector(elems)) = self.heap.get_mut(id) {
+            let mut acc = 0i64;
+            for e in elems.iter_mut() {
+                acc += e.as_int().unwrap_or(0);
+                *e = Value::Int(acc);
+            }
+        }
+        self.emit(Event::ContainerMod {
+            call_id: self.current_call_id(),
+            container: Value::Object(id),
+            kind: "partial_sum".into(),
+            index: None,
+            key: None,
+            old: None,
+            value: None,
+            span,
+        });
+        Ok(Value::Void)
     }
 
     pub(super) fn builtin_element_ptr(

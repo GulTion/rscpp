@@ -213,6 +213,38 @@ public:
     }
 
     #[test]
+    fn run_method_is_valid() {
+        let src = include_str!("../../../examples/valid_parentheses.cpp");
+        let r = run_method_result(src, "Solution::isValid", &serde_json::json!(["()[]{}"]));
+        assert!(r.ok, "{:?}", r.error);
+        assert_eq!(r.value, Some(Value::Bool(true)));
+        assert!(r.events.iter().any(|e| matches!(
+            e,
+            Event::FnEnter { name, .. } if name == "Solution::isValid"
+        )));
+        assert!(r.events.iter().any(|e| matches!(
+            e,
+            Event::ContainerMod { kind, .. } if kind.starts_with("stack::")
+        )));
+
+        let r = run_method_result(src, "Solution::isValid", &serde_json::json!(["(]"]));
+        assert!(r.ok, "{:?}", r.error);
+        assert_eq!(r.value, Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn run_method_count_components() {
+        let src = include_str!("../../../examples/dfs.cpp");
+        let args = serde_json::json!([
+            6,
+            [[1], [0, 2], [1], [4], [3], []]
+        ]);
+        let r = run_method_result(src, "Solution::countComponents", &args);
+        assert!(r.ok, "{:?}", r.error);
+        assert_eq!(r.value, Some(Value::Int(3)));
+    }
+
+    #[test]
     fn events_serialize_with_kind_tag() {
         let e = Event::Step {
             call_id: None,

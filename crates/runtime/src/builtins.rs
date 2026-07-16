@@ -40,6 +40,22 @@ pub fn is_builtin_call(name: &str) -> bool {
             | "std::floor"
             | "labs"
             | "llabs"
+            | "isdigit"
+            | "isalpha"
+            | "isalnum"
+            | "islower"
+            | "isupper"
+            | "isspace"
+            | "tolower"
+            | "toupper"
+            | "std::isdigit"
+            | "std::isalpha"
+            | "std::isalnum"
+            | "std::islower"
+            | "std::isupper"
+            | "std::isspace"
+            | "std::tolower"
+            | "std::toupper"
     )
 }
 
@@ -136,6 +152,48 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
                 chosen: None,
             })
         }
+        "isdigit" | "std::isdigit" | "isalpha" | "std::isalpha" | "isalnum" | "std::isalnum"
+        | "islower" | "std::islower" | "isupper" | "std::isupper" | "isspace" | "std::isspace" => {
+            if args.len() != 1 {
+                return Err(RuntimeError::at(span, format!("`{name}` expects 1 argument")));
+            }
+            let c = char_arg(&args[0])?;
+            let ok = match name {
+                "isdigit" | "std::isdigit" => c.is_ascii_digit(),
+                "isalpha" | "std::isalpha" => c.is_ascii_alphabetic(),
+                "isalnum" | "std::isalnum" => c.is_ascii_alphanumeric(),
+                "islower" | "std::islower" => c.is_ascii_lowercase(),
+                "isupper" | "std::isupper" => c.is_ascii_uppercase(),
+                _ => c.is_ascii_whitespace(),
+            };
+            Ok(BuiltinOutcome {
+                value: Value::Bool(ok),
+                chosen: None,
+            })
+        }
+        "tolower" | "std::tolower" | "toupper" | "std::toupper" => {
+            if args.len() != 1 {
+                return Err(RuntimeError::at(span, format!("`{name}` expects 1 argument")));
+            }
+            let c = char_arg(&args[0])?;
+            let out = if matches!(name, "tolower" | "std::tolower") {
+                c.to_ascii_lowercase()
+            } else {
+                c.to_ascii_uppercase()
+            };
+            Ok(BuiltinOutcome {
+                value: Value::Char(out),
+                chosen: None,
+            })
+        }
         _ => Err(RuntimeError::at(span, format!("unknown builtin `{name}`"))),
+    }
+}
+
+fn char_arg(v: &Value) -> Result<char> {
+    match v {
+        Value::Char(c) => Ok(*c),
+        Value::Int(n) => Ok(char::from_u32((*n as u8) as u32).unwrap_or('\0')),
+        other => Err(RuntimeError::new(format!("expected char, got `{other}`"))),
     }
 }

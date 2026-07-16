@@ -216,6 +216,7 @@ impl Engine {
                 Ok(Flow::Next)
             }
             Stmt::ForRange {
+                ty,
                 names,
                 iter,
                 body,
@@ -231,9 +232,13 @@ impl Engine {
                 let Value::Object(id) = container else {
                     return Err(RuntimeError::at(*span, "range-for needs a container"));
                 };
-                let elems = match self.heap.get(id) {
-                    Some(Object::Vector(e)) => e.clone(),
-                    Some(Object::String(s)) => s.chars().map(Value::Char).collect(),
+                let by_ref = Self::type_is_ref(ty);
+                let is_string = matches!(self.heap.get(id), Some(Object::String(_)));
+                // String element refs not supported yet — copy chars even for `auto&`.
+                let by_ref = by_ref && !is_string;
+                let len = match self.heap.get(id) {
+                    Some(Object::Vector(e)) => e.len(),
+                    Some(Object::String(s)) => s.chars().count(),
                     _ => {
                         return Err(RuntimeError::at(
                             *span,
@@ -241,13 +246,32 @@ impl Engine {
                         ))
                     }
                 };
-                for item in elems {
+                for i in 0..len {
                     self.burn()?;
                     self.emit(Event::LoopIter {
                         call_id: self.current_call_id(),
                         span: *span,
                     });
                     if let Some(first) = names.first() {
+                        let item = if by_ref {
+                            Value::Ref(Address::Index {
+                                obj: id,
+                                index: i,
+                            })
+                        } else {
+                            match self.heap.get(id) {
+                                Some(Object::Vector(e)) => e
+                                    .get(i)
+                                    .cloned()
+                                    .ok_or_else(|| RuntimeError::at(*span, "index out of bounds"))?,
+                                Some(Object::String(s)) => Value::Char(
+                                    s.chars().nth(i).ok_or_else(|| {
+                                        RuntimeError::at(*span, "index out of bounds")
+                                    })?,
+                                ),
+                                _ => unreachable!(),
+                            }
+                        };
                         self.define_local(&first.name, item, first.span)?;
                     }
                     for n in names.iter().skip(1) {

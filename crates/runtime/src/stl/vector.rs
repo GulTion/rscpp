@@ -15,21 +15,18 @@ pub fn call(
         return Err(RuntimeError::at(span, "not a vector"));
     };
     match method {
-        "size" => Ok(ctx.query(base, "size", None, Value::Int(elems.len() as i64), span)),
-        "empty" => Ok(ctx.query(base, "empty", None, Value::Bool(elems.is_empty()), span)),
+        "begin" | "end" | "cbegin" | "cend" => Ok(Value::Int(0)),
+        "size" => Ok(ctx.size(id, base, span)),
+        "empty" => Ok(ctx.empty(id, base, span)),
         "push_back" | "emplace_back" => {
-            let v = args
-                .first()
-                .cloned()
-                .ok_or_else(|| RuntimeError::at(span, format!("{method} needs an argument")))?;
+            let v = Ctx::require_arg(args, method, span)?;
             let idx = if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
                 e.push(v.clone());
                 e.len() - 1
             } else {
                 0
             };
-            ctx.modify(base, method, Some(idx), None, None, Some(v), span);
-            Ok(Value::Void)
+            Ok(ctx.pushed(base, method, Some(idx), None, v, span))
         }
         "pop_back" => {
             let old = if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
@@ -37,8 +34,7 @@ pub fn call(
             } else {
                 None
             };
-            ctx.modify(base, "pop_back", None, None, old, None, span);
-            Ok(Value::Void)
+            Ok(ctx.popped(base, "pop_back", None, old, span))
         }
         "front" => {
             let v = elems
@@ -55,13 +51,7 @@ pub fn call(
                 .ok_or_else(|| RuntimeError::at(span, "back on empty vector"))?;
             Ok(ctx.query(base, "back", Some(Value::Int(idx)), v, span))
         }
-        "clear" => {
-            if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
-                e.clear();
-            }
-            ctx.modify(base, "clear", None, None, None, None, span);
-            Ok(Value::Void)
-        }
+        "clear" => Ok(ctx.clear(id, base, "clear", span)),
         "begin" | "end" => Ok(Value::Int(0)),
         _ => Err(RuntimeError::at(
             span,

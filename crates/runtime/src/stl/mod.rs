@@ -73,6 +73,62 @@ impl Ctx<'_> {
             span,
         });
     }
+
+    pub fn size(&mut self, id: ObjId, base: Value, span: Span) -> Value {
+        let n = self.heap.get(id).map(|o| o.len()).unwrap_or(0) as i64;
+        self.query(base, "size", None, Value::Int(n), span)
+    }
+
+    pub fn length_alias(&mut self, id: ObjId, base: Value, op: &str, span: Span) -> Value {
+        let n = self.heap.get(id).map(|o| o.len()).unwrap_or(0) as i64;
+        self.query(base, op, None, Value::Int(n), span)
+    }
+
+    pub fn empty(&mut self, id: ObjId, base: Value, span: Span) -> Value {
+        let e = self.heap.get(id).map(|o| o.is_empty()).unwrap_or(true);
+        self.query(base, "empty", None, Value::Bool(e), span)
+    }
+
+    pub fn clear(&mut self, id: ObjId, base: Value, op: impl Into<String>, span: Span) -> Value {
+        if let Some(o) = self.heap.get_mut(id) {
+            o.clear();
+        }
+        self.modify(base, op, None, None, None, None, span);
+        Value::Void
+    }
+
+    pub fn require_arg(args: &[Value], method: &str, span: Span) -> Result<Value> {
+        args.first()
+            .cloned()
+            .ok_or_else(|| RuntimeError::at(span, format!("{method} needs an argument")))
+    }
+
+    /// After mutating the container: emit push-style `ContainerMod`, return void.
+    pub fn pushed(
+        &mut self,
+        base: Value,
+        op: impl Into<String>,
+        index: Option<usize>,
+        key: Option<Value>,
+        value: Value,
+        span: Span,
+    ) -> Value {
+        self.modify(base, op, index, key, None, Some(value), span);
+        Value::Void
+    }
+
+    /// After mutating the container: emit pop/erase-style `ContainerMod`, return void.
+    pub fn popped(
+        &mut self,
+        base: Value,
+        op: impl Into<String>,
+        key: Option<Value>,
+        old: Option<Value>,
+        span: Span,
+    ) -> Value {
+        self.modify(base, op, None, key, old, None, span);
+        Value::Void
+    }
 }
 
 /// Dispatch `obj.method(args)` for heap objects that are STL containers.

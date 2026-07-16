@@ -110,6 +110,39 @@ impl Object {
         })
     }
 
+    pub fn len(&self) -> usize {
+        match self {
+            Object::Vector(e) | Object::Stack(e) => e.len(),
+            Object::Queue(q) => q.len(),
+            Object::String(s) => s.len(),
+            Object::Map(m) => m.len(),
+            Object::UnorderedMap(m) => m.len(),
+            Object::Set(s) => s.len(),
+            Object::UnorderedSet(s) => s.len(),
+            Object::PriorityQueue(h) => h.len(),
+            Object::Pair { .. } => 2,
+            Object::Class { .. } => 0,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn clear(&mut self) {
+        match self {
+            Object::Vector(e) | Object::Stack(e) => e.clear(),
+            Object::Queue(q) => q.clear(),
+            Object::String(s) => s.clear(),
+            Object::Map(m) => m.clear(),
+            Object::UnorderedMap(m) => m.clear(),
+            Object::Set(s) => s.clear(),
+            Object::UnorderedSet(s) => s.clear(),
+            Object::PriorityQueue(h) => h.clear(),
+            Object::Pair { .. } | Object::Class { .. } => {}
+        }
+    }
+
     /// Snapshot for `Alloc`: `(size, elems, entries)`.
     /// Sequences use `elems`; maps/sets use `entries`.
     pub fn alloc_snapshot(&self) -> (usize, Vec<Value>, Vec<crate::event::AllocEntry>) {

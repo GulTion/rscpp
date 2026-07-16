@@ -12,20 +12,8 @@ pub fn call(
     span: Span,
 ) -> Result<Value> {
     match method {
-        "size" => {
-            let n = match ctx.heap.get(id) {
-                Some(Object::Stack(s)) => s.len() as i64,
-                _ => 0,
-            };
-            Ok(ctx.query(base, "size", None, Value::Int(n), span))
-        }
-        "empty" => {
-            let e = match ctx.heap.get(id) {
-                Some(Object::Stack(s)) => s.is_empty(),
-                _ => true,
-            };
-            Ok(ctx.query(base, "empty", None, Value::Bool(e), span))
-        }
+        "size" => Ok(ctx.size(id, base, span)),
+        "empty" => Ok(ctx.empty(id, base, span)),
         "top" => {
             let v = match ctx.heap.get(id) {
                 Some(Object::Stack(s)) => s
@@ -36,16 +24,12 @@ pub fn call(
             };
             Ok(ctx.query(base, "top", None, v, span))
         }
-        "push" => {
-            let v = args
-                .first()
-                .cloned()
-                .ok_or_else(|| RuntimeError::at(span, "push needs a value"))?;
+        "push" | "emplace" => {
+            let v = Ctx::require_arg(args, method, span)?;
             if let Some(Object::Stack(s)) = ctx.heap.get_mut(id) {
                 s.push(v.clone());
             }
-            ctx.modify(base, "stack::push", None, None, None, Some(v), span);
-            Ok(Value::Void)
+            Ok(ctx.pushed(base, format!("stack::{method}"), None, None, v, span))
         }
         "pop" => {
             let old = if let Some(Object::Stack(s)) = ctx.heap.get_mut(id) {
@@ -53,8 +37,7 @@ pub fn call(
             } else {
                 None
             };
-            ctx.modify(base, "stack::pop", None, None, old, None, span);
-            Ok(Value::Void)
+            Ok(ctx.popped(base, "stack::pop", None, old, span))
         }
         _ => Err(RuntimeError::at(
             span,

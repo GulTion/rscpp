@@ -13,36 +13,11 @@ pub fn call(
     span: Span,
 ) -> Result<Value> {
     match method {
-        "size" => {
-            let n = match ctx.heap.get(id) {
-                Some(Object::Map(m)) => m.len(),
-                Some(Object::UnorderedMap(m)) => m.len(),
-                _ => 0,
-            };
-            Ok(ctx.query(base, "size", None, Value::Int(n as i64), span))
-        }
-        "empty" => {
-            let e = match ctx.heap.get(id) {
-                Some(Object::Map(m)) => m.is_empty(),
-                Some(Object::UnorderedMap(m)) => m.is_empty(),
-                _ => true,
-            };
-            Ok(ctx.query(base, "empty", None, Value::Bool(e), span))
-        }
-        "clear" => {
-            match ctx.heap.get_mut(id) {
-                Some(Object::Map(m)) => m.clear(),
-                Some(Object::UnorderedMap(m)) => m.clear(),
-                _ => {}
-            }
-            ctx.modify(base, format!("{kind}::clear"), None, None, None, None, span);
-            Ok(Value::Void)
-        }
+        "size" => Ok(ctx.size(id, base, span)),
+        "empty" => Ok(ctx.empty(id, base, span)),
+        "clear" => Ok(ctx.clear(id, base, format!("{kind}::clear"), span)),
         "count" => {
-            let key_v = args
-                .first()
-                .cloned()
-                .ok_or_else(|| RuntimeError::at(span, "count needs a key"))?;
+            let key_v = Ctx::require_arg(args, "count", span)?;
             let key = ctx.value_to_key(&key_v)?;
             let c = match ctx.heap.get(id) {
                 Some(Object::Map(m)) => m.contains_key(&key),
@@ -58,27 +33,21 @@ pub fn call(
             ))
         }
         "erase" => {
-            let key = ctx.value_to_key(
-                args.first()
-                    .ok_or_else(|| RuntimeError::at(span, "erase needs a key"))?,
-            )?;
+            let key = ctx.value_to_key(&Ctx::require_arg(args, "erase", span)?)?;
             let old = match ctx.heap.get_mut(id) {
                 Some(Object::Map(m)) => m.remove(&key),
                 Some(Object::UnorderedMap(m)) => m.remove(&key),
                 _ => None,
             };
-            ctx.modify(
+            Ok(ctx.popped(
                 base,
                 format!("{kind}::erase"),
-                None,
                 Some(key.to_value()),
                 old,
-                None,
                 span,
-            );
-            Ok(Value::Void)
+            ))
         }
-        "insert" => {
+        "insert" | "emplace" => {
             let (k, v) = pair_or_args_as_kv(ctx, args, span)?;
             match ctx.heap.get_mut(id) {
                 Some(Object::Map(m)) => {
@@ -89,16 +58,14 @@ pub fn call(
                 }
                 _ => {}
             }
-            ctx.modify(
+            Ok(ctx.pushed(
                 base,
-                format!("{kind}::insert"),
+                format!("{kind}::{method}"),
                 None,
                 Some(k.to_value()),
-                None,
-                Some(v),
+                v,
                 span,
-            );
-            Ok(Value::Void)
+            ))
         }
         _ => Err(RuntimeError::at(
             span,

@@ -12,20 +12,8 @@ pub fn call(
     span: Span,
 ) -> Result<Value> {
     match method {
-        "size" => {
-            let n = match ctx.heap.get(id) {
-                Some(Object::PriorityQueue(h)) => h.len() as i64,
-                _ => 0,
-            };
-            Ok(ctx.query(base, "size", None, Value::Int(n), span))
-        }
-        "empty" => {
-            let e = match ctx.heap.get(id) {
-                Some(Object::PriorityQueue(h)) => h.is_empty(),
-                _ => true,
-            };
-            Ok(ctx.query(base, "empty", None, Value::Bool(e), span))
-        }
+        "size" => Ok(ctx.size(id, base, span)),
+        "empty" => Ok(ctx.empty(id, base, span)),
         "top" => {
             let v = match ctx.heap.get(id) {
                 Some(Object::PriorityQueue(h)) => h
@@ -37,17 +25,21 @@ pub fn call(
             };
             Ok(ctx.query(base, "top", None, v, span))
         }
-        "push" => {
-            let n = args
-                .first()
-                .ok_or_else(|| RuntimeError::at(span, "push needs a value"))?
+        "push" | "emplace" => {
+            let n = Ctx::require_arg(args, method, span)?
                 .as_int()
                 .map_err(RuntimeError::new)?;
             if let Some(Object::PriorityQueue(h)) = ctx.heap.get_mut(id) {
                 h.push(n);
             }
-            ctx.modify(base, "priority_queue::push", None, None, None, Some(Value::Int(n)), span);
-            Ok(Value::Void)
+            Ok(ctx.pushed(
+                base,
+                format!("priority_queue::{method}"),
+                None,
+                None,
+                Value::Int(n),
+                span,
+            ))
         }
         "pop" => {
             let old = if let Some(Object::PriorityQueue(h)) = ctx.heap.get_mut(id) {
@@ -55,8 +47,7 @@ pub fn call(
             } else {
                 None
             };
-            ctx.modify(base, "priority_queue::pop", None, None, old, None, span);
-            Ok(Value::Void)
+            Ok(ctx.popped(base, "priority_queue::pop", None, old, span))
         }
         _ => Err(RuntimeError::at(
             span,

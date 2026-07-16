@@ -126,6 +126,20 @@ impl Engine {
                 right,
                 span,
             } => {
+                // C++ short-circuit for `&&` / `||` (common in LeetCode guards like `i > 0 && a[i]`).
+                if matches!(op, BinaryOp::And | BinaryOp::Or) {
+                    let l = self.eval_expr(left)?;
+                    let lb = l.as_bool().map_err(RuntimeError::new)?;
+                    let out = match op {
+                        BinaryOp::And if !lb => Value::Bool(false),
+                        BinaryOp::Or if lb => Value::Bool(true),
+                        _ => {
+                            let r = self.eval_expr(right)?;
+                            self.eval_binary(*op, &l, &r, *span)?
+                        }
+                    };
+                    return Ok((out, None));
+                }
                 let l = self.eval_expr(left)?;
                 let r = self.eval_expr(right)?;
                 let out = self.eval_binary(*op, &l, &r, *span)?;
@@ -167,6 +181,67 @@ impl Engine {
                 Ok((new_val, Some(lv)))
             }
             Expr::Call { callee, args, span } => {
+                // Algorithm / swap builtins re-walk arg exprs — must not pre-evaluate (side effects).
+                if let Expr::Name(path) = callee.as_ref() {
+                    let name = path
+                        .segments
+                        .iter()
+                        .map(|s| s.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join("::");
+                    if (name == "swap" || name == "std::swap") && args.len() == 2 {
+                        let ret = self.builtin_swap(&args[0], &args[1], *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "sort" || name == "std::sort") && args.len() == 2 {
+                        let ret = self.builtin_sort(&args[0], &args[1], *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "reverse" || name == "std::reverse") && args.len() == 2 {
+                        let ret = self.builtin_reverse(&args[0], &args[1], *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "binary_search" || name == "std::binary_search") && args.len() == 3 {
+                        let target = self.eval_expr(&args[2])?;
+                        let ret = self.builtin_binary_search(&args[0], &args[1], &target, *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "lower_bound" || name == "std::lower_bound") && args.len() == 3 {
+                        let target = self.eval_expr(&args[2])?;
+                        let ret = self.builtin_bound(&args[0], &args[1], &target, false, *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "upper_bound" || name == "std::upper_bound") && args.len() == 3 {
+                        let target = self.eval_expr(&args[2])?;
+                        let ret = self.builtin_bound(&args[0], &args[1], &target, true, *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "accumulate" || name == "std::accumulate")
+                        && (args.len() == 2 || args.len() == 3)
+                    {
+                        let init = if args.len() == 3 {
+                            Some(self.eval_expr(&args[2])?)
+                        } else {
+                            None
+                        };
+                        let ret =
+                            self.builtin_accumulate(&args[0], &args[1], init.as_ref(), *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "partial_sum" || name == "std::partial_sum") && args.len() == 3 {
+                        let ret = self.builtin_partial_sum(&args[0], &args[1], &args[2], *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "min_element" || name == "std::min_element") && args.len() == 2 {
+                        let ret = self.builtin_element_ptr(&args[0], &args[1], false, *span)?;
+                        return Ok((ret, None));
+                    }
+                    if (name == "max_element" || name == "std::max_element") && args.len() == 2 {
+                        let ret = self.builtin_element_ptr(&args[0], &args[1], true, *span)?;
+                        return Ok((ret, None));
+                    }
+                }
+
                 let arg_vals: Result<Vec<_>> = args.iter().map(|a| self.eval_expr(a)).collect();
                 let arg_vals = arg_vals?;
 
@@ -207,43 +282,6 @@ impl Engine {
                         .map(|s| s.name.as_str())
                         .collect::<Vec<_>>()
                         .join("::");
-                    if (name == "swap" || name == "std::swap") && args.len() == 2 {
-                        let ret = self.builtin_swap(&args[0], &args[1], *span)?;
-                        return Ok((ret, None));
-                    }
-                    if (name == "sort" || name == "std::sort") && args.len() == 2 {
-                        let ret = self.builtin_sort(&args[0], &args[1], *span)?;
-                        return Ok((ret, None));
-                    }
-                    if (name == "reverse" || name == "std::reverse") && args.len() == 2 {
-                        let ret = self.builtin_reverse(&args[0], &args[1], *span)?;
-                        return Ok((ret, None));
-                    }
-                    if (name == "binary_search" || name == "std::binary_search") && args.len() == 3 {
-                        let ret = self.builtin_binary_search(&args[0], &args[1], &arg_vals[2], *span)?;
-                        return Ok((ret, None));
-                    }
-                    if (name == "lower_bound" || name == "std::lower_bound") && args.len() == 3 {
-                        let ret = self.builtin_bound(&args[0], &args[1], &arg_vals[2], false, *span)?;
-                        return Ok((ret, None));
-                    }
-                    if (name == "upper_bound" || name == "std::upper_bound") && args.len() == 3 {
-                        let ret = self.builtin_bound(&args[0], &args[1], &arg_vals[2], true, *span)?;
-                        return Ok((ret, None));
-                    }
-                    if (name == "accumulate" || name == "std::accumulate") && (args.len() == 2 || args.len() == 3) {
-                        let init = if args.len() == 3 { Some(&arg_vals[2]) } else { None };
-                        let ret = self.builtin_accumulate(&args[0], &args[1], init, *span)?;
-                        return Ok((ret, None));
-                    }
-                    if (name == "min_element" || name == "std::min_element") && args.len() == 2 {
-                        let ret = self.builtin_element_ptr(&args[0], &args[1], false, *span)?;
-                        return Ok((ret, None));
-                    }
-                    if (name == "max_element" || name == "std::max_element") && args.len() == 2 {
-                        let ret = self.builtin_element_ptr(&args[0], &args[1], true, *span)?;
-                        return Ok((ret, None));
-                    }
                     if builtins::is_builtin_call(&name) {
                         let out = builtins::call_builtin(&name, &arg_vals, *span)?;
                         if let Some(chosen) = out.chosen {
@@ -262,6 +300,23 @@ impl Engine {
                         }
                         return Ok((out.value, None));
                     }
+                    // `numeric_limits<T>::min()` / `max()` / `lowest()` (template args erased in parse)
+                    if matches!(
+                        name.as_str(),
+                        "numeric_limits::min"
+                            | "numeric_limits::max"
+                            | "numeric_limits::lowest"
+                            | "std::numeric_limits::min"
+                            | "std::numeric_limits::max"
+                            | "std::numeric_limits::lowest"
+                    ) {
+                        let v = match name.rsplit("::").next() {
+                            Some("max") => Value::Int(i32::MAX as i64),
+                            Some("min") | Some("lowest") => Value::Int(i32::MIN as i64),
+                            _ => Value::Int(0),
+                        };
+                        return Ok((v, None));
+                    }
                     // C++17 free `size(c)` / `empty(c)`
                     if (name == "size" || name == "std::size") && arg_vals.len() == 1 {
                         let v = self.call_member(arg_vals[0].clone(), "size", &[], *span)?;
@@ -270,6 +325,21 @@ impl Engine {
                     if (name == "empty" || name == "std::empty") && arg_vals.len() == 1 {
                         let v = self.call_member(arg_vals[0].clone(), "empty", &[], *span)?;
                         return Ok((v, None));
+                    }
+                    // Free `begin(c)` / `end(c)` / `cbegin` / `cend` — iterator stubs (algos match patterns)
+                    if matches!(
+                        name.as_str(),
+                        "begin"
+                            | "end"
+                            | "cbegin"
+                            | "cend"
+                            | "std::begin"
+                            | "std::end"
+                            | "std::cbegin"
+                            | "std::cend"
+                    ) && arg_vals.len() == 1
+                    {
+                        return Ok((Value::Int(0), None));
                     }
                     if (name == "to_string" || name == "std::to_string") && arg_vals.len() == 1 {
                         let s = match &arg_vals[0] {
@@ -288,7 +358,57 @@ impl Engine {
                         self.emit_alloc(id, "string", *span);
                         return Ok((Value::Object(id), None));
                     }
-                    // Type-construction: vector / pair as function name
+                    // `string("hi")` / `string(s)`
+                    if name == "string" {
+                        let s = match arg_vals.first() {
+                            None => String::new(),
+                            Some(Value::Object(id)) => match self.heap.get(*id) {
+                                Some(Object::String(s)) => s.clone(),
+                                _ => {
+                                    return Err(RuntimeError::at(*span, "string() expected string"))
+                                }
+                            },
+                            Some(Value::Str(s)) => s.clone(),
+                            Some(Value::Char(c)) => c.to_string(),
+                            Some(Value::Int(n)) => n.to_string(),
+                            Some(other) => {
+                                return Err(RuntimeError::at(
+                                    *span,
+                                    format!("string() unsupported for `{other}`"),
+                                ))
+                            }
+                        };
+                        let id = self.heap.alloc(Object::String(s));
+                        self.emit_alloc(id, "string", *span);
+                        return Ok((Value::Object(id), None));
+                    }
+                    // `vector<T>(n)` / `vector<T>(n, fill)` / `vector<T>(other)` (template args erased)
+                    if name == "vector" {
+                        let elems = match arg_vals.as_slice() {
+                            [] => vec![],
+                            [Value::Object(id)] => match self.heap.get(*id) {
+                                Some(Object::Vector(e)) => e.clone(),
+                                _ => {
+                                    return Err(RuntimeError::at(*span, "vector() copy needs vector"))
+                                }
+                            },
+                            [n] => {
+                                let n = n.as_int().map_err(RuntimeError::new)? as usize;
+                                vec![Value::Int(0); n]
+                            }
+                            [n, fill] => {
+                                let n = n.as_int().map_err(RuntimeError::new)? as usize;
+                                vec![fill.clone(); n]
+                            }
+                            _ => {
+                                return Err(RuntimeError::at(*span, "vector() expects 0..=2 args"))
+                            }
+                        };
+                        let id = self.heap.alloc(Object::Vector(elems));
+                        self.emit_alloc(id, "vector", *span);
+                        return Ok((Value::Object(id), None));
+                    }
+                    // Type-construction: pair as function name
                     if name == "pair" && arg_vals.len() == 2 {
                         let id = self.heap.alloc(Object::Pair {
                             first: arg_vals[0].clone(),
@@ -296,6 +416,38 @@ impl Engine {
                         });
                         self.emit_alloc(id, "pair", *span);
                         return Ok((Value::Object(id), None));
+                    }
+                    // Functional casts: `int64_t(x)` / `uint64_t(x)` (LeetCode-common)
+                    if matches!(
+                        name.as_str(),
+                        "int64_t" | "uint64_t" | "int32_t" | "uint32_t" | "size_t" | "int" | "long"
+                    ) && arg_vals.len() == 1
+                    {
+                        let n = arg_vals[0].as_int().map_err(RuntimeError::new)?;
+                        return Ok((Value::Int(n), None));
+                    }
+                    if (name == "stoi" || name == "std::stoi" || name == "stol" || name == "std::stol")
+                        && arg_vals.len() == 1
+                    {
+                        let s = match &arg_vals[0] {
+                            Value::Object(id) => match self.heap.get(*id) {
+                                Some(Object::String(s)) => s.clone(),
+                                _ => {
+                                    return Err(RuntimeError::at(*span, "stoi expects string"))
+                                }
+                            },
+                            Value::Str(s) => s.clone(),
+                            other => {
+                                return Err(RuntimeError::at(
+                                    *span,
+                                    format!("stoi expects string, got `{other}`"),
+                                ))
+                            }
+                        };
+                        let n: i64 = s.parse().map_err(|_| {
+                            RuntimeError::at(*span, format!("stoi failed on `{s}`"))
+                        })?;
+                        return Ok((Value::Int(n), None));
                     }
                     let (resolved, this) = self.resolve_fn_call(&name)?;
                     let ret = self.call_fn(&resolved, &arg_vals, this)?;
