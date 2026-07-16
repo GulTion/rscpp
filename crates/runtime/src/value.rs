@@ -4,7 +4,8 @@ use std::fmt;
 use serde::Serialize;
 
 /// Hashable / ordered key for map & set (LeetCode subset).
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(tag = "kind", content = "value")]
 pub enum MapKey {
     Int(i64),
     Bool(bool),
@@ -18,6 +19,7 @@ impl MapKey {
             Value::Int(i) => Ok(MapKey::Int(*i)),
             Value::Bool(b) => Ok(MapKey::Bool(*b)),
             Value::Char(c) => Ok(MapKey::Char(*c)),
+            Value::Str(s) => Ok(MapKey::Str(s.clone())),
             Value::Object(id) => {
                 if let Some(s) = string_of(*id) {
                     Ok(MapKey::Str(s))
@@ -26,6 +28,15 @@ impl MapKey {
                 }
             }
             other => Err(format!("unsupported map/set key `{other}`")),
+        }
+    }
+
+    pub fn to_value(&self) -> Value {
+        match self {
+            MapKey::Int(i) => Value::Int(*i),
+            MapKey::Bool(b) => Value::Bool(*b),
+            MapKey::Char(c) => Value::Char(*c),
+            MapKey::Str(s) => Value::Str(s.clone()),
         }
     }
 }
@@ -98,6 +109,67 @@ impl Object {
             _ => return None,
         })
     }
+
+    /// Snapshot for `Alloc`: `(size, elems, entries)`.
+    /// Sequences use `elems`; maps/sets use `entries`.
+    pub fn alloc_snapshot(&self) -> (usize, Vec<Value>, Vec<crate::event::AllocEntry>) {
+        use crate::event::AllocEntry;
+        match self {
+            Object::Vector(e) | Object::Stack(e) => (e.len(), e.clone(), vec![]),
+            Object::Queue(q) => (q.len(), q.iter().cloned().collect(), vec![]),
+            Object::Pair { first, second } => {
+                (2, vec![first.clone(), second.clone()], vec![])
+            }
+            Object::String(s) => (s.len(), s.chars().map(Value::Char).collect(), vec![]),
+            Object::Map(m) => (
+                m.len(),
+                vec![],
+                m.iter()
+                    .map(|(k, v)| AllocEntry {
+                        key: k.clone(),
+                        value: Some(v.clone()),
+                    })
+                    .collect(),
+            ),
+            Object::UnorderedMap(m) => (
+                m.len(),
+                vec![],
+                m.iter()
+                    .map(|(k, v)| AllocEntry {
+                        key: k.clone(),
+                        value: Some(v.clone()),
+                    })
+                    .collect(),
+            ),
+            Object::Set(s) => (
+                s.len(),
+                vec![],
+                s.iter()
+                    .map(|k| AllocEntry {
+                        key: k.clone(),
+                        value: None,
+                    })
+                    .collect(),
+            ),
+            Object::UnorderedSet(s) => (
+                s.len(),
+                vec![],
+                s.iter()
+                    .map(|k| AllocEntry {
+                        key: k.clone(),
+                        value: None,
+                    })
+                    .collect(),
+            ),
+            Object::PriorityQueue(h) => {
+                let v: Vec<Value> = h.iter().copied().map(Value::Int).collect();
+                (v.len(), v, vec![])
+            }
+            Object::Class { fields, .. } => {
+                (fields.len(), fields.values().cloned().collect(), vec![])
+            }
+        }
+    }
 }
 
 /// Heap object identity.
@@ -142,6 +214,9 @@ impl fmt::Display for Address {
 }
 
 /// Runtime values (by-value primitives + heap handles + pointers/refs).
+///
+/// JSON: `{ "kind": "Int", "value": 42 }`.  
+/// `Object`’s `value` is a **heap id**, not nested data — see `docs/events.md`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "kind", content = "value")]
 pub enum Value {
@@ -150,7 +225,10 @@ pub enum Value {
     Int(i64),
     Float(f64),
     Char(char),
+    /// String payload for event keys / display (not a heap object).
+    Str(String),
     Nullptr,
+    /// Heap object id (`ObjId`).
     Object(ObjId),
     /// Reseating pointer.
     Ptr(Address),
@@ -165,6 +243,7 @@ impl Value {
             Value::Int(i) => *i != 0,
             Value::Float(f) => *f != 0.0,
             Value::Char(c) => *c != '\0',
+            Value::Str(s) => !s.is_empty(),
             Value::Nullptr => false,
             Value::Object(_) => true,
             Value::Ptr(Address::Null) => false,
@@ -200,6 +279,7 @@ impl fmt::Display for Value {
             Value::Int(i) => write!(f, "{i}"),
             Value::Float(x) => write!(f, "{x}"),
             Value::Char(c) => write!(f, "{c:?}"),
+            Value::Str(s) => write!(f, "{s:?}"),
             Value::Nullptr => write!(f, "nullptr"),
             Value::Object(id) => write!(f, "obj#{id}"),
             Value::Ptr(a) => write!(f, "ptr->{a}"),

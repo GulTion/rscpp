@@ -13,6 +13,8 @@ struct Frame {
     ip: usize,
     locals: Vec<Value>,
     stack_base: usize,
+    call_id: u64,
+    parent_id: Option<u64>,
 }
 
 pub struct Vm {
@@ -20,6 +22,7 @@ pub struct Vm {
     heap: Heap,
     stack: Vec<Value>,
     frames: Vec<Frame>,
+    next_call_id: u64,
     events: Vec<Event>,
 }
 
@@ -30,6 +33,7 @@ impl Vm {
             heap: Heap::default(),
             stack: Vec::new(),
             frames: Vec::new(),
+            next_call_id: 0,
             events: Vec::new(),
         }
     }
@@ -77,8 +81,14 @@ impl Vm {
             locals.push(Value::Int(0));
         }
 
+        let parent_id = self.frames.last().map(|f| f.call_id);
+        let call_id = self.next_call_id;
+        self.next_call_id += 1;
+
         self.emit(Event::FnEnter {
             name: chunk.name.clone(),
+            call_id,
+            parent_id,
             args: args.to_vec(),
             span: Span::new(0, 0),
         });
@@ -88,6 +98,8 @@ impl Vm {
             ip: 0,
             locals,
             stack_base: self.stack.len(),
+            call_id,
+            parent_id,
         });
 
         self.run_loop()
@@ -95,6 +107,28 @@ impl Vm {
 
     fn emit(&mut self, e: Event) {
         self.events.push(e);
+    }
+
+    fn current_call_id(&self) -> Option<u64> {
+        self.frames.last().map(|f| f.call_id)
+    }
+
+    fn emit_alloc(&mut self, id: rscpp_runtime::ObjId, kind: impl Into<String>, span: Span) {
+        let (size, elems, entries) = self
+            .heap
+            .get(id)
+            .map(|o| o.alloc_snapshot())
+            .unwrap_or((0, vec![], vec![]));
+        let call_id = self.current_call_id();
+        self.emit(Event::Alloc {
+            call_id,
+            id,
+            kind: kind.into(),
+            size,
+            elems,
+            entries,
+            span,
+        });
     }
 
     fn run_loop(&mut self) -> Result<Value> {
@@ -112,7 +146,7 @@ impl Vm {
 
             match op {
                 Op::Step => {
-                    self.emit(Event::Step { span });
+                    self.emit(Event::Step { call_id: self.current_call_id(), span });
                 }
                 Op::LoadConst(i) => {
                     let v = self.program.functions[func].constants[i as usize].clone();
@@ -132,12 +166,14 @@ impl Vm {
                     let old = self.frames[frame_i].locals[i as usize].clone();
                     self.frames[frame_i].locals[i as usize] = v.clone();
                     self.emit(Event::VarAssign {
+                        call_id: self.current_call_id(),
                         name: name.clone(),
                         old: Some(old.clone()),
                         value: v.clone(),
                         span,
                     });
                     self.emit(Event::Write {
+                        call_id: self.current_call_id(),
                         slot: Slot::Local { name },
                         old: Some(old),
                         value: v,
@@ -202,6 +238,7 @@ impl Vm {
                         _ => unreachable!(),
                     };
                     self.emit(Event::Compare {
+                        call_id: self.current_call_id(),
                         op: format!("{op:?}"),
                         left: a,
                         right: b,
@@ -246,8 +283,13 @@ impl Vm {
                     while locals.len() < chunk.local_names.len().max(chunk.arity as usize) {
                         locals.push(Value::Int(0));
                     }
+                    let parent_id = self.frames.last().map(|f| f.call_id);
+                    let call_id = self.next_call_id;
+                    self.next_call_id += 1;
                     self.emit(Event::FnEnter {
                         name: chunk.name.clone(),
+                        call_id,
+                        parent_id,
                         args,
                         span,
                     });
@@ -256,6 +298,8 @@ impl Vm {
                         ip: 0,
                         locals,
                         stack_base: self.stack.len(),
+                        call_id,
+                        parent_id,
                     });
                 }
                 Op::Return => {
@@ -265,6 +309,8 @@ impl Vm {
                     self.stack.truncate(finished.stack_base);
                     self.emit(Event::FnExit {
                         name: finished_name,
+                        call_id: finished.call_id,
+                        parent_id: finished.parent_id,
                         ret: ret.clone(),
                         span,
                     });
@@ -303,11 +349,7 @@ impl Vm {
                         VmError::at(span, format!("unknown type `{name}` for NewEmpty"))
                     })?;
                     let id = self.heap.alloc(obj);
-                    self.emit(Event::Alloc {
-                        id,
-                        kind: name,
-                        span,
-                    });
+                    self.emit_alloc(id, name, span);
                     // Grow locals naming for VarCreate on decl — handled by StoreLocal after
                     self.stack.push(Value::Object(id));
                 }
@@ -315,11 +357,7 @@ impl Vm {
                     let second = self.pop()?;
                     let first = self.pop()?;
                     let id = self.heap.alloc(Object::Pair { first, second });
-                    self.emit(Event::Alloc {
-                        id,
-                        kind: "pair".into(),
-                        span,
-                    });
+                    self.emit_alloc(id, "pair", span);
                     self.stack.push(Value::Object(id));
                 }
             }
@@ -332,27 +370,34 @@ impl Vm {
             .ok_or_else(|| VmError::new("stack underflow"))
     }
 
-    fn index_get(&self, base: Value, idx: Value, span: Span) -> Result<Value> {
-        let Value::Object(id) = base else {
+    fn index_get(&mut self, base: Value, idx: Value, span: Span) -> Result<Value> {
+        let Value::Object(id) = base.clone() else {
             return Err(VmError::at(span, "index on non-object"));
         };
-        match self.heap.get(id) {
+        let v = match self.heap.get(id) {
             Some(Object::Vector(e)) => {
                 let i = idx.as_int().map_err(VmError::new)? as usize;
                 e.get(i)
                     .cloned()
-                    .ok_or_else(|| VmError::at(span, "oob"))
+                    .ok_or_else(|| VmError::at(span, "oob"))?
             }
             Some(Object::Map(m)) => {
                 let k = map_key(&idx)?;
-                Ok(m.get(&k).cloned().unwrap_or(Value::Int(0)))
+                m.get(&k).cloned().unwrap_or(Value::Int(0))
             }
             Some(Object::UnorderedMap(m)) => {
                 let k = map_key(&idx)?;
-                Ok(m.get(&k).cloned().unwrap_or(Value::Int(0)))
+                m.get(&k).cloned().unwrap_or(Value::Int(0))
             }
-            _ => Err(VmError::at(span, "not indexable")),
+            _ => return Err(VmError::at(span, "not indexable")),
+        };
+        let call_id = self.current_call_id();
+        Ok(rscpp_runtime::stl::Ctx {
+            heap: &mut self.heap,
+            events: &mut self.events,
+            call_id,
         }
+        .query(base, "index", Some(idx), v, span))
     }
 
     fn index_set(&mut self, base: Value, idx: Value, val: Value, span: Span) -> Result<()> {
@@ -368,6 +413,7 @@ impl Vm {
                 let old = e[i].clone();
                 e[i] = val.clone();
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::Index { obj: id, index: i },
                     old: Some(old),
                     value: val,
@@ -378,6 +424,7 @@ impl Vm {
                 let k = map_key(&idx)?;
                 let old = m.insert(k.clone(), val.clone());
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::MapEntry {
                         obj: id,
                         key: k.to_string(),
@@ -391,6 +438,7 @@ impl Vm {
                 let k = map_key(&idx)?;
                 let old = m.insert(k.clone(), val.clone());
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::MapEntry {
                         obj: id,
                         key: k.to_string(),
@@ -421,9 +469,11 @@ impl Vm {
             .map(|o| o.kind_name())
             .ok_or_else(|| VmError::at(span, "dangling object"))?;
 
+        let call_id = self.current_call_id();
         let mut ctx = rscpp_runtime::stl::Ctx {
             heap: &mut self.heap,
             events: &mut self.events,
+            call_id,
         };
         rscpp_runtime::stl::call_method(&mut ctx, id, base, kind, method, args, span)
             .map_err(VmError::from)

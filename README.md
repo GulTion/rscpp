@@ -24,6 +24,12 @@ source → preprocessor → lexer → parser → AST → sema → interpreter/VM
 | 8 | `rscpp-vm` | done |
 | 9 | `rscpp-wasm` | done |
 
+## Visualizer contract
+
+Event and value JSON (what `Object.value` means, `Alloc.size` / `elems`, shadow-heap recipe):
+
+→ **[`docs/events.md`](docs/events.md)**
+
 ## Develop
 
 ```bash

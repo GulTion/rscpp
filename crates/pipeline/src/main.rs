@@ -231,18 +231,34 @@ fn print_events(events: &[Event], limit: usize) {
 
 fn format_event(e: &Event) -> String {
     match e {
-        Event::Step { span } => format!("Step @ {}..{}", span.start, span.end),
-        Event::ScopeEnter { span } => format!("ScopeEnter @ {}..{}", span.start, span.end),
-        Event::ScopeExit { span } => format!("ScopeExit @ {}..{}", span.start, span.end),
+        Event::Step { span, .. } => format!("Step @ {}..{}", span.start, span.end),
+        Event::ScopeEnter { span, .. } => format!("ScopeEnter @ {}..{}", span.start, span.end),
+        Event::ScopeExit { span, .. } => format!("ScopeExit @ {}..{}", span.start, span.end),
         Event::VarCreate { name, value, .. } => format!("VarCreate {name} = {value}"),
         Event::VarAssign { name, old, value, .. } => {
             format!("VarAssign {name}: {old:?} → {value}")
         }
-        Event::Write { slot, old, value, .. } => {
-            format!("Write {slot:?}: {old:?} → {value}")
-        }
-        Event::FnEnter { name, args, .. } => format!("FnEnter {name}({args:?})"),
-        Event::FnExit { name, ret, .. } => format!("FnExit {name} → {ret}"),
+        Event::Write {
+            slot,
+            old,
+            value,
+            call_id,
+            ..
+        } => format!("Write@{call_id:?} {slot:?}: {old:?} → {value}"),
+        Event::FnEnter {
+            name,
+            call_id,
+            parent_id,
+            args,
+            ..
+        } => format!("FnEnter {name}#{call_id} parent={parent_id:?} ({args:?})"),
+        Event::FnExit {
+            name,
+            call_id,
+            parent_id,
+            ret,
+            ..
+        } => format!("FnExit {name}#{call_id} parent={parent_id:?} → {ret}"),
         Event::Branch { then_taken, .. } => format!("Branch then={then_taken}"),
         Event::LoopIter { .. } => "LoopIter".into(),
         Event::Compare {
@@ -255,10 +271,31 @@ fn format_event(e: &Event) -> String {
         Event::Swap {
             value_a, value_b, ..
         } => format!("Swap {value_a} ↔ {value_b}"),
-        Event::ContainerMod { kind, index, value, .. } => {
-            format!("ContainerMod {kind} idx={index:?} val={value:?}")
-        }
-        Event::Alloc { id, kind, .. } => format!("Alloc #{id} ({kind})"),
+        Event::ContainerMod {
+            kind,
+            index,
+            key,
+            value,
+            ..
+        } => format!("ContainerMod {kind} idx={index:?} key={key:?} val={value:?}"),
+        Event::ContainerLookup {
+            kind,
+            key,
+            result,
+            call_id,
+            ..
+        } => format!("ContainerLookup@{call_id:?} {kind} key={key:?} → {result}"),
+        Event::Alloc {
+            id,
+            kind,
+            size,
+            entries,
+            call_id,
+            ..
+        } => format!(
+            "Alloc@{call_id:?} #{id} ({kind}) size={size} entries={}",
+            entries.len()
+        ),
         Event::Dealloc { id, .. } => format!("Dealloc #{id}"),
         Event::RefBind { name, target, .. } => format!("RefBind {name} → {target:?}"),
         Event::PtrMove { name, to, .. } => format!("PtrMove {name} → {to}"),

@@ -15,6 +15,10 @@ type Result<T> = std::result::Result<T, RuntimeError>;
 struct Frame {
     #[allow(dead_code)]
     name: String,
+    /// Activation id for this frame (matches `FnEnter.call_id`).
+    call_id: u64,
+    #[allow(dead_code)]
+    parent_id: Option<u64>,
     locals: HashMap<String, Value>,
 }
 
@@ -40,7 +44,11 @@ pub struct Engine {
     classes: HashMap<String, ClassDef>,
     globals: HashMap<String, Value>,
     heap: Heap,
+    /// Mapped-type for `map`/`unordered_map` `operator[]` default-insert (`map<K,V>` → `V`).
+    map_value_tys: HashMap<ObjId, Type>,
     stack: Vec<Frame>,
+    /// Next `call_id` to assign on `FnEnter`.
+    next_call_id: u64,
     events: Vec<Event>,
 }
 
@@ -84,7 +92,9 @@ impl Engine {
             classes,
             globals: HashMap::new(),
             heap: Heap::default(),
+            map_value_tys: HashMap::new(),
             stack: Vec::new(),
+            next_call_id: 0,
             events: Vec::new(),
         };
 
@@ -118,11 +128,7 @@ impl Engine {
                 name: class.to_string(),
                 fields: HashMap::new(),
             });
-            self.emit(Event::Alloc {
-                id,
-                kind: class.to_string(),
-                span: Span::new(0, 0),
-            });
+            self.emit_alloc(id, class, Span::new(0, 0));
             let q = format!("{class}::{method}");
             self.call_fn(&q, args, Some(Value::Object(id)))
         } else {
@@ -133,11 +139,7 @@ impl Engine {
     /// Helper: build a heap `vector` from values.
     pub fn make_vector(&mut self, elems: Vec<Value>) -> Value {
         let id = self.heap.alloc(Object::Vector(elems));
-        self.emit(Event::Alloc {
-            id,
-            kind: "vector".into(),
-            span: Span::new(0, 0),
-        });
+        self.emit_alloc(id, "vector", Span::new(0, 0));
         Value::Object(id)
     }
 
@@ -158,6 +160,45 @@ impl Engine {
         self.events.push(e);
     }
 
+    fn current_call_id(&self) -> Option<u64> {
+        self.stack.last().map(|f| f.call_id)
+    }
+
+    fn emit_alloc(&mut self, id: ObjId, kind: impl Into<String>, span: Span) {
+        let (size, elems, entries) = self
+            .heap
+            .get(id)
+            .map(|o| o.alloc_snapshot())
+            .unwrap_or((0, vec![], vec![]));
+        self.emit(Event::Alloc {
+            call_id: self.current_call_id(),
+            id,
+            kind: kind.into(),
+            size,
+            elems,
+            entries,
+            span,
+        });
+    }
+
+    /// Same shape as `stl::Ctx::query` (index / method reads).
+    fn query(
+        &mut self,
+        container: Value,
+        op: impl Into<String>,
+        key: Option<Value>,
+        result: Value,
+        span: Span,
+    ) -> Value {
+        let call_id = self.current_call_id();
+        stl::Ctx {
+            heap: &mut self.heap,
+            events: &mut self.events,
+            call_id,
+        }
+        .query(container, op, key, result, span)
+    }
+
     fn exec_global_decl(&mut self, d: &Decl) -> Result<()> {
         for decl in &d.declarators {
             let val = if let Some(init) = &decl.init {
@@ -167,6 +208,7 @@ impl Engine {
             };
             self.globals.insert(decl.name.name.clone(), val.clone());
             self.emit(Event::VarCreate {
+                call_id: self.current_call_id(),
                 name: decl.name.name.clone(),
                 value: val,
                 span: decl.span,
@@ -182,8 +224,14 @@ impl Engine {
             .cloned()
             .ok_or_else(|| RuntimeError::new(format!("undefined function `{name}`")))?;
 
+        let parent_id = self.stack.last().map(|f| f.call_id);
+        let call_id = self.next_call_id;
+        self.next_call_id += 1;
+
         self.emit(Event::FnEnter {
             name: name.to_string(),
+            call_id,
+            parent_id,
             args: args.to_vec(),
             span: func.span,
         });
@@ -207,6 +255,7 @@ impl Engine {
                 let bound = self.bind_param_value(&p.ty, a, &n.name, n.span)?;
                 locals.insert(n.name.clone(), bound.clone());
                 self.emit(Event::VarCreate {
+                    call_id: self.current_call_id(),
                     name: n.name.clone(),
                     value: bound,
                     span: n.span,
@@ -216,6 +265,8 @@ impl Engine {
 
         self.stack.push(Frame {
             name: name.to_string(),
+            call_id,
+            parent_id,
             locals,
         });
         let flow = self.exec_block(&func.body)?;
@@ -232,24 +283,64 @@ impl Engine {
 
         self.emit(Event::FnExit {
             name: name.to_string(),
+            call_id,
+            parent_id,
             ret: ret.clone(),
             span: func.span,
         });
         Ok(ret)
     }
 
+    /// Resolve `foo` → `Class::foo` when called from a method (LeetCode-style unqualified calls).
+    fn resolve_fn_call(&self, name: &str) -> Result<(String, Option<Value>)> {
+        if self.functions.contains_key(name) {
+            return Ok((name.to_string(), None));
+        }
+        // From `this` object's class name
+        if let Ok(this_v) = self.lookup_raw("this") {
+            if let Value::Object(id) = &this_v {
+                if let Some(Object::Class { name: cname, .. }) = self.heap.get(*id) {
+                    let q = format!("{cname}::{name}");
+                    if self.functions.contains_key(&q) {
+                        return Ok((q, Some(this_v)));
+                    }
+                }
+            }
+        }
+        // From current frame `Solution::countComponents` → try `Solution::name`
+        if let Some(frame) = self.stack.last() {
+            if let Some((cls, _)) = frame.name.split_once("::") {
+                let q = format!("{cls}::{name}");
+                if self.functions.contains_key(&q) {
+                    let this = self.lookup_raw("this").ok();
+                    return Ok((q, this));
+                }
+            }
+        }
+        Err(RuntimeError::new(format!("undefined function `{name}`")))
+    }
+
     fn exec_block(&mut self, block: &Block) -> Result<Flow> {
-        self.emit(Event::ScopeEnter { span: block.span });
+        self.emit(Event::ScopeEnter {
+            call_id: self.current_call_id(),
+            span: block.span,
+        });
         for stmt in &block.stmts {
             match self.exec_stmt(stmt)? {
                 Flow::Next => {}
                 other => {
-                    self.emit(Event::ScopeExit { span: block.span });
+                    self.emit(Event::ScopeExit {
+                        call_id: self.current_call_id(),
+                        span: block.span,
+                    });
                     return Ok(other);
                 }
             }
         }
-        self.emit(Event::ScopeExit { span: block.span });
+        self.emit(Event::ScopeExit {
+            call_id: self.current_call_id(),
+            span: block.span,
+        });
         Ok(Flow::Next)
     }
 
@@ -257,6 +348,7 @@ impl Engine {
         // Nested blocks emit ScopeEnter instead of a single Step.
         if !matches!(stmt, Stmt::Block(_)) {
             self.emit(Event::Step {
+                call_id: self.current_call_id(),
                 span: stmt.span(),
             });
         }
@@ -291,6 +383,7 @@ impl Engine {
                 let c = self.eval_expr(cond)?;
                 let then_taken = c.as_bool().map_err(RuntimeError::new)?;
                 self.emit(Event::Branch {
+                    call_id: self.current_call_id(),
                     then_taken,
                     span: *span,
                 });
@@ -310,7 +403,10 @@ impl Engine {
                     if !c.as_bool().map_err(RuntimeError::new)? {
                         break;
                     }
-                    self.emit(Event::LoopIter { span: *span });
+                    self.emit(Event::LoopIter {
+                        call_id: self.current_call_id(),
+                        span: *span,
+                    });
                     match self.exec_stmt(body)? {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
@@ -323,7 +419,10 @@ impl Engine {
                 body, cond, span, ..
             } => {
                 loop {
-                    self.emit(Event::LoopIter { span: *span });
+                    self.emit(Event::LoopIter {
+                        call_id: self.current_call_id(),
+                        span: *span,
+                    });
                     match self.exec_stmt(body)? {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
@@ -360,7 +459,10 @@ impl Engine {
                             break;
                         }
                     }
-                    self.emit(Event::LoopIter { span: *span });
+                    self.emit(Event::LoopIter {
+                        call_id: self.current_call_id(),
+                        span: *span,
+                    });
                     match self.exec_stmt(body)? {
                         Flow::Next | Flow::Continue => {}
                         Flow::Break => break,
@@ -379,6 +481,7 @@ impl Engine {
         if let Value::Ref(addr) = &val {
             if let Some(slot) = Self::address_to_slot(addr) {
                 self.emit(Event::RefBind {
+                    call_id: self.current_call_id(),
                     name: name.to_string(),
                     target: slot,
                     span,
@@ -387,6 +490,7 @@ impl Engine {
         }
         if let Value::Ptr(addr) = &val {
             self.emit(Event::PtrMove {
+                call_id: self.current_call_id(),
                 name: name.to_string(),
                 to: Value::Ptr(addr.clone()),
                 span,
@@ -398,6 +502,7 @@ impl Engine {
             self.globals.insert(name.to_string(), val.clone());
         }
         self.emit(Event::VarCreate {
+            call_id: self.current_call_id(),
             name: name.to_string(),
             value: val,
             span,
@@ -437,6 +542,7 @@ impl Engine {
                 let old = self.stack[i].locals.get(name).cloned();
                 if matches!(val, Value::Ptr(_)) {
                     self.emit(Event::PtrMove {
+                        call_id: self.current_call_id(),
                         name: name.to_string(),
                         to: val.clone(),
                         span,
@@ -444,12 +550,14 @@ impl Engine {
                 }
                 self.stack[i].locals.insert(name.to_string(), val.clone());
                 self.emit(Event::VarAssign {
+                    call_id: self.current_call_id(),
                     name: name.to_string(),
                     old: old.clone(),
                     value: val.clone(),
                     span,
                 });
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::Local {
                         name: name.to_string(),
                     },
@@ -464,6 +572,7 @@ impl Engine {
             let old = self.globals.get(name).cloned();
             if matches!(val, Value::Ptr(_)) {
                 self.emit(Event::PtrMove {
+                    call_id: self.current_call_id(),
                     name: name.to_string(),
                     to: val.clone(),
                     span,
@@ -471,12 +580,14 @@ impl Engine {
             }
             self.globals.insert(name.to_string(), val.clone());
             self.emit(Event::VarAssign {
+                call_id: self.current_call_id(),
                 name: name.to_string(),
                 old: old.clone(),
                 value: val.clone(),
                 span,
             });
             self.emit(Event::Write {
+                call_id: self.current_call_id(),
                 slot: Slot::Global {
                     name: name.to_string(),
                 },
@@ -505,6 +616,7 @@ impl Engine {
                 let old = elems[*index].clone();
                 elems[*index] = val.clone();
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::Index {
                         obj: *obj,
                         index: *index,
@@ -514,9 +626,11 @@ impl Engine {
                     span,
                 });
                 self.emit(Event::ContainerMod {
+                    call_id: self.current_call_id(),
                     container: Value::Object(*obj),
                     kind: "index_assign".into(),
                     index: Some(*index),
+                    key: Some(Value::Int(*index as i64)),
                     old: Some(old),
                     value: Some(val),
                     span,
@@ -540,6 +654,7 @@ impl Engine {
                     _ => return Err(RuntimeError::at(span, "map entry assign on non-map")),
                 }
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::MapEntry {
                         obj: *obj,
                         key: key_s,
@@ -549,9 +664,11 @@ impl Engine {
                     span,
                 });
                 self.emit(Event::ContainerMod {
+                    call_id: self.current_call_id(),
                     container: Value::Object(*obj),
                     kind: "map_assign".into(),
                     index: None,
+                    key: Some(key.to_value()),
                     old,
                     value: Some(val),
                     span,
@@ -585,6 +702,7 @@ impl Engine {
                     _ => return Err(RuntimeError::at(span, "field assign on bad object")),
                 }
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::Field {
                         obj: *obj,
                         field: field.clone(),
@@ -594,6 +712,7 @@ impl Engine {
                     span,
                 });
                 self.emit(Event::VarAssign {
+                    call_id: self.current_call_id(),
                     name: field.clone(),
                     old,
                     value: val,
@@ -754,6 +873,10 @@ impl Engine {
             Address::MapEntry { obj, key } => {
                 let mk = if let Ok(i) = key.parse::<i64>() {
                     MapKey::Int(i)
+                } else if key == "true" || key == "false" {
+                    MapKey::Bool(key == "true")
+                } else if key.chars().count() == 1 {
+                    MapKey::Char(key.chars().next().unwrap())
                 } else {
                     MapKey::Str(key.clone())
                 };
@@ -774,6 +897,7 @@ impl Engine {
             Address::Stack { frame, name } if *frame == usize::MAX => {
                 self.globals.insert(name.clone(), val.clone());
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::Global { name: name.clone() },
                     old: None,
                     value: val,
@@ -788,6 +912,7 @@ impl Engine {
                     .ok_or_else(|| RuntimeError::at(span, "dangling stack address"))?;
                 let old = frame.locals.insert(name.clone(), val.clone());
                 self.emit(Event::Write {
+                    call_id: self.current_call_id(),
                     slot: Slot::Local { name: name.clone() },
                     old,
                     value: val,
@@ -843,6 +968,7 @@ impl Engine {
             };
             if let Some(slot) = Self::address_to_slot(&addr) {
                 self.emit(Event::RefBind {
+                    call_id: self.current_call_id(),
                     name: name.to_string(),
                     target: slot,
                     span,
@@ -905,6 +1031,7 @@ impl Engine {
                 }
                 if self.heap.free(*id).is_some() {
                     self.emit(Event::Dealloc {
+                        call_id: self.current_call_id(),
                         id: *id,
                         span: Span::new(0, 0),
                     });
@@ -937,6 +1064,7 @@ impl Engine {
         self.write_lvalue(&la, vb.clone(), span)?;
         self.write_lvalue(&lb, va.clone(), span)?;
         self.emit(Event::Swap {
+            call_id: self.current_call_id(),
             a: Self::slot_of(&la),
             b: Self::slot_of(&lb),
             value_a: va,
@@ -952,17 +1080,21 @@ impl Engine {
     }
 
     fn eval_expr_lv(&mut self, expr: &Expr) -> Result<(Value, Option<LValue>)> {
+        self.eval_expr_lv_opts(expr, true)
+    }
+
+    fn eval_expr_lv_opts(
+        &mut self,
+        expr: &Expr,
+        emit_index_lookup: bool,
+    ) -> Result<(Value, Option<LValue>)> {
         match expr {
             Expr::IntLit { value, .. } => Ok((Value::Int(*value as i64), None)),
             Expr::FloatLit { value, .. } => Ok((Value::Float(*value), None)),
             Expr::CharLit { value, .. } => Ok((Value::Char(*value), None)),
             Expr::StringLit { value, span } => {
                 let id = self.heap.alloc(Object::String(value.clone()));
-                self.emit(Event::Alloc {
-                    id,
-                    kind: "string".into(),
-                    span: *span,
-                });
+                self.emit_alloc(id, "string", *span);
                 Ok((Value::Object(id), None))
             }
             Expr::BoolLit { value, .. } => Ok((Value::Bool(*value), None)),
@@ -1068,7 +1200,10 @@ impl Engine {
                 span,
             } => {
                 let (rv, _) = self.eval_expr_lv(right)?;
-                let (lv_val, lv) = self.eval_expr_lv(left)?;
+                // Pure `=` : resolve LHS without ContainerLookup (Write covers the store).
+                // Compound assigns still lookup so the UI sees the old value read.
+                let lookup = *op != AssignOp::Assign;
+                let (lv_val, lv) = self.eval_expr_lv_opts(left, lookup)?;
                 let Some(lv) = lv else {
                     return Err(RuntimeError::at(*span, "invalid assignment target"));
                 };
@@ -1131,14 +1266,11 @@ impl Engine {
                             first: arg_vals[0].clone(),
                             second: arg_vals[1].clone(),
                         });
-                        self.emit(Event::Alloc {
-                            id,
-                            kind: "pair".into(),
-                            span: *span,
-                        });
+                        self.emit_alloc(id, "pair", *span);
                         return Ok((Value::Object(id), None));
                     }
-                    let ret = self.call_fn(&name, &arg_vals, None)?;
+                    let (resolved, this) = self.resolve_fn_call(&name)?;
+                    let ret = self.call_fn(&resolved, &arg_vals, this)?;
                     return Ok((ret, None));
                 }
 
@@ -1161,6 +1293,17 @@ impl Engine {
                             .get(i)
                             .cloned()
                             .ok_or_else(|| RuntimeError::at(*span, "index out of bounds"))?;
+                        let v = if emit_index_lookup {
+                            self.query(
+                                Value::Object(id),
+                                "index",
+                                Some(idx_val),
+                                v,
+                                *span,
+                            )
+                        } else {
+                            v
+                        };
                         Ok((v, Some(LValue::Index { obj: id, index: i })))
                     }
                     Some(Object::String(s)) => {
@@ -1169,16 +1312,32 @@ impl Engine {
                             .chars()
                             .nth(i)
                             .ok_or_else(|| RuntimeError::at(*span, "index out of bounds"))?;
-                        Ok((Value::Char(ch), None))
+                        let v = if emit_index_lookup {
+                            self.query(
+                                Value::Object(id),
+                                "index",
+                                Some(idx_val),
+                                Value::Char(ch),
+                                *span,
+                            )
+                        } else {
+                            Value::Char(ch)
+                        };
+                        Ok((v, None))
                     }
                     Some(Object::Map(_)) | Some(Object::UnorderedMap(_)) => {
                         let key = self.value_to_key(&idx_val)?;
-                        let v = match self.heap.get(id) {
-                            Some(Object::Map(m)) => m.get(&key).cloned().unwrap_or(Value::Int(0)),
-                            Some(Object::UnorderedMap(m)) => {
-                                m.get(&key).cloned().unwrap_or(Value::Int(0))
-                            }
-                            _ => Value::Int(0),
+                        let v = self.map_index_get_or_insert(id, &key, *span)?;
+                        let v = if emit_index_lookup {
+                            self.query(
+                                Value::Object(id),
+                                "index",
+                                Some(idx_val),
+                                v,
+                                *span,
+                            )
+                        } else {
+                            v
                         };
                         Ok((v, Some(LValue::MapEntry { obj: id, key })))
                     }
@@ -1243,11 +1402,7 @@ impl Engine {
                     vs.push(self.eval_expr(e)?);
                 }
                 let id = self.heap.alloc(Object::Vector(vs));
-                self.emit(Event::Alloc {
-                    id,
-                    kind: "vector".into(),
-                    span: *span,
-                });
+                self.emit_alloc(id, "vector", *span);
                 Ok((Value::Object(id), None))
             }
         }
@@ -1286,9 +1441,11 @@ impl Engine {
             return Err(RuntimeError::at(span, "dangling object"));
         }
 
+        let call_id = self.current_call_id();
         let mut ctx = stl::Ctx {
             heap: &mut self.heap,
             events: &mut self.events,
+            call_id,
         };
         stl::call_method(&mut ctx, id, base, kind, method, args, span)
     }
@@ -1347,6 +1504,7 @@ impl Engine {
                     }
                 };
                 self.emit(Event::Compare {
+                    call_id: self.current_call_id(),
                     op: format!("{op:?}"),
                     left: l.clone(),
                     right: r.clone(),
@@ -1375,7 +1533,7 @@ impl Engine {
                 BuiltinType::Char | BuiltinType::UnsignedChar => Value::Char('\0'),
                 _ => Value::Int(0),
             }),
-            Type::Named { path, .. } => {
+            Type::Named { path, args, .. } => {
                 let name = path
                     .segments
                     .last()
@@ -1384,11 +1542,11 @@ impl Engine {
                 if let Some(obj) = Object::empty_named(name) {
                     let kind = obj.kind_name().to_string();
                     let id = self.heap.alloc(obj);
-                    self.emit(Event::Alloc {
-                        id,
-                        kind,
-                        span: path.span,
-                    });
+                    // Remember V for map<K,V> / unordered_map<K,V> so operator[] can default-insert.
+                    if (kind == "map" || kind == "unordered_map") && args.len() >= 2 {
+                        self.map_value_tys.insert(id, args[1].clone());
+                    }
+                    self.emit_alloc(id, kind, path.span);
                     return Ok(Value::Object(id));
                 }
                 if self.classes.contains_key(name) {
@@ -1404,6 +1562,59 @@ impl Engine {
             Type::Reference { inner, .. } => self.default_value_for_type(inner),
             Type::Const { inner, .. } => self.default_value_for_type(inner),
         }
+    }
+
+    /// C++ `map::operator[]`: return existing value, or default-construct mapped type and insert.
+    fn map_index_get_or_insert(
+        &mut self,
+        map_id: ObjId,
+        key: &MapKey,
+        span: Span,
+    ) -> Result<Value> {
+        let existing = match self.heap.get(map_id) {
+            Some(Object::Map(m)) => m.get(key).cloned(),
+            Some(Object::UnorderedMap(m)) => m.get(key).cloned(),
+            _ => return Err(RuntimeError::at(span, "not a map")),
+        };
+        if let Some(v) = existing {
+            return Ok(v);
+        }
+
+        let mapped_ty = self.map_value_tys.get(&map_id).cloned().unwrap_or(Type::Builtin {
+            kind: BuiltinType::Int,
+            span,
+        });
+        let def = self.default_value_for_type(&mapped_ty)?;
+        match self.heap.get_mut(map_id) {
+            Some(Object::Map(m)) => {
+                m.insert(key.clone(), def.clone());
+            }
+            Some(Object::UnorderedMap(m)) => {
+                m.insert(key.clone(), def.clone());
+            }
+            _ => return Err(RuntimeError::at(span, "not a map")),
+        }
+        self.emit(Event::Write {
+            call_id: self.current_call_id(),
+            slot: Slot::MapEntry {
+                obj: map_id,
+                key: key.to_string(),
+            },
+            old: None,
+            value: def.clone(),
+            span,
+        });
+        self.emit(Event::ContainerMod {
+            call_id: self.current_call_id(),
+            container: Value::Object(map_id),
+            kind: "map_default_insert".into(),
+            index: None,
+            key: Some(key.to_value()),
+            old: None,
+            value: Some(def.clone()),
+            span,
+        });
+        Ok(def)
     }
 }
 

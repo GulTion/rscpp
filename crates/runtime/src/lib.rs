@@ -8,5 +8,5 @@ mod value;
 
 pub use engine::Engine;
 pub use error::RuntimeError;
-pub use event::{Event, Slot};
+pub use event::{AllocEntry, Event, Slot};
 pub use value::{Address, Heap, MapKey, Object, ObjId, Value};

@@ -6,7 +6,7 @@ use rscpp_ast::Span;
 pub fn call(
     ctx: &mut Ctx<'_>,
     id: ObjId,
-    _base: Value,
+    base: Value,
     method: &str,
     args: &[Value],
     span: Span,
@@ -15,12 +15,13 @@ pub fn call(
         return Err(RuntimeError::at(span, "not a string"));
     };
     match method {
-        "size" | "length" => Ok(Value::Int(s.len() as i64)),
-        "empty" => Ok(Value::Bool(s.is_empty())),
+        "size" | "length" => Ok(ctx.query(base, method, None, Value::Int(s.len() as i64), span)),
+        "empty" => Ok(ctx.query(base, "empty", None, Value::Bool(s.is_empty()), span)),
         "clear" => {
             if let Some(Object::String(s)) = ctx.heap.get_mut(id) {
                 s.clear();
             }
+            ctx.modify(base, "string::clear", None, None, None, None, span);
             Ok(Value::Void)
         }
         "push_back" => {
@@ -37,6 +38,7 @@ pub fn call(
             if let Some(Object::String(s)) = ctx.heap.get_mut(id) {
                 s.push(ch);
             }
+            ctx.modify(base, "string::push_back", None, None, None, Some(Value::Char(ch)), span);
             Ok(Value::Void)
         }
         _ => Err(RuntimeError::at(

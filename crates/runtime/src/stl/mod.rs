@@ -15,10 +15,11 @@ use rscpp_ast::Span;
 
 type Result<T> = std::result::Result<T, RuntimeError>;
 
-/// Shared access for STL methods: heap + event log.
+/// Shared access for STL methods: heap + event log + current activation.
 pub struct Ctx<'a> {
     pub heap: &'a mut Heap,
     pub events: &'a mut Vec<Event>,
+    pub call_id: Option<u64>,
 }
 
 impl Ctx<'_> {
@@ -28,6 +29,49 @@ impl Ctx<'_> {
 
     pub fn value_to_key(&self, v: &Value) -> Result<MapKey> {
         MapKey::from_value(v, |id| self.heap.string_value(id)).map_err(RuntimeError::new)
+    }
+
+    /// Emit one `ContainerLookup` and return `result` (DRY for size/count/empty/top/index/…).
+    pub fn query(
+        &mut self,
+        container: Value,
+        op: impl Into<String>,
+        key: Option<Value>,
+        result: Value,
+        span: Span,
+    ) -> Value {
+        self.emit(Event::ContainerLookup {
+            call_id: self.call_id,
+            container,
+            kind: op.into(),
+            key,
+            result: result.clone(),
+            span,
+        });
+        result
+    }
+
+    /// Emit one `ContainerMod` (DRY for push/pop/insert/erase/…).
+    pub fn modify(
+        &mut self,
+        container: Value,
+        op: impl Into<String>,
+        index: Option<usize>,
+        key: Option<Value>,
+        old: Option<Value>,
+        value: Option<Value>,
+        span: Span,
+    ) {
+        self.emit(Event::ContainerMod {
+            call_id: self.call_id,
+            container,
+            kind: op.into(),
+            index,
+            key,
+            old,
+            value,
+            span,
+        });
     }
 }
 

@@ -1,6 +1,7 @@
 //! Browser API: pass C++ source, get return value + event stream.
 //!
 //! No stdin/stdout in v1 — visualizers consume `events`.
+//! Event/value JSON shapes: repository `docs/events.md`.
 
 use rscpp_runtime::{Engine, Event, Value};
 use serde::Serialize;
@@ -83,6 +84,7 @@ int main() {
     #[test]
     fn events_serialize_with_kind_tag() {
         let e = Event::Step {
+            call_id: None,
             span: Span::new(0, 1),
         };
         let s = serde_json::to_string(&e).unwrap();

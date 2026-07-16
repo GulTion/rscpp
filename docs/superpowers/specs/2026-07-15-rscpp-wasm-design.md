@@ -57,10 +57,11 @@ Visualizer drives UX from events (`Step`, `VarAssign`, `ContainerMod`, …), not
 
 ## Serialization
 
-- Add `Serialize` (and minimal helpers) for `Value`, `Slot`, `Event`, `Address` as needed.
-- Prefer tagged JSON: `{ "kind": "Step", "span": { "start", "end" }, ... }`.
-- Heap objects appear as handles (`{ "object": id }`), not deep graphs — same as runtime model.
-- Use `serde-wasm-bindgen` (or `JsValue` from `serde_json`) for the return object.
+Canonical JSON shapes for visualizers: **[`docs/events.md`](../../events.md)** (values, spans, `Alloc.size` / `Alloc.elems`, Object = heap id).
+
+- Tagged events: `{ "kind": "Step", "span": { "start", "end" }, ... }`.
+- Values: `{ "kind": "Int", "value": 42 }`; heap handles `{ "kind": "Object", "value": <id> }`.
+- Use `serde-wasm-bindgen` for the return object.
 
 ## Build
 
