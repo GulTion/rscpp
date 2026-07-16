@@ -9,7 +9,7 @@ fn fixtures_dir() -> PathBuf {
 
 #[test]
 fn list_cpp_files_sorted() {
-    let mut files = list_cpp_files(&fixtures_dir()).unwrap();
+    let files = list_cpp_files(&fixtures_dir()).unwrap();
     let names: Vec<_> = files
         .iter()
         .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())

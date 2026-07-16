@@ -49,7 +49,6 @@ fn main() -> ExitCode {
             }
         }
     }
-    let _ = &mut args;
 
     let report = match run_corpus(&dir, offset, limit) {
         Ok(r) => r,
