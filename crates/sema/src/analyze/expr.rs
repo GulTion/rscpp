@@ -44,10 +44,13 @@ impl Context {
                     lt
                 } else {
                     // compound assign: numerics, or string += …
+                    // Strip cv/ref so `x /= p` works when `p` is `const int&` / `const <?>&`.
+                    let ls = lt.strip_cv_ref();
+                    let rs = rt.strip_cv_ref();
                     let ok = (lt.is_numeric() && rt.is_numeric())
-                        || matches!(lt.strip_cv_ref(), Ty::Named { name, .. } if name == "string")
-                        || matches!(lt, Ty::Unknown | Ty::Error | Ty::Auto)
-                        || matches!(rt, Ty::Unknown | Ty::Error | Ty::Auto);
+                        || matches!(ls, Ty::Named { name, .. } if name == "string")
+                        || matches!(ls, Ty::Unknown | Ty::Error | Ty::Auto)
+                        || matches!(rs, Ty::Unknown | Ty::Error | Ty::Auto);
                     if !ok {
                         self.err(
                             *span,

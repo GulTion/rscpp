@@ -52,16 +52,13 @@ impl Context {
             "unordered_map",
             "set",
             "unordered_set",
+            "multiset",
+            "unordered_multiset",
             "queue",
             "stack",
             "priority_queue",
             "string",
             "iostream",
-            "size_t",
-            "int64_t",
-            "uint64_t",
-            "int32_t",
-            "uint32_t",
             "numeric_limits",
             // Comparators / containers / streams used unqualified in LeetCode
             "greater",
@@ -76,10 +73,35 @@ impl Context {
             "lock_guard",
             "condition_variable",
             "numbers",
+            // LeetCode node types (defs often only in comments)
+            "Node",
+            "TreeNode",
+            "ListNode",
+            "PolyNode",
+            "UndirectedGraphNode",
+            "TreeLinkNode",
         ] {
             let _ = self.symbols.define(Symbol {
                 name: name.into(),
                 ty: Ty::named(name, vec![]),
+                kind: SymbolKind::Class,
+            });
+        }
+        // Fixed-width / size aliases must resolve to numeric types (not opaque Named).
+        for (name, ty) in [
+            ("int64_t", Ty::LongLong),
+            ("uint64_t", Ty::ULongLong),
+            ("size_t", Ty::ULongLong),
+            ("int32_t", Ty::Int),
+            ("uint32_t", Ty::UInt),
+            ("int16_t", Ty::Int),
+            ("uint16_t", Ty::UInt),
+            ("int8_t", Ty::Char),
+            ("uint8_t", Ty::Char),
+        ] {
+            let _ = self.symbols.define(Symbol {
+                name: name.into(),
+                ty,
                 kind: SymbolKind::Class,
             });
         }
@@ -182,6 +204,11 @@ impl Context {
             ("time", Ty::LongLong),
             ("random_shuffle", Ty::Void),
             ("shuffle", Ty::Void),
+            ("partial_sum", Ty::Unknown),
+            ("stoull", Ty::ULongLong),
+            ("stoul", Ty::ULong),
+            ("bind1st", Ty::Unknown),
+            ("bind2nd", Ty::Unknown),
         ] {
             self.symbols.redefine(Symbol {
                 name: name.into(),

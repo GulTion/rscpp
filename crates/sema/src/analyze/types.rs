@@ -103,6 +103,8 @@ impl Context {
                 let _ = (name, targs, arg_tys);
                 ct.strip_cv_ref().clone()
             }
+            // Functional cast: `int64_t(x)`, `long long(x)`, etc.
+            other if other.is_numeric() => other.clone(),
             Ty::Unknown | Ty::Error | Ty::Auto => Ty::Unknown,
             other => {
                 self.err(span, format!("cannot call value of type `{other}`"));
@@ -136,17 +138,39 @@ impl Context {
                 if let Some(ty) = stl_member(name, args, field) {
                     return ty;
                 }
-                // LeetCode stubs often omit class bodies — seed common node fields.
+                // LeetCode problem types are often only in comments — seed real fields.
                 match (name.as_str(), field) {
-                    ("TreeNode", "val") | ("ListNode", "val") | ("Node", "val") => return Ty::Int,
+                    ("TreeNode", "val") | ("ListNode", "val") | ("Node", "val")
+                    | ("PolyNode", "coefficient") | ("PolyNode", "power")
+                    | ("UndirectedGraphNode", "label") => return Ty::Int,
                     ("TreeNode", "left") | ("TreeNode", "right") => {
                         return Ty::Pointer(Box::new(Ty::named("TreeNode", vec![])));
                     }
-                    ("ListNode", "next") | ("Node", "next") => {
+                    ("ListNode", "next") | ("Node", "next") | ("PolyNode", "next") => {
                         return Ty::Pointer(Box::new(Ty::named(name, vec![])));
                     }
+                    // Doubly-linked / random / parent variants of Node
+                    ("Node", "prev") | ("Node", "child") | ("Node", "parent")
+                    | ("Node", "random") | ("Node", "left") | ("Node", "right")
+                    | ("Node", "topLeft") | ("Node", "topRight")
+                    | ("Node", "bottomLeft") | ("Node", "bottomRight") => {
+                        return Ty::Pointer(Box::new(Ty::named("Node", vec![])));
+                    }
+                    ("Node", "isLeaf") => return Ty::Bool,
                     ("Node", "children") => {
-                        return Ty::named("vector", vec![Ty::Pointer(Box::new(Ty::named("Node", vec![])))]);
+                        return Ty::named(
+                            "vector",
+                            vec![Ty::Pointer(Box::new(Ty::named("Node", vec![])))],
+                        );
+                    }
+                    ("UndirectedGraphNode", "neighbors") => {
+                        return Ty::named(
+                            "vector",
+                            vec![Ty::Pointer(Box::new(Ty::named(
+                                "UndirectedGraphNode",
+                                vec![],
+                            )))],
+                        );
                     }
                     ("pair", "first") => {
                         return args.first().cloned().unwrap_or(Ty::Unknown);
@@ -298,6 +322,18 @@ impl Context {
                     || matches!(rs, Ty::Named { name, .. } if name == "string")
                 {
                     return Ty::named("string", vec![]);
+                }
+                // bitset supports &, |, ^, <<, >>
+                if matches!(op, BitAnd | BitXor | BitOr | Shl | Shr) {
+                    if matches!(ls, Ty::Named { name, .. } if name == "bitset")
+                        || matches!(rs, Ty::Named { name, .. } if name == "bitset")
+                    {
+                        return if matches!(ls, Ty::Named { name, .. } if name == "bitset") {
+                            lt.strip_cv_ref().clone()
+                        } else {
+                            rt.strip_cv_ref().clone()
+                        };
+                    }
                 }
                 // iostream extract/insert: `ssa >> x`, `cout << x`
                 if matches!(op, Shl | Shr) {

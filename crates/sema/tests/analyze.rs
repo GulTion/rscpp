@@ -98,6 +98,62 @@ bool f() {
 }
 
 #[test]
+fn int64_t_is_numeric() {
+    let tu = parse(
+        r#"
+long long f(int h, int n) {
+  if (int64_t(h) * (h + 1) / 6 > n) return 1;
+  return int64_t(h) + n;
+}
+"#,
+    )
+    .unwrap();
+    assert!(analyze(&tu).ok(), "{:?}", analyze(&tu).errors);
+}
+
+#[test]
+fn stl_set_map_string_members() {
+    let tu = parse(
+        r#"
+int f(set<int>& s, unordered_map<int,int>& m, string& t) {
+  if (m.empty()) return 0;
+  auto a = m.cbegin();
+  auto b = s.find(1);
+  auto c = s.upper_bound(2);
+  return t.compare("x") + (int)t.rfind("y") + (int)s.size();
+}
+"#,
+    )
+    .unwrap();
+    assert!(analyze(&tu).ok(), "{:?}", analyze(&tu).errors);
+}
+
+#[test]
+fn leetcode_node_fields_seeded() {
+    let tu = parse(
+        r#"
+Node* f(Node* a) {
+  if (a->isLeaf) return a->topLeft;
+  a->random = a->next;
+  a->parent = a;
+  return a->left;
+}
+"#,
+    )
+    .unwrap();
+    assert!(analyze(&tu).ok(), "{:?}", analyze(&tu).errors);
+}
+
+#[test]
+fn rejects_unknown_node_field() {
+    let tu = parse(r#"int f(Node* a) { return a->notARealField; }"#)
+        .unwrap();
+    let r = analyze(&tu);
+    assert!(!r.ok());
+    assert!(r.errors.iter().any(|e| e.message.contains("no member")));
+}
+
+#[test]
 fn vector_members_and_index() {
     let tu = parse(
         r#"
