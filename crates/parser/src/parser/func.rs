@@ -142,8 +142,13 @@ impl Parser {
         ty: Type,
         first_name: Ident,
     ) -> Result<Decl, ParseError> {
+        // C++: `auto *a = p, *b = q` — pointers belong to each declarator, not the
+        // base type. `parse_type` may have consumed the first `*`; peel it back.
+        let (ty, first_ptrs) = peel_declarator_ptrs(ty);
         let mut declarators = Vec::new();
-        declarators.push(self.parse_init_declarator_after_name(first_name, &ty)?);
+        let mut first = self.parse_init_declarator_after_name(first_name, &ty)?;
+        first.ptrs = first_ptrs;
+        declarators.push(first);
         while self.at_punct(Punct::Comma) {
             self.bump();
             // optional ptrs then name
@@ -246,4 +251,23 @@ fn named_type_ctor(ty: &Type) -> Option<String> {
         }
         _ => None,
     }
+}
+
+/// Move leading `*`/`&` from a parsed type onto the first declarator (C++ grammar).
+fn peel_declarator_ptrs(mut ty: Type) -> (Type, Vec<PtrKind>) {
+    let mut ptrs = Vec::new();
+    loop {
+        match ty {
+            Type::Pointer { inner, .. } => {
+                ptrs.push(PtrKind::Pointer);
+                ty = *inner;
+            }
+            Type::Reference { inner, .. } => {
+                ptrs.push(PtrKind::Reference);
+                ty = *inner;
+            }
+            _ => break,
+        }
+    }
+    (ty, ptrs)
 }

@@ -118,6 +118,65 @@ impl Parser {
         matches!(self.peek_kind(), TokenKind::Eof) && self.pending_gt == 0
     }
 
+    /// After `Type name`, peek at `(…)`: expression args ⇒ variable ctor-init
+    /// (`vector<int> v(n);`), type-ish params ⇒ function (`int f(int x)`).
+    pub(super) fn looks_like_ctor_arg_list(&self) -> bool {
+        if !self.at_punct(Punct::LParen) {
+            return false;
+        }
+        let i = self.pos + 1;
+        let Some(tok) = self.tokens.get(i) else {
+            return false;
+        };
+        match &tok.kind {
+            TokenKind::Punct(Punct::RParen) => false, // `int f();` — function
+            TokenKind::IntLit { .. }
+            | TokenKind::FloatLit { .. }
+            | TokenKind::StringLit(_)
+            | TokenKind::CharLit(_)
+            | TokenKind::Keyword(Keyword::True | Keyword::False | Keyword::Nullptr) => true,
+            TokenKind::Keyword(
+                Keyword::Void
+                    | Keyword::Bool
+                    | Keyword::Char
+                    | Keyword::Int
+                    | Keyword::Long
+                    | Keyword::Short
+                    | Keyword::Float
+                    | Keyword::Double
+                    | Keyword::Unsigned
+                    | Keyword::Signed
+                    | Keyword::Const
+                    | Keyword::Auto
+                    | Keyword::Class
+                    | Keyword::Struct
+                    | Keyword::Typename
+                    | Keyword::Enum,
+            ) => false,
+            TokenKind::Ident(_) => match self.tokens.get(i + 1).map(|t| &t.kind) {
+                // `Foo x` / `Foo*` / `Foo&` / `const Foo` / `Foo<…>` — parameter
+                Some(TokenKind::Ident(_))
+                | Some(TokenKind::Punct(
+                    Punct::Star | Punct::Amp | Punct::AmpAmp | Punct::Lt,
+                ))
+                | Some(TokenKind::Keyword(Keyword::Const)) => false,
+                // `foo)` / `foo,` / `foo(` / `foo+1` — expression ctor arg
+                Some(TokenKind::Punct(Punct::RParen | Punct::Comma | Punct::LParen)) => true,
+                Some(TokenKind::Punct(
+                    Punct::Plus
+                        | Punct::Minus
+                        | Punct::Slash
+                        | Punct::Percent
+                        | Punct::EqEq
+                        | Punct::Dot
+                        | Punct::Arrow,
+                )) => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
     pub(super) fn skip_decl_specs(&mut self) {
         while matches!(
             self.peek_kind(),

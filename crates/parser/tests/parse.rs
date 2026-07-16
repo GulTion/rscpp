@@ -272,3 +272,23 @@ fn call_operator_member() {
     };
     assert!(matches!(c.members[0], Member::Function(_)));
 }
+
+#[test]
+fn lookup_global_ctor_init_with_expr() {
+    let tu = parse("vector<vector<int>> LOOKUP(5 + 1, vector<int>(5 + 1, -1));").unwrap();
+    assert!(matches!(tu.items[0], Item::Decl(_)));
+}
+
+#[test]
+fn local_anon_enum() {
+    let tu = parse(
+        r#"
+int f() {
+  enum { A, B };
+  return A + B;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(tu.items.len(), 1);
+}

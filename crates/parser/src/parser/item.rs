@@ -32,6 +32,10 @@ impl Parser {
         let ty = self.parse_type()?;
         let name = self.parse_ident()?;
         if self.at_punct(Punct::LParen) {
+            // `Type name(args);` ctor-init vs `Type name(params) {` / `;`
+            if self.looks_like_ctor_arg_list() {
+                return Ok(Item::Decl(self.parse_decl_rest(start, ty, name)?));
+            }
             let func = self.parse_function_rest(start, ty, name)?;
             return Ok(Item::Function(func));
         }
@@ -197,7 +201,11 @@ impl Parser {
         }
         let name = self.parse_ident()?;
         if self.at_punct(Punct::LParen) {
-            Ok(Member::Function(self.parse_function_rest(start, ty, name)?))
+            if self.looks_like_ctor_arg_list() {
+                Ok(Member::Field(self.parse_decl_rest(start, ty, name)?))
+            } else {
+                Ok(Member::Function(self.parse_function_rest(start, ty, name)?))
+            }
         } else {
             Ok(Member::Field(self.parse_decl_rest(start, ty, name)?))
         }

@@ -69,6 +69,11 @@ impl Parser {
             });
         }
 
+        // Anonymous / local enum: `enum { A, B };` → introduce int constants.
+        if self.at_keyword(Keyword::Enum) {
+            return self.parse_local_enum_as_ints();
+        }
+
         if self.at_keyword(Keyword::Using) {
             let start = self.bump().span.start;
             let name = self.parse_ident()?;
@@ -420,5 +425,62 @@ impl Parser {
             return Err(self.err("structured binding needs at least one name"));
         }
         Ok(names)
+    }
+
+    /// `enum { A, B = 1 };` inside a function — expose enumerators as `int` locals.
+    fn parse_local_enum_as_ints(&mut self) -> Result<Stmt, ParseError> {
+        let start = self.expect_keyword(Keyword::Enum)?.span.start;
+        if matches!(self.peek_kind(), TokenKind::Ident(_)) {
+            let _ = self.bump();
+        }
+        let mut names = Vec::new();
+        if self.at_punct(Punct::LBrace) {
+            self.bump();
+            while !self.at_punct(Punct::RBrace) && !self.at_eof() {
+                if matches!(self.peek_kind(), TokenKind::Ident(_)) {
+                    let name = self.parse_ident()?;
+                    if self.at_punct(Punct::Eq) {
+                        self.bump();
+                        let _ = self.parse_expr_bp(2)?;
+                    }
+                    names.push(name);
+                }
+                if self.at_punct(Punct::Comma) {
+                    self.bump();
+                    continue;
+                }
+                break;
+            }
+            self.expect_punct(Punct::RBrace)?;
+        }
+        let end = self.expect_punct(Punct::Semi)?.span.end;
+        let span = Span::new(start, end);
+        if names.is_empty() {
+            return Ok(Stmt::Block(Block {
+                stmts: Vec::new(),
+                span,
+            }));
+        }
+        let ty = Type::Builtin {
+            kind: BuiltinType::Int,
+            span,
+        };
+        let declarators = names
+            .into_iter()
+            .map(|name| {
+                let nspan = name.span;
+                InitDeclarator {
+                    name,
+                    ptrs: Vec::new(),
+                    init: None,
+                    span: nspan,
+                }
+            })
+            .collect();
+        Ok(Stmt::Decl(Decl {
+            ty,
+            declarators,
+            span,
+        }))
     }
 }

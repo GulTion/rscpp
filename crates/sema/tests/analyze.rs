@@ -208,6 +208,25 @@ fn still_rejects_undeclared_free_helper() {
 }
 
 #[test]
+fn string_find_arity_map_at_range_and_auto_ptrs() {
+    let tu = parse(
+        r#"
+int f(string& s, unordered_map<int, vector<int>>& G, Node* head) {
+  auto pos = -1;
+  while ((pos = s.find("x", pos + 1)) != string::npos) {}
+  for (const auto& j : G.at(0)) { (void)j; }
+  for (auto *curr = head, *copy = head; curr; curr = curr->next) {
+    copy = copy->next;
+  }
+  return 0;
+}
+"#,
+    )
+    .unwrap();
+    assert!(analyze(&tu).ok(), "{:?}", analyze(&tu).errors);
+}
+
+#[test]
 fn vector_members_and_index() {
     let tu = parse(
         r#"

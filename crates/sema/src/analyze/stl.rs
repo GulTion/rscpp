@@ -63,8 +63,9 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
                 params: vec![],
             })
         },
-        ("vector", "clear") | ("map", "clear") | ("string", "clear")
-        | ("deque", "clear") | ("set", "clear") | ("unordered_set", "clear") => Some(Ty::Function {
+        ("vector", "clear") | ("map", "clear") | ("unordered_map", "clear") | ("string", "clear")
+        | ("deque", "clear") | ("set", "clear") | ("unordered_set", "clear")
+        | ("multiset", "clear") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![],
         }),
@@ -101,12 +102,6 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             ret: Box::new(Ty::Unknown),
             params: vec![],
         }),
-        ("string", "find") | ("string", "rfind") | ("string", "find_first_not_of")
-        | ("string", "find_first_of") | ("string", "find_last_of")
-        | ("string", "find_last_not_of") => Some(Ty::Function {
-            ret: Box::new(Ty::UInt),
-            params: vec![Ty::Unknown],
-        }),
         ("string", "compare") => Some(Ty::Function {
             ret: Box::new(Ty::Int),
             params: vec![], // overloads
@@ -120,9 +115,27 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             params: vec![],
         }),
         ("string", "npos") => Some(Ty::UInt),
-        ("string", "at") | ("vector", "at") | ("unordered_map", "at") | ("map", "at")
-        | ("deque", "at") | ("array", "at") => {
+        ("string", "starts_with") | ("string", "ends_with") | ("string", "contains") => {
+            Some(Ty::Function {
+                ret: Box::new(Ty::Bool),
+                params: vec![], // 1+ overloads
+            })
+        }
+        ("string", "find") | ("string", "rfind") | ("string", "find_first_not_of")
+        | ("string", "find_first_of") | ("string", "find_last_of")
+        | ("string", "find_last_not_of") => Some(Ty::Function {
+            ret: Box::new(Ty::UInt),
+            params: vec![], // 1–3 arg overloads
+        }),
+        ("string", "at") | ("vector", "at") | ("deque", "at") | ("array", "at") => {
             let elem = args.first().cloned().unwrap_or(Ty::Unknown);
+            Some(Ty::Function {
+                ret: Box::new(elem),
+                params: vec![Ty::Unknown],
+            })
+        },
+        ("map", "at") | ("unordered_map", "at") => {
+            let elem = args.get(1).cloned().unwrap_or(Ty::Unknown);
             Some(Ty::Function {
                 ret: Box::new(elem),
                 params: vec![Ty::Unknown],
@@ -138,12 +151,13 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         ("map", "insert") | ("unordered_map", "insert") | ("set", "insert")
         | ("unordered_set", "insert") | ("multiset", "insert") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),
-            params: vec![Ty::Unknown],
+            params: vec![], // overloads
         }),
         ("map", "emplace") | ("unordered_map", "emplace") | ("set", "emplace")
         | ("unordered_set", "emplace") | ("multiset", "emplace")
         | ("stack", "emplace") | ("queue", "emplace")
-        | ("priority_queue", "emplace") => Some(Ty::Function {
+        | ("priority_queue", "emplace")
+        | ("vector", "emplace") | ("deque", "emplace") | ("list", "emplace") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),
             params: vec![], // variadic
         }),
