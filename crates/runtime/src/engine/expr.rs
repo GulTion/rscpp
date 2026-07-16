@@ -507,6 +507,7 @@ impl Engine {
                 self.emit_alloc(id, name, *span);
                 Ok((Value::Ptr(Address::Heap(id)), None))
             }
+            Expr::Sizeof { .. } => Ok((Value::Int(8), None)),
         }
     }
 

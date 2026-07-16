@@ -457,6 +457,10 @@ fn compile_expr(c: &mut Compiler, expr: &Expr) -> Result<()> {
         Expr::New { span, .. } => {
             return Err(VmError::at(*span, "new not supported in VM yet"));
         }
+        Expr::Sizeof { span, .. } => {
+            let i = c.chunk.add_const(Value::Int(8));
+            c.emit(Op::LoadConst(i), *span);
+        }
     }
     Ok(())
 }

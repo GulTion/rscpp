@@ -24,7 +24,63 @@ impl Parser {
             }
         }
         self.expect_punct(Punct::RParen)?;
-        let body = self.parse_block()?;
+        // optional trailing `const` / `override` / `final` / `noexcept`
+        loop {
+            if self.at_keyword(Keyword::Const) {
+                self.bump();
+                continue;
+            }
+            if let TokenKind::Ident(name) = self.peek_kind() {
+                if name == "override" || name == "final" {
+                    self.bump();
+                    continue;
+                }
+                if name == "noexcept" {
+                    self.bump();
+                    if self.at_punct(Punct::LParen) {
+                        self.bump();
+                        let mut depth = 1i32;
+                        while depth > 0 && !self.at_eof() {
+                            if self.at_punct(Punct::LParen) {
+                                depth += 1;
+                            } else if self.at_punct(Punct::RParen) {
+                                depth -= 1;
+                            }
+                            self.bump();
+                        }
+                    }
+                    continue;
+                }
+            }
+            break;
+        }
+        // Optional ctor-initializer: `: mem(args), ...`
+        if self.at_punct(Punct::Colon) {
+            self.bump();
+            while !self.at_eof() && !self.at_punct(Punct::LBrace) && !self.at_punct(Punct::Semi) {
+                self.bump();
+            }
+        }
+        let body = if self.at_punct(Punct::LBrace) {
+            self.parse_block()?
+        } else if self.at_punct(Punct::Eq) {
+            // `= default` / `= delete`
+            self.bump();
+            let _ = self.bump();
+            let end = self.expect_punct(Punct::Semi)?.span.end;
+            Block {
+                stmts: Vec::new(),
+                span: Span::new(start, end),
+            }
+        } else if self.at_punct(Punct::Semi) {
+            let t = self.bump();
+            Block {
+                stmts: Vec::new(),
+                span: t.span,
+            }
+        } else {
+            return Err(self.err("expected function body"));
+        };
         let end = body.span.end;
         Ok(FunctionDef {
             return_type,

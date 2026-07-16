@@ -39,6 +39,8 @@ pub enum Member {
     Access(AccessSpec),
     Function(FunctionDef),
     Field(Decl),
+    /// Nested `struct` / `class` (LeetCode helpers).
+    Class(ClassDef),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,6 +251,12 @@ pub enum Expr {
         args: Vec<Expr>,
         span: Span,
     },
+    /// `sizeof(T)` / `sizeof(expr)` / `sizeof expr`
+    Sizeof {
+        ty: Option<Type>,
+        expr: Option<Box<Expr>>,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -390,7 +398,8 @@ impl Expr {
             | Self::InitList { span, .. }
             | Self::Conditional { span, .. }
             | Self::Lambda { span, .. }
-            | Self::New { span, .. } => *span,
+            | Self::New { span, .. }
+            | Self::Sizeof { span, .. } => *span,
             Self::Name(p) => p.span,
         }
     }

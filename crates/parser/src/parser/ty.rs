@@ -6,6 +6,11 @@ use rscpp_lexer::{Keyword, Punct, Token, TokenKind};
 impl Parser {
 
     pub(super) fn parse_type(&mut self) -> Result<Type, ParseError> {
+        self.parse_type_ext(false)
+    }
+
+    /// When `allow_function_types`, accept `T(Args)` (needed inside `function<...>`).
+    pub(super) fn parse_type_ext(&mut self, allow_function_types: bool) -> Result<Type, ParseError> {
         let start = self.peek_span().start;
         let mut is_const = false;
         if self.at_keyword(Keyword::Const) {
@@ -22,6 +27,25 @@ impl Parser {
         }
 
         ty = self.apply_ptr_suffixes(ty)?;
+
+        // Function type sugar in template args only: `pair<int,int>(TreeNode*)`
+        // (must not run for ctors like `AllOne()`).
+        if allow_function_types {
+            while self.at_punct(Punct::LParen) {
+                self.bump();
+                if !self.at_punct(Punct::RParen) {
+                    loop {
+                        let _ = self.parse_type_ext(true)?;
+                        if self.at_punct(Punct::Comma) {
+                            self.bump();
+                            continue;
+                        }
+                        break;
+                    }
+                }
+                self.expect_punct(Punct::RParen)?;
+            }
+        }
 
         if is_const {
             let span = Span::new(start, ty.span().end);
@@ -58,7 +82,7 @@ impl Parser {
             self.bump();
             if !self.at_punct(Punct::Gt) && !self.at_punct(Punct::GtGt) {
                 loop {
-                    args.push(self.parse_type()?);
+                    args.push(self.parse_type_ext(true)?);
                     if self.at_punct(Punct::Comma) {
                         self.bump();
                         continue;

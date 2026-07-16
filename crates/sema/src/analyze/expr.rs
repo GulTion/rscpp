@@ -157,6 +157,15 @@ impl Context {
                 let t = self.resolve_ast_type(ty);
                 Ty::Pointer(Box::new(t))
             }
+            Expr::Sizeof { ty, expr, .. } => {
+                if let Some(t) = ty {
+                    let _ = self.resolve_ast_type(t);
+                }
+                if let Some(e) = expr {
+                    let _ = self.check_expr(e);
+                }
+                Ty::UInt
+            }
         }
     }
 }

@@ -77,9 +77,43 @@ impl Parser {
             self.expect_punct(Punct::Colon)?;
             return Ok(Member::Access(kw));
         }
+        if self.at_keyword(Keyword::Class) || self.at_keyword(Keyword::Struct) {
+            return Ok(Member::Class(self.parse_class()?));
+        }
+        // Destructor: `~Name()`
+        if self.at_punct(Punct::Tilde) {
+            let start = self.bump().span.start;
+            let name = self.parse_ident()?;
+            let mut dname = name.clone();
+            dname.name = format!("~{}", name.name);
+            return Ok(Member::Function(self.parse_function_rest(
+                start,
+                Type::Builtin {
+                    kind: BuiltinType::Void,
+                    span: name.span,
+                },
+                dname,
+            )?));
+        }
         let start = self.peek_span().start;
         self.skip_decl_specs();
         let ty = self.parse_type()?;
+        // Constructor: `AllOne()` / `AllOne() { ... }` — type name is the ctor name.
+        if self.at_punct(Punct::LParen) {
+            if let Type::Named { path, args, .. } = &ty {
+                if args.is_empty() && path.segments.len() == 1 {
+                    let name = path.segments[0].clone();
+                    return Ok(Member::Function(self.parse_function_rest(
+                        start,
+                        Type::Builtin {
+                            kind: BuiltinType::Void,
+                            span: name.span,
+                        },
+                        name,
+                    )?));
+                }
+            }
+        }
         let name = self.parse_ident()?;
         if self.at_punct(Punct::LParen) {
             Ok(Member::Function(self.parse_function_rest(start, ty, name)?))

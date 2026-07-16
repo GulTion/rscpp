@@ -19,6 +19,13 @@ impl Parser {
     }
 
     pub(super) fn parse_stmt(&mut self) -> Result<Stmt, ParseError> {
+        if self.at_punct(Punct::Semi) {
+            let t = self.bump();
+            return Ok(Stmt::Block(Block {
+                stmts: Vec::new(),
+                span: t.span,
+            }));
+        }
         if self.at_punct(Punct::LBrace) {
             return Ok(Stmt::Block(self.parse_block()?));
         }
@@ -124,17 +131,118 @@ impl Parser {
                 | Keyword::Auto
                 | Keyword::WcharT,
             ) => true,
-            TokenKind::Ident(_) => {
-                // Heuristic: Ident followed by Ident / * / & / < → type
-                let next = self.tokens.get(self.pos + 1).map(|t| &t.kind);
-                matches!(
-                    next,
-                    Some(TokenKind::Ident(_))
-                        | Some(TokenKind::Punct(Punct::Star | Punct::Amp | Punct::Lt | Punct::Scope))
-                )
-            }
+            TokenKind::Ident(_) => self.looks_like_decl_from(self.pos),
             _ => false,
         }
+    }
+
+    /// `std::vector<int> x` yes; `std::sort(...)` / `a < b` no.
+    pub(super) fn looks_like_decl_from(&self, mut i: usize) -> bool {
+        if !matches!(
+            self.tokens.get(i).map(|t| &t.kind),
+            Some(TokenKind::Ident(_))
+        ) {
+            return false;
+        }
+        i += 1;
+        while matches!(
+            self.tokens.get(i).map(|t| &t.kind),
+            Some(TokenKind::Punct(Punct::Scope))
+        ) {
+            i += 1;
+            if !matches!(
+                self.tokens.get(i).map(|t| &t.kind),
+                Some(TokenKind::Ident(_))
+            ) {
+                return false;
+            }
+            i += 1;
+        }
+        if matches!(
+            self.tokens.get(i).map(|t| &t.kind),
+            Some(TokenKind::Punct(Punct::Lt))
+        ) {
+            if !self.looks_like_template_args_at(i) {
+                return false;
+            }
+            i = match self.skip_template_args(i) {
+                Some(n) => n,
+                None => return false,
+            };
+        }
+        matches!(
+            self.tokens.get(i).map(|t| &t.kind),
+            Some(TokenKind::Ident(_))
+                | Some(TokenKind::Punct(Punct::Star | Punct::Amp | Punct::AmpAmp))
+        )
+    }
+
+    pub(super) fn looks_like_template_args_at(&self, lt_pos: usize) -> bool {
+        let Some(t) = self.tokens.get(lt_pos + 1) else {
+            return false;
+        };
+        match &t.kind {
+            TokenKind::Keyword(
+                Keyword::Void
+                    | Keyword::Bool
+                    | Keyword::Char
+                    | Keyword::Int
+                    | Keyword::Long
+                    | Keyword::Short
+                    | Keyword::Float
+                    | Keyword::Double
+                    | Keyword::Unsigned
+                    | Keyword::Signed
+                    | Keyword::Const
+                    | Keyword::Auto,
+            ) => true,
+            TokenKind::Ident(_) => matches!(
+                self.tokens.get(lt_pos + 2).map(|t| &t.kind),
+                Some(
+                    TokenKind::Punct(
+                        Punct::Gt
+                            | Punct::GtGt
+                            | Punct::Comma
+                            | Punct::Scope
+                            | Punct::Lt
+                            | Punct::Star
+                            | Punct::Amp
+                    ) | TokenKind::Keyword(_)
+                )
+            ),
+            _ => false,
+        }
+    }
+
+    /// Index after the matching `>` / split `>>` (not a token index into pending_gt).
+    pub(super) fn skip_template_args(&self, lt_pos: usize) -> Option<usize> {
+        let mut i = lt_pos + 1;
+        let mut depth = 1i32;
+        while let Some(t) = self.tokens.get(i) {
+            match &t.kind {
+                TokenKind::Punct(Punct::Lt) => depth += 1,
+                TokenKind::Punct(Punct::Gt) => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(i + 1);
+                    }
+                }
+                TokenKind::Punct(Punct::GtGt) => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(i + 1); // one `>` consumed conceptually; rest is shift-ish
+                    }
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(i + 1);
+                    }
+                }
+                TokenKind::Eof => return None,
+                _ => {}
+            }
+            i += 1;
+        }
+        None
     }
 
     pub(super) fn parse_if(&mut self) -> Result<Stmt, ParseError> {

@@ -107,6 +107,14 @@ impl Context {
                         kind: SymbolKind::Func,
                     });
                 }
+                Member::Class(nested) => {
+                    let _ = self.symbols.define(Symbol {
+                        name: nested.name.name.clone(),
+                        ty: Ty::named(&nested.name.name, vec![]),
+                        kind: SymbolKind::Class,
+                    });
+                    self.register_class_members(nested);
+                }
             }
         }
     }

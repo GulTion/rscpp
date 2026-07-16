@@ -81,6 +81,21 @@ impl Parser {
                     continue;
                 }
             }
+            // `vector<int>{1,2}` / `T{args}` braced temporary
+            if matches!(lhs, Expr::Name(_)) && self.at_punct(Punct::LBrace) {
+                let init = self.parse_init_list()?;
+                let span = Span::new(lhs.span().start, init.span().end);
+                let args = match init {
+                    Expr::InitList { elems, .. } => elems,
+                    other => vec![other],
+                };
+                lhs = Expr::Call {
+                    callee: Box::new(lhs),
+                    args,
+                    span,
+                };
+                continue;
+            }
             // Postfix
             if self.at_punct(Punct::LParen) {
                 lhs = self.parse_call(lhs)?;
@@ -284,6 +299,21 @@ impl Parser {
                 let t = self.bump();
                 Ok(Expr::Nullptr { span: t.span })
             }
+            TokenKind::Keyword(Keyword::Sizeof) => self.parse_sizeof(),
+            TokenKind::Keyword(
+                Keyword::Void
+                    | Keyword::Bool
+                    | Keyword::Char
+                    | Keyword::Short
+                    | Keyword::Int
+                    | Keyword::Long
+                    | Keyword::Float
+                    | Keyword::Double
+                    | Keyword::Unsigned
+                    | Keyword::Signed
+                    | Keyword::Auto
+                    | Keyword::WcharT,
+            ) if self.looks_like_functional_cast() => self.parse_functional_cast(),
             TokenKind::Ident(_) => Ok(Expr::Name(self.parse_path()?)),
             TokenKind::Keyword(Keyword::StaticCast | Keyword::ReinterpretCast) => {
                 let start = self.bump().span.start;
@@ -465,6 +495,98 @@ impl Parser {
         })
     }
 
+    pub(super) fn looks_like_functional_cast(&self) -> bool {
+        let mut i = self.pos;
+        let start = i;
+        loop {
+            match self.tokens.get(i).map(|t| &t.kind) {
+                Some(TokenKind::Keyword(
+                    Keyword::Void
+                        | Keyword::Bool
+                        | Keyword::Char
+                        | Keyword::Short
+                        | Keyword::Int
+                        | Keyword::Long
+                        | Keyword::Float
+                        | Keyword::Double
+                        | Keyword::Unsigned
+                        | Keyword::Signed
+                        | Keyword::Auto
+                        | Keyword::WcharT,
+                )) => i += 1,
+                Some(TokenKind::Punct(Punct::LParen)) if i > start => return true,
+                _ => return false,
+            }
+        }
+    }
+
+    pub(super) fn parse_functional_cast(&mut self) -> Result<Expr, ParseError> {
+        let ty = self.parse_builtin_type()?;
+        self.expect_punct(Punct::LParen)?;
+        let expr = self.parse_expr_bp(2)?;
+        let end = self.expect_punct(Punct::RParen)?.span.end;
+        Ok(Expr::Cast {
+            span: Span::new(ty.span().start, end),
+            ty,
+            expr: Box::new(expr),
+        })
+    }
+
+    pub(super) fn parse_sizeof(&mut self) -> Result<Expr, ParseError> {
+        let start = self.expect_keyword(Keyword::Sizeof)?.span.start;
+        if self.at_punct(Punct::LParen) {
+            self.bump();
+            // `sizeof(int)` / `sizeof(int*)` vs `sizeof(x)`
+            let is_type = match self.peek_kind() {
+                TokenKind::Keyword(
+                    Keyword::Void
+                        | Keyword::Bool
+                        | Keyword::Char
+                        | Keyword::Short
+                        | Keyword::Int
+                        | Keyword::Long
+                        | Keyword::Float
+                        | Keyword::Double
+                        | Keyword::Unsigned
+                        | Keyword::Signed
+                        | Keyword::Const
+                        | Keyword::Auto
+                        | Keyword::WcharT,
+                ) => true,
+                TokenKind::Ident(_) => matches!(
+                    self.tokens.get(self.pos + 1).map(|t| &t.kind),
+                    Some(TokenKind::Punct(
+                        Punct::Star | Punct::Amp | Punct::Lt | Punct::Scope
+                    ))
+                ),
+                _ => false,
+            };
+            if is_type {
+                let ty = self.parse_type()?;
+                let end = self.expect_punct(Punct::RParen)?.span.end;
+                return Ok(Expr::Sizeof {
+                    ty: Some(ty),
+                    expr: None,
+                    span: Span::new(start, end),
+                });
+            }
+            let expr = self.parse_expr()?;
+            let end = self.expect_punct(Punct::RParen)?.span.end;
+            return Ok(Expr::Sizeof {
+                ty: None,
+                expr: Some(Box::new(expr)),
+                span: Span::new(start, end),
+            });
+        }
+        let expr = self.parse_expr_bp(prefix_bp())?;
+        let end = expr.span().end;
+        Ok(Expr::Sizeof {
+            ty: None,
+            expr: Some(Box::new(expr)),
+            span: Span::new(start, end),
+        })
+    }
+
     pub(super) fn infix_bp(&self) -> Option<(TokenKind, u8, u8)> {
         let kind = self.peek_kind().clone();
         let (l, r) = match &kind {
@@ -503,40 +625,7 @@ impl Parser {
 
     /// `name<Type, ...>` vs `a < b` comparison.
     pub(super) fn looks_like_template_args(&self) -> bool {
-        let Some(t) = self.tokens.get(self.pos + 1) else {
-            return false;
-        };
-        match &t.kind {
-            TokenKind::Keyword(
-                Keyword::Void
-                    | Keyword::Bool
-                    | Keyword::Char
-                    | Keyword::Int
-                    | Keyword::Long
-                    | Keyword::Short
-                    | Keyword::Float
-                    | Keyword::Double
-                    | Keyword::Unsigned
-                    | Keyword::Signed
-                    | Keyword::Const
-                    | Keyword::Auto,
-            ) => true,
-            TokenKind::Ident(_) => matches!(
-                self.tokens.get(self.pos + 2).map(|t| &t.kind),
-                Some(
-                    TokenKind::Punct(
-                        Punct::Gt
-                            | Punct::GtGt
-                            | Punct::Comma
-                            | Punct::Scope
-                            | Punct::Lt
-                            | Punct::Star
-                            | Punct::Amp
-                    ) | TokenKind::Keyword(_)
-                )
-            ),
-            _ => false,
-        }
+        self.looks_like_template_args_at(self.pos)
     }
 
     pub(super) fn parse_lambda(&mut self) -> Result<Expr, ParseError> {

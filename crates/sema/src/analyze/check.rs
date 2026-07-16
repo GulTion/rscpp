@@ -11,15 +11,21 @@ impl Context {
             Item::UsingNamespace { .. } | Item::Decl(_) => {}
             Item::Function(f) => self.check_function(f, None),
             Item::Class(c) => {
-                self.current_class = Some(c.name.name.clone());
-                for m in &c.members {
-                    if let Member::Function(f) = m {
-                        self.check_function(f, Some(&c.name.name));
-                    }
-                }
-                self.current_class = None;
+                self.check_class(c);
             }
         }
+    }
+
+    pub(super) fn check_class(&mut self, c: &ClassDef) {
+        let prev = self.current_class.replace(c.name.name.clone());
+        for m in &c.members {
+            match m {
+                Member::Function(f) => self.check_function(f, Some(&c.name.name)),
+                Member::Class(nested) => self.check_class(nested),
+                Member::Access(_) | Member::Field(_) => {}
+            }
+        }
+        self.current_class = prev;
     }
 
     pub(super) fn check_function(&mut self, f: &FunctionDef, class: Option<&str>) {
