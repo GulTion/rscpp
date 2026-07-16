@@ -116,7 +116,7 @@ impl Context {
                 let it = self.check_expr(iter);
                 let mut t = self.resolve_ast_type(ty);
                 if matches!(t.strip_cv_ref(), Ty::Auto) {
-                    let elem = self.elem_type(&it, iter.span());
+                    let elem = self.range_elem_type(&it, iter.span());
                     // `for (auto [a,b] : m)` — names.len()>1 means structured binding
                     if names.len() > 1 {
                         let tys = destructure_elem_tys(&elem, names.len());

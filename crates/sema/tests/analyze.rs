@@ -55,6 +55,49 @@ int main() {
 }
 
 #[test]
+fn set_range_for_ok_but_no_subscript() {
+    let tu = parse(
+        r#"
+int sum(unordered_set<int>& s) {
+  int t = 0;
+  for (const auto& x : s) { t += x; }
+  return t;
+}
+"#,
+    )
+    .unwrap();
+    assert!(analyze(&tu).ok(), "{:?}", analyze(&tu).errors);
+
+    let bad = parse(
+        r#"
+int f(set<int>& s) { return s[0]; }
+"#,
+    )
+    .unwrap();
+    let r = analyze(&bad);
+    assert!(!r.ok());
+    assert!(r
+        .errors
+        .iter()
+        .any(|e| e.message.contains("does not provide operator[]")));
+}
+
+#[test]
+fn bitset_subscript_ok() {
+    let tu = parse(
+        r#"
+bool f() {
+  bitset<8> b;
+  b[0] = true;
+  return b[0];
+}
+"#,
+    )
+    .unwrap();
+    assert!(analyze(&tu).ok(), "{:?}", analyze(&tu).errors);
+}
+
+#[test]
 fn vector_members_and_index() {
     let tu = parse(
         r#"

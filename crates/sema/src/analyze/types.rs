@@ -168,6 +168,7 @@ impl Context {
         }
     }
 
+    /// Element type for `a[i]` / `operator[]`. Sets are intentionally rejected.
     pub(super) fn elem_type(&mut self, base: &Ty, span: Span) -> Ty {
         match base.strip_cv_ref() {
             Ty::Named { name, args } if name == "vector" || name == "string" || name == "deque" => {
@@ -186,11 +187,52 @@ impl Context {
                     Ty::Unknown
                 }
             }
+            Ty::Named { name, .. } if name == "bitset" => Ty::Bool,
+            Ty::Named { name, .. }
+                if name == "set"
+                    || name == "unordered_set"
+                    || name == "multiset"
+                    || name == "unordered_multiset" =>
+            {
+                self.err(
+                    span,
+                    format!("type `{name}` does not provide operator[]"),
+                );
+                Ty::Error
+            }
             Ty::Pointer(inner) => *inner.clone(),
             Ty::Unknown | Ty::Auto => Ty::Unknown,
             Ty::Error => Ty::Error,
             other => {
                 self.err(span, format!("type `{other}` is not subscriptable"));
+                Ty::Error
+            }
+        }
+    }
+
+    /// Element type for range-for `for (auto& x : c)`. Includes set/unordered_set.
+    pub(super) fn range_elem_type(&mut self, base: &Ty, span: Span) -> Ty {
+        match base.strip_cv_ref() {
+            Ty::Named { name, args } if name == "vector" || name == "deque" || name == "list" => {
+                args.first().cloned().unwrap_or(Ty::Unknown)
+            }
+            Ty::Named { name, .. } if name == "string" => Ty::Char,
+            Ty::Named { name, args }
+                if name == "set"
+                    || name == "unordered_set"
+                    || name == "multiset"
+                    || name == "unordered_multiset" =>
+            {
+                args.first().cloned().unwrap_or(Ty::Unknown)
+            }
+            Ty::Named { name, args } if name == "map" || name == "unordered_map" => {
+                // range-for yields `pair<K,V>`
+                Ty::named("pair", args.clone())
+            }
+            Ty::Named { .. } | Ty::Unknown | Ty::Auto => Ty::Unknown,
+            Ty::Error => Ty::Error,
+            other => {
+                self.err(span, format!("type `{other}` is not a range"));
                 Ty::Error
             }
         }
