@@ -69,9 +69,19 @@ impl Context {
                     if *arrow {
                         match bt.strip_cv_ref() {
                             Ty::Pointer(inner) => bt = *inner.clone(),
+                            Ty::Named { name, args }
+                                if name == "shared_ptr"
+                                    || name == "unique_ptr"
+                                    || name == "optional" =>
+                            {
+                                bt = args.first().cloned().unwrap_or(Ty::Unknown);
+                            }
                             Ty::Error | Ty::Unknown | Ty::Auto => {}
                             other => {
-                                self.err(*mspan, format!("base of `->` has type `{other}`, not a pointer"));
+                                self.err(
+                                    *mspan,
+                                    format!("base of `->` has type `{other}`, not a pointer"),
+                                );
                             }
                         }
                     }
@@ -108,9 +118,17 @@ impl Context {
                 if *arrow {
                     match bt.strip_cv_ref() {
                         Ty::Pointer(inner) => bt = *inner.clone(),
+                        Ty::Named { name, args }
+                            if name == "shared_ptr" || name == "unique_ptr" || name == "optional" =>
+                        {
+                            bt = args.first().cloned().unwrap_or(Ty::Unknown);
+                        }
                         Ty::Error | Ty::Unknown | Ty::Auto => {}
                         other => {
-                            self.err(*span, format!("base of `->` has type `{other}`, not a pointer"));
+                            self.err(
+                                *span,
+                                format!("base of `->` has type `{other}`, not a pointer"),
+                            );
                         }
                     }
                 }

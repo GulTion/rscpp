@@ -117,24 +117,54 @@ impl Context {
                 let mut t = self.resolve_ast_type(ty);
                 if matches!(t.strip_cv_ref(), Ty::Auto) {
                     let elem = self.elem_type(&it, iter.span());
-                    t = deduce_auto(&t, &elem);
-                }
-                for name in names {
-                    let _ = self.symbols.define(Symbol {
-                        name: name.name.clone(),
-                        ty: t.clone(),
-                        kind: SymbolKind::Var,
-                    });
+                    // `for (auto [a,b] : m)` — names.len()>1 means structured binding
+                    if names.len() > 1 {
+                        let tys = destructure_elem_tys(&elem, names.len());
+                        for (name, ty) in names.iter().zip(tys) {
+                            let _ = self.symbols.define(Symbol {
+                                name: name.name.clone(),
+                                ty,
+                                kind: SymbolKind::Var,
+                            });
+                        }
+                    } else {
+                        t = deduce_auto(&t, &elem);
+                        for name in names {
+                            let _ = self.symbols.define(Symbol {
+                                name: name.name.clone(),
+                                ty: t.clone(),
+                                kind: SymbolKind::Var,
+                            });
+                        }
+                    }
+                } else if names.len() > 1 {
+                    let tys = destructure_elem_tys(&t, names.len());
+                    for (name, ty) in names.iter().zip(tys) {
+                        let _ = self.symbols.define(Symbol {
+                            name: name.name.clone(),
+                            ty,
+                            kind: SymbolKind::Var,
+                        });
+                    }
+                } else {
+                    for name in names {
+                        let _ = self.symbols.define(Symbol {
+                            name: name.name.clone(),
+                            ty: t.clone(),
+                            kind: SymbolKind::Var,
+                        });
+                    }
                 }
                 self.check_stmt(body);
                 self.symbols.pop();
             }
             Stmt::Destructure { names, init, .. } => {
-                let _ = self.check_expr(init);
-                for name in names {
+                let it = self.check_expr(init);
+                let tys = destructure_elem_tys(&it, names.len());
+                for (name, ty) in names.iter().zip(tys) {
                     let _ = self.symbols.define(Symbol {
                         name: name.name.clone(),
-                        ty: Ty::Auto,
+                        ty,
                         kind: SymbolKind::Var,
                     });
                 }
@@ -203,6 +233,26 @@ fn needs_auto_deduce(ty: &Ty) -> bool {
         Ty::Pointer(inner) | Ty::Reference(inner) | Ty::Const(inner) => needs_auto_deduce(inner),
         _ => false,
     }
+}
+
+/// Element types for `auto [a,b,c] = …` / `for (auto& [k,v] : m)`.
+fn destructure_elem_tys(init: &Ty, n: usize) -> Vec<Ty> {
+    let t = init.strip_cv_ref();
+    let mut out = match t {
+        Ty::Named { name, args } if name == "tuple" || name == "pair" => args.clone(),
+        Ty::Named { name, args } if name == "map" || name == "unordered_map" => {
+            // map iteration yields pair<const K, V>
+            let k = args.first().cloned().unwrap_or(Ty::Unknown);
+            let v = args.get(1).cloned().unwrap_or(Ty::Unknown);
+            vec![k, v]
+        }
+        _ => Vec::new(),
+    };
+    while out.len() < n {
+        out.push(Ty::Unknown);
+    }
+    out.truncate(n);
+    out
 }
 
 fn deduce_auto(declared: &Ty, init: &Ty) -> Ty {

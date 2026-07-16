@@ -119,6 +119,15 @@ impl Context {
         }
         match base {
             Ty::Named { name, args } => {
+                // Expand type aliases stored under Class symbols.
+                if let Some(sym) = self.symbols.lookup(name) {
+                    if matches!(sym.kind, SymbolKind::Class) {
+                        let aliased = sym.ty.clone();
+                        if !matches!(aliased.strip_cv_ref(), Ty::Named { name: n, .. } if n == name) {
+                            return self.lookup_member(&aliased, field, span);
+                        }
+                    }
+                }
                 // User class field/method
                 let q = format!("{name}::{field}");
                 if let Some(sym) = self.symbols.lookup(&q) {
@@ -129,12 +138,21 @@ impl Context {
                 }
                 // LeetCode stubs often omit class bodies — seed common node fields.
                 match (name.as_str(), field) {
-                    ("TreeNode", "val") | ("ListNode", "val") => return Ty::Int,
+                    ("TreeNode", "val") | ("ListNode", "val") | ("Node", "val") => return Ty::Int,
                     ("TreeNode", "left") | ("TreeNode", "right") => {
                         return Ty::Pointer(Box::new(Ty::named("TreeNode", vec![])));
                     }
-                    ("ListNode", "next") => {
-                        return Ty::Pointer(Box::new(Ty::named("ListNode", vec![])));
+                    ("ListNode", "next") | ("Node", "next") => {
+                        return Ty::Pointer(Box::new(Ty::named(name, vec![])));
+                    }
+                    ("Node", "children") => {
+                        return Ty::named("vector", vec![Ty::Pointer(Box::new(Ty::named("Node", vec![])))]);
+                    }
+                    ("pair", "first") => {
+                        return args.first().cloned().unwrap_or(Ty::Unknown);
+                    }
+                    ("pair", "second") => {
+                        return args.get(1).cloned().unwrap_or(Ty::Unknown);
                     }
                     _ => {}
                 }
@@ -196,7 +214,8 @@ impl Context {
             }
             UnaryOp::Deref => match t.strip_cv_ref() {
                 Ty::Pointer(inner) => *inner.clone(),
-                Ty::Error | Ty::Unknown => Ty::Error,
+                // Structured bindings often leave `auto` until we improve deduction.
+                Ty::Error | Ty::Unknown | Ty::Auto => Ty::Unknown,
                 other => {
                     self.err(span, format!("cannot dereference `{other}`"));
                     Ty::Error
@@ -324,6 +343,14 @@ impl Context {
                     "int32_t" => return Ty::Int,
                     "uint32_t" => return Ty::UInt,
                     _ => {}
+                }
+                // `using RET = pair<int,int>;` — expand when used as a type name.
+                if args.is_empty() {
+                    if let Some(sym) = self.symbols.lookup(name) {
+                        if matches!(sym.kind, SymbolKind::Class) {
+                            return sym.ty.clone();
+                        }
+                    }
                 }
                 // Unknown type name still allowed if looks like STL seed or class
                 if self.symbols.lookup(name).is_none()
