@@ -1,0 +1,17 @@
+[package]
+name = "rscpp-corpus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Batch parse+sema scanner for testing/ corpus; ranked error catalog"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "rscpp-corpus"
+path = "src/main.rs"
+
+[dependencies]
+rscpp-parser = { path = "../parser" }
+rscpp-sema = { path = "../sema" }
