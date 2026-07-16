@@ -100,6 +100,10 @@ impl Context {
                 *ret.clone()
             }
             Ty::Named { name, args: targs } => {
+                // `std::function<Ret(...)>` — call yields Ret (or Unknown).
+                if name == "function" {
+                    return targs.first().cloned().unwrap_or(Ty::Unknown);
+                }
                 let _ = (name, targs, arg_tys);
                 ct.strip_cv_ref().clone()
             }
@@ -172,6 +176,7 @@ impl Context {
                             )))],
                         );
                     }
+                    ("Interval", "start") | ("Interval", "end") => return Ty::Int,
                     ("pair", "first") => {
                         return args.first().cloned().unwrap_or(Ty::Unknown);
                     }
@@ -195,7 +200,7 @@ impl Context {
     /// Element type for `a[i]` / `operator[]`. Sets are intentionally rejected.
     pub(super) fn elem_type(&mut self, base: &Ty, span: Span) -> Ty {
         match base.strip_cv_ref() {
-            Ty::Named { name, args } if name == "vector" || name == "string" || name == "deque" => {
+            Ty::Named { name, args } if name == "vector" || name == "string" || name == "deque" || name == "array" => {
                 if name == "string" {
                     Ty::Char
                 } else if let Some(t) = args.first() {
@@ -237,7 +242,7 @@ impl Context {
     /// Element type for range-for `for (auto& x : c)`. Includes set/unordered_set.
     pub(super) fn range_elem_type(&mut self, base: &Ty, span: Span) -> Ty {
         match base.strip_cv_ref() {
-            Ty::Named { name, args } if name == "vector" || name == "deque" || name == "list" => {
+            Ty::Named { name, args } if name == "vector" || name == "deque" || name == "list" || name == "array" => {
                 args.first().cloned().unwrap_or(Ty::Unknown)
             }
             Ty::Named { name, .. } if name == "string" => Ty::Char,
@@ -298,15 +303,13 @@ impl Context {
 
     pub(super) fn check_binary(&mut self, op: BinaryOp, lt: &Ty, rt: &Ty, span: Span) -> Ty {
         use BinaryOp::*;
-        // Soft: `auto` / deduced placeholders participate in any binary op.
-        if matches!(lt.strip_cv_ref(), Ty::Auto | Ty::Unknown)
-            || matches!(rt.strip_cv_ref(), Ty::Auto | Ty::Unknown)
-        {
+        // Soft: `auto` / deduced placeholders / template params participate in any binary op.
+        if is_soft_operand(lt) || is_soft_operand(rt) {
             return match op {
                 Lt | Gt | Le | Ge | Eq | Ne | And | Or => Ty::Bool,
                 Comma => rt.clone(),
                 _ => {
-                    if matches!(lt.strip_cv_ref(), Ty::Auto | Ty::Unknown) {
+                    if is_soft_operand(lt) {
                         rt.strip_cv_ref().clone()
                     } else {
                         lt.strip_cv_ref().clone()
@@ -373,14 +376,16 @@ impl Context {
         if matches!(dst, Ty::Unknown | Ty::Error | Ty::Auto) || matches!(src, Ty::Unknown | Ty::Error) {
             return true;
         }
-        // `auto*`, `const auto&`, nested auto — accept any initializer (deduce later)
-        if ty_contains_auto(dst) {
+        // `auto*`, `const auto&`, nested auto — accept any side that still has auto
+        if ty_contains_auto(dst) || ty_contains_auto(src) {
             return true;
         }
         let d = dst.strip_cv_ref();
         let s = src.strip_cv_ref();
         // `const auto& x = …` / `auto&` — stripped Auto accepts any initializer
-        if matches!(d, Ty::Unknown | Ty::Error | Ty::Auto) {
+        if matches!(d, Ty::Unknown | Ty::Error | Ty::Auto)
+            || matches!(s, Ty::Unknown | Ty::Error | Ty::Auto)
+        {
             return true;
         }
         if d == s {
@@ -396,9 +401,33 @@ impl Context {
         if d.is_numeric() && s.is_numeric() {
             return true;
         }
-        // pointer: T* <- nullptr (void*)
-        if let (Ty::Pointer(_), Ty::Pointer(inner)) = (d, s) {
-            if matches!(inner.as_ref(), Ty::Void) {
+        // pointer: T* <- nullptr (void*), or compatible pointee
+        if let (Ty::Pointer(a), Ty::Pointer(b)) = (d, s) {
+            if matches!(b.as_ref(), Ty::Void) {
+                return true;
+            }
+            if self.assignable(a, b) {
+                return true;
+            }
+        }
+        // Template type-params like `T` are opaque Unknown-ish
+        if let Ty::Named { name, args } = d {
+            if args.is_empty()
+                && matches!(
+                    name.as_str(),
+                    "T" | "U" | "V" | "K" | "E" | "R" | "Cmp" | "Pred" | "Alloc"
+                )
+            {
+                return true;
+            }
+        }
+        if let Ty::Named { name, args } = s {
+            if args.is_empty()
+                && matches!(
+                    name.as_str(),
+                    "T" | "U" | "V" | "K" | "E" | "R" | "Cmp" | "Pred" | "Alloc"
+                )
+            {
                 return true;
             }
         }
@@ -475,6 +504,22 @@ fn ty_contains_auto(ty: &Ty) -> bool {
     match ty {
         Ty::Auto => true,
         Ty::Pointer(inner) | Ty::Reference(inner) | Ty::Const(inner) => ty_contains_auto(inner),
+        _ => false,
+    }
+}
+
+fn is_soft_operand(ty: &Ty) -> bool {
+    match ty.strip_cv_ref() {
+        Ty::Auto | Ty::Unknown => true,
+        Ty::Named { name, args }
+            if args.is_empty()
+                && matches!(
+                    name.as_str(),
+                    "T" | "U" | "V" | "K" | "E" | "R" | "Cmp" | "Pred" | "Alloc"
+                ) =>
+        {
+            true
+        }
         _ => false,
     }
 }

@@ -201,6 +201,18 @@ impl Context {
                     PtrKind::Reference => Ty::Reference(Box::new(ty)),
                 };
             }
+            // C++: name is in scope in its own initializer (recursive lambda /
+            // `function<>` that calls itself). Predeclare before checking init.
+            let provisional = if needs_auto_deduce(&ty) {
+                Ty::Unknown
+            } else {
+                ty.clone()
+            };
+            self.symbols.redefine(Symbol {
+                name: decl.name.name.clone(),
+                ty: provisional,
+                kind: SymbolKind::Var,
+            });
             if let Some(init) = &decl.init {
                 let it = self.check_expr(init);
                 if !self.assignable(&ty, &it) && it != Ty::Error && it != Ty::Unknown {
@@ -213,16 +225,11 @@ impl Context {
                     ty = deduce_auto(&ty, &it);
                 }
             }
-            if let Err(_) = self.symbols.define(Symbol {
+            self.symbols.redefine(Symbol {
                 name: decl.name.name.clone(),
                 ty,
                 kind: SymbolKind::Var,
-            }) {
-                self.err(
-                    decl.name.span,
-                    format!("redefinition of `{}`", decl.name.name),
-                );
-            }
+            });
         }
     }
 }

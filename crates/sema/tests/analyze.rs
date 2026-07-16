@@ -154,6 +154,60 @@ fn rejects_unknown_node_field() {
 }
 
 #[test]
+fn recursive_function_lambda_and_template_method() {
+    let tu = parse(
+        r#"
+class Solution {
+public:
+    int f(TreeNode* root) {
+        const function<int(TreeNode*)> dfs = [&](TreeNode* curr) {
+            if (!curr) return 0;
+            return dfs(curr->left) + 1;
+        };
+        return dfs(root);
+    }
+    template<typename T>
+    void compute(stack<T>* a, stack<char>* b) { a->pop(); b->pop(); }
+    int g() {
+        stack<int64_t> o; stack<char> p;
+        compute(&o, &p);
+        return 0;
+    }
+};
+"#,
+    )
+    .unwrap();
+    assert!(analyze(&tu).ok(), "{:?}", analyze(&tu).errors);
+}
+
+#[test]
+fn array_subscript_and_vector_erase() {
+    let tu = parse(
+        r#"
+int f() {
+  array<int, 8> a;
+  a[0] = 1;
+  vector<int> v{1,2,3};
+  v.erase(v.begin());
+  v.assign(3, 0);
+  v.insert(v.begin(), 1);
+  return min(v, v).size();
+}
+"#,
+    )
+    .unwrap();
+    assert!(analyze(&tu).ok(), "{:?}", analyze(&tu).errors);
+}
+
+#[test]
+fn still_rejects_undeclared_free_helper() {
+    let tu = parse(r#"int f() { return dfs(1); }"#).unwrap();
+    let r = analyze(&tu);
+    assert!(!r.ok());
+    assert!(r.errors.iter().any(|e| e.message.contains("undeclared")));
+}
+
+#[test]
 fn vector_members_and_index() {
     let tu = parse(
         r#"

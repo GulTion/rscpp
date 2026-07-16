@@ -95,8 +95,28 @@ impl Parser {
             return Ok(Member::Class(self.parse_class()?));
         }
         if self.at_keyword(Keyword::Template) {
-            self.skip_template_decl()?;
-            return Ok(Member::Access(AccessSpec::Public));
+            self.bump(); // template
+            if self.at_punct(Punct::Lt) {
+                self.bump();
+                let mut depth = 1i32;
+                while depth > 0 && !self.at_eof() {
+                    match self.peek_kind() {
+                        TokenKind::Punct(Punct::Lt) => depth += 1,
+                        TokenKind::Punct(Punct::Gt) => depth -= 1,
+                        TokenKind::Punct(Punct::GtGt) => depth -= 2,
+                        _ => {}
+                    }
+                    self.bump();
+                }
+            }
+            // Nested template class/struct helpers — still skip the whole type.
+            if self.at_keyword(Keyword::Class) || self.at_keyword(Keyword::Struct) {
+                let _ = self.parse_class()?;
+                return Ok(Member::Access(AccessSpec::Public));
+            }
+            // `template<typename T> void compute(...)` — parse as a normal member
+            // (template params ignored; keeps legal method names in the AST).
+            return self.parse_member();
         }
         if self.at_keyword(Keyword::Enum) {
             // Soft: skip `enum Name { A, B };` — treat as no-op member.

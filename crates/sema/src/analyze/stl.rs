@@ -11,7 +11,8 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         | ("set", "size") | ("unordered_set", "size")
         | ("multiset", "size") | ("unordered_multiset", "size")
         | ("queue", "size") | ("stack", "size")
-        | ("deque", "size") | ("list", "size") => Some(Ty::Function {
+        | ("deque", "size") | ("list", "size")
+        | ("array", "size") => Some(Ty::Function {
             ret: Box::new(Ty::UInt),
             params: vec![],
         }),
@@ -19,13 +20,15 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         | ("map", "empty") | ("unordered_map", "empty")
         | ("queue", "empty") | ("stack", "empty") | ("deque", "empty")
         | ("unordered_set", "empty") | ("set", "empty")
-        | ("multiset", "empty") | ("unordered_multiset", "empty") => Some(Ty::Function {
+        | ("multiset", "empty") | ("unordered_multiset", "empty")
+        | ("array", "empty") => Some(Ty::Function {
             ret: Box::new(Ty::Bool),
             params: vec![],
         }),
         ("vector", "push_back") | ("vector", "emplace_back")
         | ("deque", "push_back") | ("deque", "emplace_back")
-        | ("deque", "push_front") | ("string", "push_back") => Some(Ty::Function {
+        | ("deque", "push_front") | ("deque", "emplace_front")
+        | ("string", "push_back") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![],
         }),
@@ -34,6 +37,22 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             ret: Box::new(Ty::Void),
             params: vec![],
         }),
+        ("vector", "erase") | ("string", "erase") | ("deque", "erase") | ("list", "erase") => {
+            Some(Ty::Function {
+                ret: Box::new(Ty::Unknown),
+                params: vec![], // iterator / range overloads
+            })
+        }
+        ("vector", "assign") | ("string", "assign") | ("deque", "assign") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![],
+        }),
+        ("vector", "insert") | ("string", "insert") | ("deque", "insert") | ("list", "insert") => {
+            Some(Ty::Function {
+                ret: Box::new(Ty::Unknown),
+                params: vec![],
+            })
+        }
         ("vector", "front") | ("vector", "back")
         | ("deque", "front") | ("deque", "back")
         | ("string", "front") | ("string", "back")
@@ -60,9 +79,12 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         }),
         ("vector", "begin") | ("vector", "end")
         | ("vector", "cbegin") | ("vector", "cend")
+        | ("vector", "crbegin") | ("vector", "crend")
+        | ("vector", "rbegin") | ("vector", "rend")
         | ("string", "begin") | ("string", "end")
         | ("string", "cbegin") | ("string", "cend")
         | ("string", "rbegin") | ("string", "rend")
+        | ("string", "crbegin") | ("string", "crend")
         | ("map", "begin") | ("map", "end")
         | ("map", "cbegin") | ("map", "cend")
         | ("unordered_map", "begin") | ("unordered_map", "end")
@@ -73,11 +95,15 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         | ("multiset", "cbegin") | ("multiset", "cend")
         | ("unordered_set", "begin") | ("unordered_set", "end")
         | ("unordered_set", "cbegin") | ("unordered_set", "cend")
-        | ("deque", "begin") | ("deque", "end") => Some(Ty::Function {
+        | ("deque", "begin") | ("deque", "end")
+        | ("array", "begin") | ("array", "end")
+        | ("array", "cbegin") | ("array", "cend") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),
             params: vec![],
         }),
-        ("string", "find") | ("string", "rfind") => Some(Ty::Function {
+        ("string", "find") | ("string", "rfind") | ("string", "find_first_not_of")
+        | ("string", "find_first_of") | ("string", "find_last_of")
+        | ("string", "find_last_not_of") => Some(Ty::Function {
             ret: Box::new(Ty::UInt),
             params: vec![Ty::Unknown],
         }),
@@ -95,13 +121,20 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         }),
         ("string", "npos") => Some(Ty::UInt),
         ("string", "at") | ("vector", "at") | ("unordered_map", "at") | ("map", "at")
-        | ("deque", "at") => {
+        | ("deque", "at") | ("array", "at") => {
             let elem = args.first().cloned().unwrap_or(Ty::Unknown);
             Some(Ty::Function {
                 ret: Box::new(elem),
                 params: vec![Ty::Unknown],
             })
         },
+        ("array", "front") | ("array", "back") | ("array", "data") | ("array", "fill") => {
+            let elem = args.first().cloned().unwrap_or(Ty::Unknown);
+            Some(Ty::Function {
+                ret: Box::new(elem),
+                params: vec![],
+            })
+        }
         ("map", "insert") | ("unordered_map", "insert") | ("set", "insert")
         | ("unordered_set", "insert") | ("multiset", "insert") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),

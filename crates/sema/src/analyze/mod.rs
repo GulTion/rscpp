@@ -73,6 +73,9 @@ impl Context {
             "lock_guard",
             "condition_variable",
             "numbers",
+            "array",
+            "function",
+            "Interval",
             // LeetCode node types (defs often only in comments)
             "Node",
             "TreeNode",
@@ -209,6 +212,33 @@ impl Context {
             ("stoul", Ty::ULong),
             ("bind1st", Ty::Unknown),
             ("bind2nd", Ty::Unknown),
+            ("copy", Ty::Unknown),
+            ("copy_if", Ty::Unknown),
+            ("copy_n", Ty::Unknown),
+            ("get", Ty::Unknown),
+            ("getline", Ty::Unknown),
+            ("make_heap", Ty::Void),
+            ("push_heap", Ty::Void),
+            ("pop_heap", Ty::Void),
+            ("sort_heap", Ty::Void),
+            ("set_intersection", Ty::Unknown),
+            ("set_union", Ty::Unknown),
+            ("set_difference", Ty::Unknown),
+            ("next_permutation", Ty::Bool),
+            ("prev_permutation", Ty::Bool),
+            ("is_sorted", Ty::Bool),
+            ("crbegin", Ty::Unknown),
+            ("crend", Ty::Unknown),
+            ("__lg", Ty::Int),
+            ("llabs", Ty::LongLong),
+            ("uniform_int_distribution", Ty::Unknown),
+            ("default_random_engine", Ty::Unknown),
+            ("mt19937", Ty::Unknown),
+            ("plus", Ty::Unknown),
+            ("multiplies", Ty::Unknown),
+            ("bit_xor", Ty::Unknown),
+            ("not_equal_to", Ty::Unknown),
+            ("replace", Ty::Void),
         ] {
             self.symbols.redefine(Symbol {
                 name: name.into(),
@@ -255,11 +285,23 @@ impl Context {
             });
         }
         // Soft: min/max also allow 1-arg or 3+ via empty overload — redefine as variadic.
+        // Return type Unknown so `min(vector, vector)` stays a vector, not int.
         for name in ["min", "max"] {
             let _ = self.symbols.redefine(Symbol {
                 name: name.into(),
                 ty: Ty::Function {
-                    ret: Box::new(Ty::Int),
+                    ret: Box::new(Ty::Unknown),
+                    params: vec![],
+                },
+                kind: SymbolKind::Func,
+            });
+        }
+        // `size` / `empty` free functions are overloaded — soft variadic.
+        for (name, ret) in [("size", Ty::UInt), ("empty", Ty::Bool)] {
+            let _ = self.symbols.redefine(Symbol {
+                name: name.into(),
+                ty: Ty::Function {
+                    ret: Box::new(ret),
                     params: vec![],
                 },
                 kind: SymbolKind::Func,
