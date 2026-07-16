@@ -38,6 +38,10 @@ cargo test --workspace
 # CLI phase dump
 cargo run -p rscpp-pipeline -- examples/main.cpp
 
+# Corpus error catalog (parse+sema, batched)
+cargo run -p rscpp-corpus -- --dir testing --limit 50
+# see docs/superpowers/specs/2026-07-16-rscpp-corpus-design.md
+
 # Browser demo
 wasm-pack build crates/wasm --target web
 python3 -m http.server 8080   # from repo root

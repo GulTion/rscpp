@@ -1,4 +1,6 @@
-use rscpp_corpus::{check_file, list_cpp_files, run_corpus, select_batch, FileKind};
+use rscpp_corpus::{
+    check_file, format_report, list_cpp_files, report_to_json, run_corpus, select_batch, FileKind,
+};
 use std::path::PathBuf;
 
 fn fixtures_dir() -> PathBuf {
@@ -53,4 +55,21 @@ fn run_corpus_ranks_errors() {
     for w in report.groups.windows(2) {
         assert!(w[0].count >= w[1].count);
     }
+}
+
+#[test]
+fn format_report_contains_summary() {
+    let report = run_corpus(&fixtures_dir(), 0, 50).unwrap();
+    let text = format_report(&report);
+    assert!(text.contains("ok:"));
+    assert!(text.contains("fail:"));
+    assert!(text.contains("Top errors"));
+}
+
+#[test]
+fn report_to_json_round_shape() {
+    let report = run_corpus(&fixtures_dir(), 0, 50).unwrap();
+    let json = report_to_json(&report);
+    assert!(json.contains("\"processed\""));
+    assert!(json.contains("\"groups\""));
 }

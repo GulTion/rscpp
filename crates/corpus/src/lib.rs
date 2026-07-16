@@ -142,3 +142,64 @@ pub fn list_cpp_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
 pub fn select_batch(files: &[PathBuf], offset: usize, limit: usize) -> Vec<PathBuf> {
     files.iter().skip(offset).take(limit).cloned().collect()
 }
+
+pub fn format_report(report: &CorpusReport) -> String {
+    let mut s = String::new();
+    s.push_str(&format!(
+        "=== corpus: {} files (dir={}, offset={}, limit={}) ===\n",
+        report.processed, report.dir, report.offset, report.limit
+    ));
+    s.push_str(&format!("ok: {}  fail: {}\n\n", report.ok, report.fail));
+    s.push_str("Top errors:\n");
+    for g in report.groups.iter().take(20) {
+        s.push_str(&format!("  {}×  [{}] {}\n", g.count, g.kind, g.message));
+        if let Some(sample) = g.samples.first() {
+            s.push_str(&format!("         e.g. {sample}\n"));
+        }
+    }
+    s
+}
+
+fn json_escape(s: &str) -> String {
+    let mut out = String::new();
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+pub fn report_to_json(report: &CorpusReport) -> String {
+    let mut groups = String::new();
+    for (i, g) in report.groups.iter().enumerate() {
+        if i > 0 {
+            groups.push(',');
+        }
+        let samples: Vec<_> = g
+            .samples
+            .iter()
+            .map(|p| format!("\"{}\"", json_escape(p)))
+            .collect();
+        groups.push_str(&format!(
+            "{{\"kind\":\"{}\",\"message\":\"{}\",\"count\":{},\"samples\":[{}]}}",
+            json_escape(&g.kind),
+            json_escape(&g.message),
+            g.count,
+            samples.join(",")
+        ));
+    }
+    format!(
+        "{{\"run\":{{\"dir\":\"{}\",\"offset\":{},\"limit\":{},\"processed\":{}}},\"summary\":{{\"ok\":{},\"fail\":{}}},\"groups\":[{}]}}",
+        json_escape(&report.dir),
+        report.offset,
+        report.limit,
+        report.processed,
+        report.ok,
+        report.fail,
+        groups
+    )
+}
