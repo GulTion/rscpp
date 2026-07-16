@@ -86,6 +86,22 @@ impl Context {
             ty: Ty::named("endl_t", vec![]),
             kind: SymbolKind::Var,
         });
+        let _ = self.symbols.define(Symbol {
+            name: "swap".into(),
+            ty: Ty::Function {
+                ret: Box::new(Ty::Void),
+                params: vec![Ty::Unknown, Ty::Unknown],
+            },
+            kind: SymbolKind::Func,
+        });
+        let _ = self.symbols.define(Symbol {
+            name: "sort".into(),
+            ty: Ty::Function {
+                ret: Box::new(Ty::Void),
+                params: vec![Ty::Unknown, Ty::Unknown],
+            },
+            kind: SymbolKind::Func,
+        });
     }
 
     fn analyze_tu(&mut self, tu: &TranslationUnit) {
@@ -286,6 +302,24 @@ impl Context {
                 self.check_stmt(body);
                 self.symbols.pop();
             }
+            Stmt::ForRange {
+                ty,
+                name,
+                iter,
+                body,
+                ..
+            } => {
+                self.symbols.push();
+                let _ = self.check_expr(iter);
+                let t = self.resolve_ast_type(ty);
+                let _ = self.symbols.define(Symbol {
+                    name: name.name.clone(),
+                    ty: t,
+                    kind: SymbolKind::Var,
+                });
+                self.check_stmt(body);
+                self.symbols.pop();
+            }
             Stmt::Return { value, span } => {
                 if let Some(v) = value {
                     let _ = self.check_expr(v);
@@ -379,39 +413,29 @@ impl Context {
                 }
             }
             Expr::Call { callee, args, span } => {
-                let ct = self.check_expr(callee);
-                let arg_tys: Vec<Ty> = args.iter().map(|a| self.check_expr(a)).collect();
-                match ct.strip_cv_ref() {
-                    Ty::Function { ret, params } => {
-                        if params.len() != arg_tys.len() {
-                            self.err(
-                                *span,
-                                format!(
-                                    "call expects {} argument(s), got {}",
-                                    params.len(),
-                                    arg_tys.len()
-                                ),
-                            );
-                        } else {
-                            for (p, a) in params.iter().zip(arg_tys.iter()) {
-                                if !self.assignable(p, a) && *a != Ty::Error {
-                                    self.err(*span, format!("argument type `{a}` not compatible with `{p}`"));
-                                }
+                if let Expr::Member {
+                    base,
+                    field,
+                    arrow,
+                    span: mspan,
+                } = callee.as_ref()
+                {
+                    let mut bt = self.check_expr(base);
+                    if *arrow {
+                        match bt.strip_cv_ref() {
+                            Ty::Pointer(inner) => bt = *inner.clone(),
+                            Ty::Error | Ty::Unknown => {}
+                            other => {
+                                self.err(*mspan, format!("base of `->` has type `{other}`, not a pointer"));
                             }
                         }
-                        *ret.clone()
                     }
-                    Ty::Named { name, args: targs } => {
-                        // Construct temporary: Type(args) — treat as returning that type.
-                        let _ = (name, targs, arg_tys);
-                        ct.strip_cv_ref().clone()
-                    }
-                    Ty::Unknown | Ty::Error => Ty::Error,
-                    other => {
-                        self.err(*span, format!("cannot call value of type `{other}`"));
-                        Ty::Error
-                    }
+                    let ft = self.lookup_member(&bt, &field.name, field.span);
+                    return self.check_fn_call(&ft, args, *span);
                 }
+                let ct = self.check_expr(callee);
+                let arg_tys: Vec<Ty> = args.iter().map(|a| self.check_expr(a)).collect();
+                self.check_fn_call_types(&ct, &arg_tys, *span)
             }
             Expr::Index { base, index, span } => {
                 let bt = self.check_expr(base);
@@ -449,6 +473,23 @@ impl Context {
                 }
                 // brace init — unknown concrete type without context
                 Ty::Unknown
+            }
+            Expr::Conditional {
+                cond,
+                then_branch,
+                else_branch,
+                ..
+            } => {
+                let _ = self.check_expr(cond);
+                let t = self.check_expr(then_branch);
+                let e = self.check_expr(else_branch);
+                if t == Ty::Error || e == Ty::Error {
+                    Ty::Error
+                } else if self.assignable(&t, &e) || self.assignable(&e, &t) {
+                    t
+                } else {
+                    Ty::Unknown
+                }
             }
         }
     }
@@ -492,6 +533,44 @@ impl Context {
         }
         self.err(path.span, format!("use of undeclared name `{q}`"));
         Ty::Error
+    }
+
+    fn check_fn_call(&mut self, ct: &Ty, args: &[Expr], span: Span) -> Ty {
+        let arg_tys: Vec<Ty> = args.iter().map(|a| self.check_expr(a)).collect();
+        self.check_fn_call_types(ct, &arg_tys, span)
+    }
+
+    fn check_fn_call_types(&mut self, ct: &Ty, arg_tys: &[Ty], span: Span) -> Ty {
+        match ct.strip_cv_ref() {
+            Ty::Function { ret, params } => {
+                if params.len() != arg_tys.len() {
+                    self.err(
+                        span,
+                        format!(
+                            "call expects {} argument(s), got {}",
+                            params.len(),
+                            arg_tys.len()
+                        ),
+                    );
+                } else {
+                    for (p, a) in params.iter().zip(arg_tys.iter()) {
+                        if !self.assignable(p, a) && *a != Ty::Error {
+                            self.err(span, format!("argument type `{a}` not compatible with `{p}`"));
+                        }
+                    }
+                }
+                *ret.clone()
+            }
+            Ty::Named { name, args: targs } => {
+                let _ = (name, targs, arg_tys);
+                ct.strip_cv_ref().clone()
+            }
+            Ty::Unknown | Ty::Error => Ty::Error,
+            other => {
+                self.err(span, format!("cannot call value of type `{other}`"));
+                Ty::Error
+            }
+        }
     }
 
     fn lookup_member(&mut self, base: &Ty, field: &str, span: Span) -> Ty {
@@ -686,7 +765,7 @@ fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             ret: Box::new(Ty::Bool),
             params: vec![],
         }),
-        ("vector", "push_back") => {
+        ("vector", "push_back") | ("vector", "emplace_back") => {
             let elem = args.first().cloned().unwrap_or(Ty::Unknown);
             Some(Ty::Function {
                 ret: Box::new(Ty::Void),
@@ -701,11 +780,35 @@ fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             ret: Box::new(Ty::Void),
             params: vec![],
         }),
-        ("vector", "begin") | ("vector", "end") => Some(Ty::Unknown),
-        ("map", "insert") | ("unordered_map", "insert") | ("set", "insert") => Some(Ty::Function {
+        ("vector", "begin") | ("vector", "end") => Some(Ty::Function {
+            ret: Box::new(Ty::Unknown),
+            params: vec![],
+        }),
+        ("map", "insert") | ("unordered_map", "insert") | ("set", "insert")
+        | ("unordered_set", "insert") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),
             params: vec![Ty::Unknown],
         }),
+        ("map", "count")
+        | ("unordered_map", "count")
+        | ("set", "count")
+        | ("unordered_set", "count") => {
+            let key = args.first().cloned().unwrap_or(Ty::Unknown);
+            Some(Ty::Function {
+                ret: Box::new(Ty::Int),
+                params: vec![key],
+            })
+        }
+        ("map", "erase")
+        | ("unordered_map", "erase")
+        | ("set", "erase")
+        | ("unordered_set", "erase") => {
+            let key = args.first().cloned().unwrap_or(Ty::Unknown);
+            Some(Ty::Function {
+                ret: Box::new(Ty::Void),
+                params: vec![key],
+            })
+        }
         ("map", "find") | ("unordered_map", "find") => {
             let key = args.first().cloned().unwrap_or(Ty::Unknown);
             Some(Ty::Function {
@@ -720,12 +823,37 @@ fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
                 params: vec![elem],
             })
         }
-        ("queue", "front") | ("stack", "top") => {
+        ("queue", "front") | ("queue", "back") | ("stack", "top") => {
             let elem = args.first().cloned().unwrap_or(Ty::Unknown);
-            Some(Ty::Reference(Box::new(elem)))
+            Some(Ty::Function {
+                ret: Box::new(elem),
+                params: vec![],
+            })
         }
         ("queue", "pop") | ("stack", "pop") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
+            params: vec![],
+        }),
+        ("priority_queue", "push") => {
+            let elem = args.first().cloned().unwrap_or(Ty::Unknown);
+            Some(Ty::Function {
+                ret: Box::new(Ty::Void),
+                params: vec![elem],
+            })
+        }
+        ("priority_queue", "top") => {
+            let elem = args.first().cloned().unwrap_or(Ty::Unknown);
+            Some(Ty::Function {
+                ret: Box::new(elem),
+                params: vec![],
+            })
+        }
+        ("priority_queue", "pop") | ("priority_queue", "empty") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![],
+        }),
+        ("priority_queue", "size") => Some(Ty::Function {
+            ret: Box::new(Ty::UInt),
             params: vec![],
         }),
         ("pair", "first") => Some(args.first().cloned().unwrap_or(Ty::Unknown)),

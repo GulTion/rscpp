@@ -10,3 +10,4 @@ rscpp-ast = { path = "../ast" }
 rscpp-parser = { path = "../parser" }
 rscpp-sema = { path = "../sema" }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"

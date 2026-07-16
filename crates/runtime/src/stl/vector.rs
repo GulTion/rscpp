@@ -17,18 +17,18 @@ pub fn call(
     match method {
         "size" => Ok(ctx.query(base, "size", None, Value::Int(elems.len() as i64), span)),
         "empty" => Ok(ctx.query(base, "empty", None, Value::Bool(elems.is_empty()), span)),
-        "push_back" => {
+        "push_back" | "emplace_back" => {
             let v = args
                 .first()
                 .cloned()
-                .ok_or_else(|| RuntimeError::at(span, "push_back needs an argument"))?;
+                .ok_or_else(|| RuntimeError::at(span, format!("{method} needs an argument")))?;
             let idx = if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
                 e.push(v.clone());
                 e.len() - 1
             } else {
                 0
             };
-            ctx.modify(base, "push_back", Some(idx), None, None, Some(v), span);
+            ctx.modify(base, method, Some(idx), None, None, Some(v), span);
             Ok(Value::Void)
         }
         "pop_back" => {
@@ -47,6 +47,7 @@ pub fn call(
             ctx.modify(base, "clear", None, None, None, None, span);
             Ok(Value::Void)
         }
+        "begin" | "end" => Ok(Value::Int(0)),
         _ => Err(RuntimeError::at(
             span,
             format!("unknown vector method `{method}`"),

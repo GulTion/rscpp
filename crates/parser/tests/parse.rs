@@ -166,3 +166,40 @@ int f() {
     };
     assert!(f.body.stmts.len() >= 3);
 }
+
+#[test]
+fn include_directives_skipped() {
+    let tu = parse(
+        r#"
+#include <vector>
+#pragma once
+int main() { return 0; }
+"#,
+    )
+    .unwrap();
+    assert_eq!(tu.items.len(), 1);
+}
+
+#[test]
+fn ternary_expression() {
+    let tu = parse("int f() { return 1 ? 2 : 3; }").unwrap();
+    let Item::Function(f) = &tu.items[0] else {
+        panic!();
+    };
+    let Stmt::Return {
+        value: Some(Expr::Conditional { .. }),
+        ..
+    } = &f.body.stmts[0]
+    else {
+        panic!("expected ternary");
+    };
+}
+
+#[test]
+fn range_for_stmt() {
+    let tu = parse("int f() { for (int x : v) { } return 0; }").unwrap();
+    let Item::Function(f) = &tu.items[0] else {
+        panic!();
+    };
+    assert!(matches!(f.body.stmts[0], Stmt::ForRange { .. }));
+}

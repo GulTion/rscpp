@@ -122,11 +122,9 @@ impl Parser {
         let start = self.peek_span().start;
         let mut items = Vec::new();
         while !self.at_eof() {
-            // Skip stray `#` lines lightly — not a full preprocessor.
             if self.at_punct(Punct::Hash) {
-                return Err(self.err(
-                    "preprocessor directives are not supported yet (no `#include` / macros)",
-                ));
+                self.skip_preprocessor()?;
+                continue;
             }
             items.push(self.parse_item()?);
         }
@@ -135,6 +133,42 @@ impl Parser {
             items,
             span: Span::new(start, end),
         })
+    }
+
+    /// Strip LeetCode-style `#include` / `#pragma once`. Real macros still error.
+    fn skip_preprocessor(&mut self) -> Result<(), ParseError> {
+        self.expect_punct(Punct::Hash)?;
+        let dir = match self.peek_kind() {
+            TokenKind::Ident(name) => name.clone(),
+            _ => return Err(self.err("expected preprocessor directive name")),
+        };
+        self.bump();
+        match dir.as_str() {
+            "include" => {
+                if self.at_punct(Punct::Lt) {
+                    self.bump();
+                    while !self.at_eof() && !self.at_punct(Punct::Gt) {
+                        self.bump();
+                    }
+                    self.expect_punct(Punct::Gt)?;
+                } else if matches!(self.peek_kind(), TokenKind::StringLit(_)) {
+                    self.bump();
+                } else {
+                    return Err(self.err("malformed #include"));
+                }
+                Ok(())
+            }
+            "pragma" => {
+                // `#pragma once` (and ignore other pragmas' tokens until next item — just `once`)
+                if matches!(self.peek_kind(), TokenKind::Ident(n) if n == "once") {
+                    self.bump();
+                }
+                Ok(())
+            }
+            _ => Err(self.err(format!(
+                "unsupported preprocessor directive `#{dir}` (only #include / #pragma once)"
+            ))),
+        }
     }
 
     fn parse_item(&mut self) -> Result<Item, ParseError> {
@@ -690,22 +724,59 @@ impl Parser {
     fn parse_for(&mut self) -> Result<Stmt, ParseError> {
         let start = self.expect_keyword(Keyword::For)?.span.start;
         self.expect_punct(Punct::LParen)?;
-        let init = if self.at_punct(Punct::Semi) {
-            None
-        } else if self.at_declaration_start() {
+
+        // Range-for: `for (T name : expr)`
+        if self.at_declaration_start() {
             let dstart = self.peek_span().start;
             let ty = self.parse_type()?;
             let name = self.parse_ident()?;
-            Some(ForInit::Decl(self.parse_decl_rest(dstart, ty, name)?))
+            if self.at_punct(Punct::Colon) {
+                self.bump();
+                let iter = self.parse_expr()?;
+                self.expect_punct(Punct::RParen)?;
+                let body = Box::new(self.parse_stmt()?);
+                let end = body.span().end;
+                return Ok(Stmt::ForRange {
+                    ty,
+                    name,
+                    iter,
+                    body,
+                    span: Span::new(start, end),
+                });
+            }
+            // Classic for with decl init
+            let init = Some(ForInit::Decl(self.parse_decl_rest(dstart, ty, name)?));
+            let cond = if self.at_punct(Punct::Semi) {
+                None
+            } else {
+                Some(self.parse_expr()?)
+            };
+            self.expect_punct(Punct::Semi)?;
+            let step = if self.at_punct(Punct::RParen) {
+                None
+            } else {
+                Some(self.parse_expr()?)
+            };
+            self.expect_punct(Punct::RParen)?;
+            let body = Box::new(self.parse_stmt()?);
+            let end = body.span().end;
+            return Ok(Stmt::For {
+                init,
+                cond,
+                step,
+                body,
+                span: Span::new(start, end),
+            });
+        }
+
+        let init = if self.at_punct(Punct::Semi) {
+            None
         } else {
             let e = self.parse_expr()?;
             self.expect_punct(Punct::Semi)?;
             Some(ForInit::Expr(e))
         };
-        // decl_rest already consumed `;`; expr path also did.
-        if matches!(init, Some(ForInit::Decl(_))) {
-            // semi already eaten
-        } else if init.is_none() {
+        if init.is_none() {
             self.expect_punct(Punct::Semi)?;
         }
 
@@ -837,6 +908,21 @@ impl Parser {
                 op: as_binary_op(&op_kind).unwrap(),
                 left: Box::new(lhs),
                 right: Box::new(rhs),
+                span,
+            };
+        }
+
+        // Ternary: cond ? then : else  (bp between || and assignment)
+        if min_bp <= 2 && self.at_punct(Punct::Question) {
+            self.bump();
+            let then_branch = self.parse_expr()?;
+            self.expect_punct(Punct::Colon)?;
+            let else_branch = self.parse_expr_bp(2)?;
+            let span = Span::new(lhs.span().start, else_branch.span().end);
+            lhs = Expr::Conditional {
+                cond: Box::new(lhs),
+                then_branch: Box::new(then_branch),
+                else_branch: Box::new(else_branch),
                 span,
             };
         }

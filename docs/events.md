@@ -14,11 +14,23 @@ type RunResult = {
   ok: boolean;
   value?: ValueJson;     // main's return value when execution finished
   events: EventJson[];   // full log (may be partial if ok === false mid-run)
-  error?: string;        // present when ok === false
+  error?: {              // present when ok === false
+    message: string;
+    span?: { start: number; end: number };
+  };
 };
 ```
 
 No stdin/stdout in v1 — reconstruct program state from **events** (and `value`).
+
+### Entry points
+
+| API | Behavior |
+|-----|----------|
+| `run(source)` | Parse + run `main()` |
+| `run_method(source, method, args)` | Parse + call `method` (e.g. `"Solution::twoSum"`) with JSON args array. Arrays → `vector`, numbers → `int`, strings → heap `string`. |
+
+`#include <…>` / `#pragma once` are skipped. Other preprocessor directives still error.
 
 ---
 
@@ -201,14 +213,21 @@ Note: pure assignment `nums[i] = x` does **not** emit a pre-store `ContainerLook
 ## Shadow-heap recipe (recommended UI model)
 
 ```text
-heap: Map<id, { type_name, elems: ValueJson[] }>
+heap: Map<id, { type_name, elems?: ValueJson[], entries?: {key, value?}[] }>
 
-on Alloc:     heap[id] = { type_name, elems: copy(elems) }   // size = elems.length for vectors
-on Write Index: heap[obj].elems[index] = value
-on ContainerMod push_back: append value; etc.
-on Dealloc:   delete heap[id]
-on VarCreate/Assign: env[name] = value   // if Object, name → id
+on Alloc:
+  if kind is vector/string/stack/queue: heap[id] = { type_name, elems: copy(elems) }
+  if kind is map/set (unordered_*):     heap[id] = { type_name, entries: copy(entries) }
+  // size is always present; elems is [] for maps/sets; entries is [] for sequences
+
+on Write Index:     heap[obj].elems[index] = value
+on Write MapEntry:  upsert heap[obj].entries by key
+on ContainerMod:    apply op (push_back → append elems; map_assign → upsert entry; …)
+on Dealloc:         delete heap[id]
+on VarCreate/Assign / Write Local: env[name] = value   // if Object, name → id
 ```
+
+`VarAssign` and `Write { slot: Local }` are both emitted for the same local store — apply **one** (prefer `Write`) so you don't double-update.
 
 You do **not** need a separate `inspect(id)` API if you apply events in order.
 
@@ -217,7 +236,8 @@ You do **not** need a separate `inspect(id)` API if you apply events in order.
 ## Intentional gaps (do not invent)
 
 - No deep graph inside `Object` values — always an id.
-- No stdin/stdout events in v1.
+- No stdin/stdout events in v1 — pass args via `run_method(source, "Solution::foo", argsJson)`.
 - `Value::Str` exists for event map keys (not a heap string object).
+- Step budget: runtime stops with `step limit exceeded` after ~100k steps (partial `events` still returned).
 
 When this file and the Rust serializers disagree, **fix the serializers and update this doc in the same change.**

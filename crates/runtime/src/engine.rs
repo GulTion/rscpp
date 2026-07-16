@@ -50,16 +50,26 @@ pub struct Engine {
     /// Next `call_id` to assign on `FnEnter`.
     next_call_id: u64,
     events: Vec<Event>,
+    /// Decremented on each statement / loop iter; 0 → error (browser safety).
+    fuel: u64,
 }
 
+/// Default step budget for `run` / loops (browser-safe).
+pub const DEFAULT_FUEL: u64 = 100_000;
+
 impl Engine {
-    /// Parse (+ soft sema) source into a runnable engine.
+    /// Parse + analyze source into a runnable engine.
     pub fn from_source(src: &str) -> Result<Self> {
+        Self::from_source_with_fuel(src, DEFAULT_FUEL)
+    }
+
+    pub fn from_source_with_fuel(src: &str, fuel: u64) -> Result<Self> {
         let tu = parse(src)?;
         let sema = analyze(&tu);
-        // Soft: still allow run if only unused warnings; but fail on undeclared critical?
-        // Keep strict only for hard errors that would crash — for MVP ignore sema fail and let runtime catch.
-        let _ = sema;
+        if !sema.ok() {
+            let e = &sema.errors[0];
+            return Err(RuntimeError::at(e.span, e.message.clone()));
+        }
 
         let mut functions = HashMap::new();
         let mut classes = HashMap::new();
@@ -80,7 +90,6 @@ impl Engine {
                     classes.insert(cname, c);
                 }
                 Item::Decl(d) => {
-                    // globals initialized lazily on first access / at start
                     let _ = d;
                 }
                 Item::UsingNamespace { .. } => {}
@@ -96,9 +105,9 @@ impl Engine {
             stack: Vec::new(),
             next_call_id: 0,
             events: Vec::new(),
+            fuel,
         };
 
-        // Init global decls
         let tu2 = parse(src)?;
         for item in &tu2.items {
             if let Item::Decl(d) = item {
@@ -107,6 +116,20 @@ impl Engine {
         }
 
         Ok(engine)
+    }
+
+    pub fn set_fuel(&mut self, fuel: u64) {
+        self.fuel = fuel;
+    }
+
+    fn burn(&mut self) -> Result<()> {
+        if self.fuel == 0 {
+            return Err(RuntimeError::new(
+                "step limit exceeded (possible infinite loop)",
+            ));
+        }
+        self.fuel -= 1;
+        Ok(())
     }
 
     pub fn events(&self) -> &[Event] {
@@ -140,6 +163,13 @@ impl Engine {
     pub fn make_vector(&mut self, elems: Vec<Value>) -> Value {
         let id = self.heap.alloc(Object::Vector(elems));
         self.emit_alloc(id, "vector", Span::new(0, 0));
+        Value::Object(id)
+    }
+
+    /// Helper: build a heap `string`.
+    pub fn make_string(&mut self, s: String) -> Value {
+        let id = self.heap.alloc(Object::String(s));
+        self.emit_alloc(id, "string", Span::new(0, 0));
         Value::Object(id)
     }
 
@@ -345,6 +375,7 @@ impl Engine {
     }
 
     fn exec_stmt(&mut self, stmt: &Stmt) -> Result<Flow> {
+        self.burn()?;
         // Nested blocks emit ScopeEnter instead of a single Step.
         if !matches!(stmt, Stmt::Block(_)) {
             self.emit(Event::Step {
@@ -403,6 +434,7 @@ impl Engine {
                     if !c.as_bool().map_err(RuntimeError::new)? {
                         break;
                     }
+                    self.burn()?;
                     self.emit(Event::LoopIter {
                         call_id: self.current_call_id(),
                         span: *span,
@@ -419,6 +451,7 @@ impl Engine {
                 body, cond, span, ..
             } => {
                 loop {
+                    self.burn()?;
                     self.emit(Event::LoopIter {
                         call_id: self.current_call_id(),
                         span: *span,
@@ -459,6 +492,7 @@ impl Engine {
                             break;
                         }
                     }
+                    self.burn()?;
                     self.emit(Event::LoopIter {
                         call_id: self.current_call_id(),
                         span: *span,
@@ -470,6 +504,42 @@ impl Engine {
                     }
                     if let Some(s) = step {
                         let _ = self.eval_expr(s)?;
+                    }
+                }
+                Ok(Flow::Next)
+            }
+            Stmt::ForRange {
+                name,
+                iter,
+                body,
+                span,
+                ..
+            } => {
+                let container = self.eval_expr(iter)?;
+                let Value::Object(id) = container else {
+                    return Err(RuntimeError::at(*span, "range-for needs a container"));
+                };
+                let elems = match self.heap.get(id) {
+                    Some(Object::Vector(e)) => e.clone(),
+                    Some(Object::String(s)) => s.chars().map(Value::Char).collect(),
+                    _ => {
+                        return Err(RuntimeError::at(
+                            *span,
+                            "range-for only supports vector/string for now",
+                        ))
+                    }
+                };
+                for item in elems {
+                    self.burn()?;
+                    self.emit(Event::LoopIter {
+                        call_id: self.current_call_id(),
+                        span: *span,
+                    });
+                    self.define_local(&name.name, item, name.span)?;
+                    match self.exec_stmt(body)? {
+                        Flow::Next | Flow::Continue => {}
+                        Flow::Break => break,
+                        Flow::Return(v) => return Ok(Flow::Return(v)),
                     }
                 }
                 Ok(Flow::Next)
@@ -991,6 +1061,23 @@ impl Engine {
             return Ok(Value::Ref(addr));
         }
         if let Some(init) = &decl.init {
+            // `pair<K,V> p = {a, b};`
+            if let Expr::InitList { elems, span } = init {
+                if let Type::Named { path, .. } = ty {
+                    let tname = path
+                        .segments
+                        .last()
+                        .map(|s| s.name.as_str())
+                        .unwrap_or("");
+                    if tname == "pair" && elems.len() == 2 {
+                        let first = self.eval_expr(&elems[0])?;
+                        let second = self.eval_expr(&elems[1])?;
+                        let id = self.heap.alloc(Object::Pair { first, second });
+                        self.emit_alloc(id, "pair", *span);
+                        return Ok(Value::Object(id));
+                    }
+                }
+            }
             let v = self.eval_expr(init)?;
             if Self::type_is_ptr(ty) {
                 return Ok(match v {
@@ -1069,6 +1156,75 @@ impl Engine {
             b: Self::slot_of(&lb),
             value_a: va,
             value_b: vb,
+            span,
+        });
+        Ok(Value::Void)
+    }
+
+    /// `sort(v.begin(), v.end())` — only this pattern; sorts the vector in place.
+    fn builtin_sort(&mut self, begin: &Expr, end: &Expr, span: Span) -> Result<Value> {
+        let id = match (begin, end) {
+            (
+                Expr::Call {
+                    callee: bcal, args: ba, ..
+                },
+                Expr::Call {
+                    callee: ecal, args: ea, ..
+                },
+            ) if ba.is_empty() && ea.is_empty() => {
+                let (bname, bbase) = match bcal.as_ref() {
+                    Expr::Member {
+                        base,
+                        field,
+                        arrow: false,
+                        ..
+                    } if field.name == "begin" => ("begin", base.as_ref()),
+                    _ => return Err(RuntimeError::at(span, "sort: expected v.begin()")),
+                };
+                let (ename, ebase) = match ecal.as_ref() {
+                    Expr::Member {
+                        base,
+                        field,
+                        arrow: false,
+                        ..
+                    } if field.name == "end" => ("end", base.as_ref()),
+                    _ => return Err(RuntimeError::at(span, "sort: expected v.end()")),
+                };
+                let _ = (bname, ename);
+                let bbase_v = self.eval_expr(bbase)?;
+                let ebase_v = self.eval_expr(ebase)?;
+                if bbase_v != ebase_v {
+                    return Err(RuntimeError::at(span, "sort: begin/end from different objects"));
+                }
+                let Value::Object(id) = bbase_v else {
+                    return Err(RuntimeError::at(span, "sort: not a vector"));
+                };
+                id
+            }
+            _ => {
+                return Err(RuntimeError::at(
+                    span,
+                    "sort only supports sort(v.begin(), v.end())",
+                ))
+            }
+        };
+        if let Some(Object::Vector(elems)) = self.heap.get_mut(id) {
+            elems.sort_by(|a, b| {
+                let ai = a.as_int().unwrap_or(0);
+                let bi = b.as_int().unwrap_or(0);
+                ai.cmp(&bi)
+            });
+        } else {
+            return Err(RuntimeError::at(span, "sort: not a vector"));
+        }
+        self.emit(Event::ContainerMod {
+            call_id: self.current_call_id(),
+            container: Value::Object(id),
+            kind: "sort".into(),
+            index: None,
+            key: None,
+            old: None,
+            value: None,
             span,
         });
         Ok(Value::Void)
@@ -1260,6 +1416,10 @@ impl Engine {
                         let ret = self.builtin_swap(&args[0], &args[1], *span)?;
                         return Ok((ret, None));
                     }
+                    if (name == "sort" || name == "std::sort") && args.len() == 2 {
+                        let ret = self.builtin_sort(&args[0], &args[1], *span)?;
+                        return Ok((ret, None));
+                    }
                     // Type-construction: vector / pair as function name
                     if name == "pair" && arg_vals.len() == 2 {
                         let id = self.heap.alloc(Object::Pair {
@@ -1404,6 +1564,21 @@ impl Engine {
                 let id = self.heap.alloc(Object::Vector(vs));
                 self.emit_alloc(id, "vector", *span);
                 Ok((Value::Object(id), None))
+            }
+            Expr::Conditional {
+                cond,
+                then_branch,
+                else_branch,
+                ..
+            } => {
+                let c = self.eval_expr(cond)?;
+                if c.as_bool().map_err(RuntimeError::new)? {
+                    let v = self.eval_expr(then_branch)?;
+                    Ok((v, None))
+                } else {
+                    let v = self.eval_expr(else_branch)?;
+                    Ok((v, None))
+                }
             }
         }
     }

@@ -64,7 +64,7 @@ Open http://localhost:8080/examples/web/</pre>
         const result = runFn(src.value);
         meta.textContent = result.ok
           ? `ok · value=${JSON.stringify(result.value)} · ${result.events.length} events`
-          : `error · ${result.error} · ${result.events.length} events`;
+          : `error · ${result.error?.message ?? result.error} · ${result.events.length} events`;
         out.textContent = JSON.stringify(result, null, 2);
       } catch (e) {
         meta.innerHTML = `<span class="err">${e}</span>`;

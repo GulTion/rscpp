@@ -207,6 +207,9 @@ fn compile_stmt(c: &mut Compiler, stmt: &Stmt) -> Result<()> {
             }
             Ok(())
         }
+        Stmt::ForRange { span, .. } => {
+            Err(VmError::at(*span, "range-for not supported in VM yet"))
+        }
     }
 }
 
@@ -441,6 +444,9 @@ fn compile_expr(c: &mut Compiler, expr: &Expr) -> Result<()> {
             return Err(VmError::at(span, "member load without call not in VM yet"));
         }
         Expr::Cast { expr, .. } => compile_expr(c, expr)?,
+        Expr::Conditional { span, .. } => {
+            return Err(VmError::at(*span, "ternary ?: not supported in VM yet"));
+        }
     }
     Ok(())
 }

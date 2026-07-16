@@ -118,6 +118,14 @@ pub enum Stmt {
         body: Box<Stmt>,
         span: Span,
     },
+    /// `for (T x : container)`
+    ForRange {
+        ty: Type,
+        name: Ident,
+        iter: Expr,
+        body: Box<Stmt>,
+        span: Span,
+    },
     Return {
         value: Option<Expr>,
         span: Span,
@@ -207,6 +215,13 @@ pub enum Expr {
     },
     InitList {
         elems: Vec<Expr>,
+        span: Span,
+    },
+    /// `cond ? then : else`
+    Conditional {
+        cond: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Box<Expr>,
         span: Span,
     },
 }
@@ -345,7 +360,8 @@ impl Expr {
             | Self::Index { span, .. }
             | Self::Member { span, .. }
             | Self::Cast { span, .. }
-            | Self::InitList { span, .. } => *span,
+            | Self::InitList { span, .. }
+            | Self::Conditional { span, .. } => *span,
             Self::Name(p) => p.span,
         }
     }
@@ -371,6 +387,7 @@ impl Stmt {
             | Self::While { span, .. }
             | Self::DoWhile { span, .. }
             | Self::For { span, .. }
+            | Self::ForRange { span, .. }
             | Self::Return { span, .. }
             | Self::Break { span }
             | Self::Continue { span }

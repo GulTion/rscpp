@@ -290,7 +290,6 @@ int main() {
     assert_eq!(*outer_size, 3);
     assert_eq!(outer_elems.len(), 3);
     assert!(matches!(outer_elems[0], Value::Object(_)));
-    // outer points at the three inner vectors
     let inner_ids: Vec<_> = vector_allocs.iter().take(3).map(|(id, ..)| *id).collect();
     let pointed: Vec<_> = outer_elems
         .iter()
@@ -301,4 +300,56 @@ int main() {
         .collect();
     assert_eq!(pointed, inner_ids);
     let _ = outer_id;
+}
+
+#[test]
+fn ternary_and_range_for_and_sort() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  vector<int> v;
+  v.push_back(2);
+  v.push_back(1);
+  sort(v.begin(), v.end());
+  int sum = 0;
+  for (int x : v) {
+    sum = sum + (x == 1 ? 10 : 0);
+  }
+  return sum + v[0];
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(11));
+}
+
+#[test]
+fn pair_brace_init() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  pair<int, int> p = {1, 2};
+  return p.first + p.second;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(3));
+}
+
+#[test]
+fn include_paste_ok() {
+    let mut eng = Engine::from_source(
+        r#"
+#include <vector>
+#include <map>
+int main() {
+  map<int, int> m;
+  m[1] = 2;
+  return m[1];
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(2));
 }

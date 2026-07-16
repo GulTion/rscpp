@@ -45,9 +45,12 @@ python3 -m http.server 8080   # from repo root
 ```
 
 ```js
-import init, { run } from "./pkg/rscpp_wasm.js";
+import init, { run, run_method } from "./pkg/rscpp_wasm.js";
 await init();
 const { ok, value, events, error } = run("int main() { return 42; }");
+// LeetCode style (no main):
+const r2 = run_method(source, "Solution::twoSum", [[2, 7, 11, 15], 9]);
+// error: { message, span?: { start, end } }
 ```
 
 ## Scope
