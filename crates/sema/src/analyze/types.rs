@@ -26,13 +26,22 @@ impl Context {
             self.err(id.span, format!("use of undeclared identifier `{}`", id.name));
             return Ty::Error;
         }
-        // std::vector / Namespace::name — treat last segment; if std::X just Named(X)
+        // std::vector / ranges::max — free names under a namespace alias
         let last = path.segments.last().unwrap();
-        if path.segments.len() == 2 && path.segments[0].name == "std" {
-            if let Some(sym) = self.symbols.lookup(&last.name) {
-                return sym.ty.clone();
+        if path.segments.len() == 2 {
+            let ns = path.segments[0].name.as_str();
+            if ns == "std" || ns == "ranges" {
+                if let Some(sym) = self.symbols.lookup(&last.name) {
+                    return sym.ty.clone();
+                }
+                if ns == "ranges" {
+                    return Ty::Function {
+                        ret: Box::new(Ty::Unknown),
+                        params: vec![],
+                    };
+                }
+                return Ty::named(&last.name, vec![]);
             }
-            return Ty::named(&last.name, vec![]);
         }
         // Class::static_member / nested name (e.g. numeric_limits::max)
         if path.segments.len() == 2 {
@@ -104,6 +113,10 @@ impl Context {
 
     pub(super) fn lookup_member(&mut self, base: &Ty, field: &str, span: Span) -> Ty {
         let base = base.strip_cv_ref();
+        // Soft: allow `p->field` / `p.field` when `p` is still typed as pointer value.
+        if let Ty::Pointer(inner) = base {
+            return self.lookup_member(inner, field, span);
+        }
         match base {
             Ty::Named { name, args } => {
                 // User class field/method
@@ -139,7 +152,7 @@ impl Context {
 
     pub(super) fn elem_type(&mut self, base: &Ty, span: Span) -> Ty {
         match base.strip_cv_ref() {
-            Ty::Named { name, args } if name == "vector" || name == "string" => {
+            Ty::Named { name, args } if name == "vector" || name == "string" || name == "deque" => {
                 if name == "string" {
                     Ty::Char
                 } else if let Some(t) = args.first() {
@@ -242,6 +255,10 @@ impl Context {
         if matches!(dst, Ty::Unknown | Ty::Error | Ty::Auto) || matches!(src, Ty::Unknown | Ty::Error) {
             return true;
         }
+        // `auto*`, `const auto&`, nested auto — accept any initializer (deduce later)
+        if ty_contains_auto(dst) {
+            return true;
+        }
         let d = dst.strip_cv_ref();
         let s = src.strip_cv_ref();
         // `const auto& x = …` / `auto&` — stripped Auto accepts any initializer
@@ -325,5 +342,13 @@ impl Context {
             Type::Reference { inner, .. } => Ty::Reference(Box::new(self.resolve_ast_type(inner))),
             Type::Const { inner, .. } => Ty::Const(Box::new(self.resolve_ast_type(inner))),
         }
+    }
+}
+
+fn ty_contains_auto(ty: &Ty) -> bool {
+    match ty {
+        Ty::Auto => true,
+        Ty::Pointer(inner) | Ty::Reference(inner) | Ty::Const(inner) => ty_contains_auto(inner),
+        _ => false,
     }
 }

@@ -257,6 +257,12 @@ pub enum Expr {
         expr: Option<Box<Expr>>,
         span: Span,
     },
+    /// `delete p` / `delete[] p`
+    Delete {
+        expr: Box<Expr>,
+        is_array: bool,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -399,7 +405,8 @@ impl Expr {
             | Self::Conditional { span, .. }
             | Self::Lambda { span, .. }
             | Self::New { span, .. }
-            | Self::Sizeof { span, .. } => *span,
+            | Self::Sizeof { span, .. }
+            | Self::Delete { span, .. } => *span,
             Self::Name(p) => p.span,
         }
     }

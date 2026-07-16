@@ -8,33 +8,52 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
     match (name, field) {
         ("vector", "size") | ("string", "size") | ("string", "length")
         | ("map", "size") | ("unordered_map", "size")
-        | ("set", "size") | ("queue", "size") | ("stack", "size") => Some(Ty::Function {
+        | ("set", "size") | ("unordered_set", "size")
+        | ("queue", "size") | ("stack", "size")
+        | ("deque", "size") | ("list", "size") => Some(Ty::Function {
             ret: Box::new(Ty::UInt),
             params: vec![],
         }),
         ("vector", "empty") | ("string", "empty") | ("map", "empty") | ("queue", "empty")
-        | ("stack", "empty") => Some(Ty::Function {
+        | ("stack", "empty") | ("deque", "empty") | ("unordered_set", "empty")
+        | ("set", "empty") => Some(Ty::Function {
             ret: Box::new(Ty::Bool),
             params: vec![],
         }),
-        ("vector", "push_back") | ("vector", "emplace_back") => Some(Ty::Function {
-            ret: Box::new(Ty::Void),
-            params: vec![], // variadic (pair emplace etc.)
-        }),
-        ("vector", "pop_back") => Some(Ty::Function {
+        ("vector", "push_back") | ("vector", "emplace_back")
+        | ("deque", "push_back") | ("deque", "emplace_back")
+        | ("deque", "push_front") | ("string", "push_back") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![],
         }),
-        ("vector", "front") | ("vector", "back") => {
+        ("vector", "pop_back") | ("deque", "pop_back") | ("deque", "pop_front")
+        | ("string", "pop_back") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![],
+        }),
+        ("vector", "front") | ("vector", "back")
+        | ("deque", "front") | ("deque", "back")
+        | ("string", "front") | ("string", "back")
+        | ("list", "front") | ("list", "back") => {
             let elem = args.first().cloned().unwrap_or(Ty::Unknown);
             Some(Ty::Function {
                 ret: Box::new(elem),
                 params: vec![],
             })
         },
-        ("vector", "clear") | ("map", "clear") | ("string", "clear") => Some(Ty::Function {
+        ("vector", "clear") | ("map", "clear") | ("string", "clear")
+        | ("deque", "clear") | ("set", "clear") | ("unordered_set", "clear") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![],
+        }),
+        ("vector", "reserve") | ("string", "reserve") | ("unordered_map", "reserve")
+        | ("unordered_set", "reserve") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![Ty::UInt],
+        }),
+        ("vector", "resize") | ("string", "resize") | ("deque", "resize") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![], // 1 or 2 args
         }),
         ("vector", "begin") | ("vector", "end")
         | ("vector", "cbegin") | ("vector", "cend")
@@ -43,13 +62,13 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         | ("string", "rbegin") | ("string", "rend")
         | ("map", "begin") | ("map", "end")
         | ("unordered_map", "begin") | ("unordered_map", "end")
-        | ("set", "begin") | ("set", "end") => Some(Ty::Function {
+        | ("set", "begin") | ("set", "end")
+        | ("set", "cbegin") | ("set", "cend")
+        | ("unordered_set", "begin") | ("unordered_set", "end")
+        | ("unordered_set", "cbegin") | ("unordered_set", "cend")
+        | ("deque", "begin") | ("deque", "end") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),
             params: vec![],
-        }),
-        ("string", "push_back") => Some(Ty::Function {
-            ret: Box::new(Ty::Void),
-            params: vec![Ty::Char],
         }),
         ("string", "find") => Some(Ty::Function {
             ret: Box::new(Ty::UInt),
@@ -64,7 +83,8 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             params: vec![],
         }),
         ("string", "npos") => Some(Ty::UInt),
-        ("string", "at") | ("vector", "at") | ("unordered_map", "at") | ("map", "at") => {
+        ("string", "at") | ("vector", "at") | ("unordered_map", "at") | ("map", "at")
+        | ("deque", "at") => {
             let elem = args.first().cloned().unwrap_or(Ty::Unknown);
             Some(Ty::Function {
                 ret: Box::new(elem),

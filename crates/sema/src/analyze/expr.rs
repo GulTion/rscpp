@@ -86,8 +86,13 @@ impl Context {
                 let bt = self.check_expr(base);
                 let it = self.check_expr(index);
                 let it = it.strip_cv_ref();
-                if matches!(it, Ty::Auto | Ty::Unknown) {
-                    // structured bindings / auto params — allow for now
+                let map_like = matches!(
+                    bt.strip_cv_ref(),
+                    Ty::Named { name, .. }
+                        if name == "map" || name == "unordered_map"
+                );
+                if matches!(it, Ty::Auto | Ty::Unknown) || map_like {
+                    // maps accept any key; auto/unknown indexes soft-allowed
                 } else if !it.is_integral() && *it != Ty::Error {
                     self.err(*span, format!("array index must be integral, got `{it}`"));
                 }
@@ -170,6 +175,10 @@ impl Context {
                     let _ = self.check_expr(e);
                 }
                 Ty::UInt
+            }
+            Expr::Delete { expr, .. } => {
+                let _ = self.check_expr(expr);
+                Ty::Void
             }
         }
     }

@@ -120,6 +120,11 @@ impl Parser {
         } else {
             None
         };
+        // Soft-skip default arguments: `double rel_tol = 1e-09`
+        if self.at_punct(Punct::Eq) {
+            self.bump();
+            let _ = self.parse_expr_bp(2)?;
+        }
         let end = name
             .as_ref()
             .map(|n| n.span.end)

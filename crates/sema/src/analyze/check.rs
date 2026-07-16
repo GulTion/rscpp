@@ -198,8 +198,11 @@ impl Context {
 }
 
 fn needs_auto_deduce(ty: &Ty) -> bool {
-    matches!(ty.strip_cv_ref(), Ty::Auto)
-        || matches!(ty, Ty::Pointer(inner) if matches!(inner.as_ref(), Ty::Auto))
+    match ty {
+        Ty::Auto => true,
+        Ty::Pointer(inner) | Ty::Reference(inner) | Ty::Const(inner) => needs_auto_deduce(inner),
+        _ => false,
+    }
 }
 
 fn deduce_auto(declared: &Ty, init: &Ty) -> Ty {
@@ -207,10 +210,16 @@ fn deduce_auto(declared: &Ty, init: &Ty) -> Ty {
         Ty::Auto => init.clone(),
         Ty::Const(inner) => Ty::Const(Box::new(deduce_auto(inner, init))),
         Ty::Reference(inner) => Ty::Reference(Box::new(deduce_auto(inner, init))),
-        Ty::Pointer(inner) if matches!(inner.as_ref(), Ty::Auto) => match init.strip_cv_ref() {
-            Ty::Pointer(p) => Ty::Pointer(p.clone()),
-            other => Ty::Pointer(Box::new(other.clone())),
-        },
+        Ty::Pointer(inner) if matches!(inner.as_ref(), Ty::Auto) || needs_auto_deduce(inner) => {
+            match init.strip_cv_ref() {
+                Ty::Pointer(p) => Ty::Pointer(Box::new(deduce_auto(inner, p))),
+                other => Ty::Pointer(Box::new(if matches!(inner.as_ref(), Ty::Auto) {
+                    other.clone()
+                } else {
+                    deduce_auto(inner, other)
+                })),
+            }
+        }
         other => other.clone(),
     }
 }

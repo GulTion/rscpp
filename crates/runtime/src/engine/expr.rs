@@ -508,6 +508,10 @@ impl Engine {
                 Ok((Value::Ptr(Address::Heap(id)), None))
             }
             Expr::Sizeof { .. } => Ok((Value::Int(8), None)),
+            Expr::Delete { expr, .. } => {
+                let _ = self.eval_expr(expr)?;
+                Ok((Value::Void, None))
+            }
         }
     }
 

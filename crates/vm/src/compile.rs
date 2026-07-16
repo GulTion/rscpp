@@ -461,6 +461,9 @@ fn compile_expr(c: &mut Compiler, expr: &Expr) -> Result<()> {
             let i = c.chunk.add_const(Value::Int(8));
             c.emit(Op::LoadConst(i), *span);
         }
+        Expr::Delete { span, .. } => {
+            return Err(VmError::at(*span, "delete not supported in VM yet"));
+        }
     }
     Ok(())
 }

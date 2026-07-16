@@ -134,6 +134,9 @@ impl Context {
             ("nth_element", Ty::Void),
             ("make_shared", Ty::Unknown),
             ("make_unique", Ty::Unknown),
+            ("__builtin_clz", Ty::Int),
+            ("__builtin_clzll", Ty::Int),
+            ("__builtin_ctz", Ty::Int),
         ] {
             self.symbols.redefine(Symbol {
                 name: name.into(),

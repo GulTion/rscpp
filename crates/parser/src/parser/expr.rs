@@ -188,6 +188,9 @@ impl Parser {
         if self.at_keyword(Keyword::New) {
             return self.parse_new();
         }
+        if self.at_keyword(Keyword::Delete) {
+            return self.parse_delete();
+        }
         match self.peek_kind() {
             TokenKind::Punct(Punct::Plus)
             | TokenKind::Punct(Punct::Minus)
@@ -601,6 +604,24 @@ impl Parser {
         Ok(Expr::Sizeof {
             ty: None,
             expr: Some(Box::new(expr)),
+            span: Span::new(start, end),
+        })
+    }
+
+    pub(super) fn parse_delete(&mut self) -> Result<Expr, ParseError> {
+        let start = self.expect_keyword(Keyword::Delete)?.span.start;
+        let is_array = if self.at_punct(Punct::LBracket) {
+            self.bump();
+            self.expect_punct(Punct::RBracket)?;
+            true
+        } else {
+            false
+        };
+        let expr = self.parse_expr_bp(prefix_bp())?;
+        let end = expr.span().end;
+        Ok(Expr::Delete {
+            expr: Box::new(expr),
+            is_array,
             span: Span::new(start, end),
         })
     }
