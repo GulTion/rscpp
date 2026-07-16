@@ -66,19 +66,25 @@ impl Context {
     pub(super) fn check_fn_call_types(&mut self, ct: &Ty, arg_tys: &[Ty], span: Span) -> Ty {
         match ct.strip_cv_ref() {
             Ty::Function { ret, params } => {
-                if params.len() != arg_tys.len() {
-                    self.err(
-                        span,
-                        format!(
-                            "call expects {} argument(s), got {}",
-                            params.len(),
-                            arg_tys.len()
-                        ),
-                    );
-                } else {
-                    for (p, a) in params.iter().zip(arg_tys.iter()) {
-                        if !self.assignable(p, a) && *a != Ty::Error {
-                            self.err(span, format!("argument type `{a}` not compatible with `{p}`"));
+                // Empty params = soft variadic (emplace and imperfect STL stubs).
+                if !params.is_empty() {
+                    if params.len() != arg_tys.len() {
+                        self.err(
+                            span,
+                            format!(
+                                "call expects {} argument(s), got {}",
+                                params.len(),
+                                arg_tys.len()
+                            ),
+                        );
+                    } else {
+                        for (p, a) in params.iter().zip(arg_tys.iter()) {
+                            if !self.assignable(p, a) && *a != Ty::Error {
+                                self.err(
+                                    span,
+                                    format!("argument type `{a}` not compatible with `{p}`"),
+                                );
+                            }
                         }
                     }
                 }
@@ -108,10 +114,21 @@ impl Context {
                 if let Some(ty) = stl_member(name, args, field) {
                     return ty;
                 }
+                // LeetCode stubs often omit class bodies — seed common node fields.
+                match (name.as_str(), field) {
+                    ("TreeNode", "val") | ("ListNode", "val") => return Ty::Int,
+                    ("TreeNode", "left") | ("TreeNode", "right") => {
+                        return Ty::Pointer(Box::new(Ty::named("TreeNode", vec![])));
+                    }
+                    ("ListNode", "next") => {
+                        return Ty::Pointer(Box::new(Ty::named("ListNode", vec![])));
+                    }
+                    _ => {}
+                }
                 self.err(span, format!("no member `{field}` on type `{base}`"));
                 Ty::Error
             }
-            Ty::Unknown => Ty::Unknown,
+            Ty::Unknown | Ty::Auto => Ty::Unknown,
             Ty::Error => Ty::Error,
             other => {
                 self.err(span, format!("member access on non-class type `{other}`"));
@@ -178,13 +195,27 @@ impl Context {
 
     pub(super) fn check_binary(&mut self, op: BinaryOp, lt: &Ty, rt: &Ty, span: Span) -> Ty {
         use BinaryOp::*;
+        // Soft: `auto` / deduced placeholders participate in any binary op.
+        if matches!(lt.strip_cv_ref(), Ty::Auto | Ty::Unknown)
+            || matches!(rt.strip_cv_ref(), Ty::Auto | Ty::Unknown)
+        {
+            return match op {
+                Lt | Gt | Le | Ge | Eq | Ne | And | Or => Ty::Bool,
+                Comma => rt.clone(),
+                _ => {
+                    if matches!(lt.strip_cv_ref(), Ty::Auto | Ty::Unknown) {
+                        rt.strip_cv_ref().clone()
+                    } else {
+                        lt.strip_cv_ref().clone()
+                    }
+                }
+            };
+        }
         match op {
             Add | Sub | Mul | Div | Rem | BitAnd | BitXor | BitOr | Shl | Shr => {
                 if (!lt.is_numeric() || !rt.is_numeric())
                     && *lt != Ty::Error
                     && *rt != Ty::Error
-                    && *lt != Ty::Unknown
-                    && *rt != Ty::Unknown
                 {
                     // allow string + for later; for now error
                     self.err(span, format!("invalid operands `{lt}` and `{rt}` to binary op"));
@@ -200,6 +231,7 @@ impl Context {
             }
             Lt | Gt | Le | Ge | Eq | Ne => Ty::Bool,
             And | Or => Ty::Bool,
+            Comma => rt.clone(),
         }
     }
 
@@ -209,6 +241,10 @@ impl Context {
         }
         let d = dst.strip_cv_ref();
         let s = src.strip_cv_ref();
+        // `const auto& x = …` / `auto&` — stripped Auto accepts any initializer
+        if matches!(d, Ty::Unknown | Ty::Error | Ty::Auto) {
+            return true;
+        }
         if d == s {
             return true;
         }

@@ -28,18 +28,46 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             ret: Box::new(Ty::Void),
             params: vec![],
         }),
+        ("vector", "front") | ("vector", "back") => {
+            let elem = args.first().cloned().unwrap_or(Ty::Unknown);
+            Some(Ty::Function {
+                ret: Box::new(elem),
+                params: vec![],
+            })
+        },
         ("vector", "clear") | ("map", "clear") | ("string", "clear") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![],
         }),
-        ("vector", "begin") | ("vector", "end") => Some(Ty::Function {
+        ("vector", "begin") | ("vector", "end")
+        | ("vector", "cbegin") | ("vector", "cend") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),
             params: vec![],
         }),
-        ("map", "insert") | ("unordered_map", "insert") | ("set", "insert")
-        | ("unordered_set", "insert") => Some(Ty::Function {
-            ret: Box::new(Ty::Unknown),
+        ("string", "push_back") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![Ty::Char],
+        }),
+        ("string", "find") => Some(Ty::Function {
+            ret: Box::new(Ty::UInt),
             params: vec![Ty::Unknown],
+        }),
+        ("string", "substr") => Some(Ty::Function {
+            ret: Box::new(Ty::named("string", vec![])),
+            params: vec![], // variadic 1–3
+        }),
+        ("string", "append") | ("string", "replace") => Some(Ty::Function {
+            ret: Box::new(Ty::named("string", vec![])),
+            params: vec![],
+        }),
+        ("string", "npos") => Some(Ty::UInt),
+        ("map", "insert") | ("unordered_map", "insert") | ("set", "insert")
+        | ("unordered_set", "insert")
+        | ("map", "emplace") | ("unordered_map", "emplace") | ("set", "emplace")
+        | ("unordered_set", "emplace") | ("stack", "emplace") | ("queue", "emplace")
+        | ("priority_queue", "emplace") => Some(Ty::Function {
+            ret: Box::new(Ty::Unknown),
+            params: vec![], // variadic
         }),
         ("map", "count")
         | ("unordered_map", "count")

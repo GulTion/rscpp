@@ -170,6 +170,9 @@ impl Parser {
         if self.at_punct(Punct::LBracket) {
             return self.parse_lambda();
         }
+        if self.at_keyword(Keyword::New) {
+            return self.parse_new();
+        }
         match self.peek_kind() {
             TokenKind::Punct(Punct::Plus)
             | TokenKind::Punct(Punct::Minus)
@@ -370,7 +373,8 @@ impl Parser {
         let mut args = Vec::new();
         if !self.at_punct(Punct::RParen) {
             loop {
-                args.push(self.parse_expr()?);
+                // assignment-expr: stop before comma so `f(a, b)` stays two args
+                args.push(self.parse_expr_bp(2)?);
                 if self.at_punct(Punct::Comma) {
                     self.bump();
                     continue;
@@ -389,7 +393,7 @@ impl Parser {
 
     pub(super) fn parse_index(&mut self, base: Expr) -> Result<Expr, ParseError> {
         self.expect_punct(Punct::LBracket)?;
-        let index = self.parse_expr()?;
+        let index = self.parse_expr_bp(2)?;
         let end = self.expect_punct(Punct::RBracket)?.span.end;
         let span = Span::new(base.span().start, end);
         Ok(Expr::Index {
@@ -417,7 +421,7 @@ impl Parser {
         let mut elems = Vec::new();
         if !self.at_punct(Punct::RBrace) {
             loop {
-                elems.push(self.parse_expr()?);
+                elems.push(self.parse_expr_bp(2)?);
                 if self.at_punct(Punct::Comma) {
                     self.bump();
                     if self.at_punct(Punct::RBrace) {
@@ -431,6 +435,32 @@ impl Parser {
         let end = self.expect_punct(Punct::RBrace)?.span.end;
         Ok(Expr::InitList {
             elems,
+            span: Span::new(start, end),
+        })
+    }
+
+    pub(super) fn parse_new(&mut self) -> Result<Expr, ParseError> {
+        let start = self.expect_keyword(Keyword::New)?.span.start;
+        let ty = self.parse_type()?;
+        let mut args = Vec::new();
+        let mut end = ty.span().end;
+        if self.at_punct(Punct::LParen) {
+            self.bump();
+            if !self.at_punct(Punct::RParen) {
+                loop {
+                    args.push(self.parse_expr_bp(2)?);
+                    if self.at_punct(Punct::Comma) {
+                        self.bump();
+                        continue;
+                    }
+                    break;
+                }
+            }
+            end = self.expect_punct(Punct::RParen)?.span.end;
+        }
+        Ok(Expr::New {
+            ty,
+            args,
             span: Span::new(start, end),
         })
     }
@@ -464,6 +494,8 @@ impl Parser {
             TokenKind::Punct(Punct::Star)
             | TokenKind::Punct(Punct::Slash)
             | TokenKind::Punct(Punct::Percent) => (21, 22),
+            // Lowest; l_bp=0 so assign RHS (min_bp=1) stops before comma: `a=b, c` → `(a=b), c`
+            TokenKind::Punct(Punct::Comma) => (0, 1),
             _ => return None,
         };
         Some((kind, l, r))
@@ -586,6 +618,7 @@ pub(super) fn as_binary_op(kind: &TokenKind) -> Option<BinaryOp> {
         TokenKind::Punct(Punct::Pipe) => BinaryOp::BitOr,
         TokenKind::Punct(Punct::AmpAmp) => BinaryOp::And,
         TokenKind::Punct(Punct::PipePipe) => BinaryOp::Or,
+        TokenKind::Punct(Punct::Comma) => BinaryOp::Comma,
         _ => return None,
     })
 }

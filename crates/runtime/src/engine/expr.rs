@@ -179,10 +179,23 @@ impl Engine {
                 } = callee.as_ref()
                 {
                     let base_v = self.eval_expr(base)?;
-                    if *arrow {
-                        // no real pointers yet
-                        return Err(RuntimeError::at(*mspan, "`->` not supported yet"));
-                    }
+                    let base_v = if *arrow {
+                        match base_v {
+                            Value::Ptr(Address::Heap(id)) => Value::Object(id),
+                            Value::Object(id) => Value::Object(id),
+                            Value::Nullptr => {
+                                return Err(RuntimeError::at(*mspan, "null pointer dereference"));
+                            }
+                            other => {
+                                return Err(RuntimeError::at(
+                                    *mspan,
+                                    format!("`->` on non-pointer `{other}`"),
+                                ));
+                            }
+                        }
+                    } else {
+                        base_v
+                    };
                     let ret = self.call_member(base_v, &field.name, &arg_vals, *span)?;
                     return Ok((ret, None));
                 }
@@ -365,12 +378,26 @@ impl Engine {
                 arrow,
                 span,
             } => {
-                if *arrow {
-                    return Err(RuntimeError::at(*span, "`->` not supported yet"));
-                }
                 let b = self.eval_expr(base)?;
-                let Value::Object(id) = b else {
-                    return Err(RuntimeError::at(*span, "member access on non-object"));
+                let id = if *arrow {
+                    match b {
+                        Value::Ptr(Address::Heap(id)) => id,
+                        Value::Object(id) => id,
+                        Value::Nullptr => {
+                            return Err(RuntimeError::at(*span, "null pointer dereference"));
+                        }
+                        other => {
+                            return Err(RuntimeError::at(
+                                *span,
+                                format!("`->` on non-pointer `{other}`"),
+                            ));
+                        }
+                    }
+                } else {
+                    let Value::Object(id) = b else {
+                        return Err(RuntimeError::at(*span, "member access on non-object"));
+                    };
+                    id
                 };
                 match self.heap.get(id) {
                     Some(Object::Pair { first, second }) => match field.name.as_str() {
@@ -391,7 +418,7 @@ impl Engine {
                         _ => Err(RuntimeError::at(*span, "pair has first/second only")),
                     },
                     Some(Object::Class { fields, .. }) => {
-                        let v = fields.get(&field.name).cloned().unwrap_or(Value::Int(0));
+                        let v = fields.get(&field.name).cloned().unwrap_or(Value::Nullptr);
                         Ok((
                             v,
                             Some(LValue::Field {
@@ -439,6 +466,47 @@ impl Engine {
                 *span,
                 "lambda call/value not supported at runtime yet",
             )),
+            Expr::New { ty, args, span } => {
+                let arg_vals: Result<Vec<_>> = args.iter().map(|a| self.eval_expr(a)).collect();
+                let arg_vals = arg_vals?;
+                let name = match ty {
+                    Type::Named { path, .. } => path
+                        .segments
+                        .last()
+                        .map(|s| s.name.as_str())
+                        .unwrap_or("object"),
+                    _ => "object",
+                };
+                let mut fields = HashMap::new();
+                match name {
+                    "TreeNode" => {
+                        fields.insert(
+                            "val".into(),
+                            arg_vals.first().cloned().unwrap_or(Value::Int(0)),
+                        );
+                        fields.insert("left".into(), Value::Nullptr);
+                        fields.insert("right".into(), Value::Nullptr);
+                    }
+                    "ListNode" => {
+                        fields.insert(
+                            "val".into(),
+                            arg_vals.first().cloned().unwrap_or(Value::Int(0)),
+                        );
+                        fields.insert("next".into(), Value::Nullptr);
+                    }
+                    _ => {
+                        if let Some(v) = arg_vals.first() {
+                            fields.insert("val".into(), v.clone());
+                        }
+                    }
+                }
+                let id = self.heap.alloc(Object::Class {
+                    name: name.into(),
+                    fields,
+                });
+                self.emit_alloc(id, name, *span);
+                Ok((Value::Ptr(Address::Heap(id)), None))
+            }
         }
     }
 

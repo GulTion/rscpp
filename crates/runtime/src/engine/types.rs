@@ -80,6 +80,7 @@ impl Engine {
                 l.as_bool().map_err(RuntimeError::new)?
                     || r.as_bool().map_err(RuntimeError::new)?,
             )),
+            Comma => Ok(r.clone()),
         }
     }
 

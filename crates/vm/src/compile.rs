@@ -454,6 +454,9 @@ fn compile_expr(c: &mut Compiler, expr: &Expr) -> Result<()> {
         Expr::Lambda { span, .. } => {
             return Err(VmError::at(*span, "lambda not supported in VM yet"));
         }
+        Expr::New { span, .. } => {
+            return Err(VmError::at(*span, "new not supported in VM yet"));
+        }
     }
     Ok(())
 }

@@ -131,6 +131,17 @@ impl Context {
             ("rbegin", 1),
             ("rend", 1),
             ("to_string", 1),
+            ("move", 1),
+            ("forward", 1),
+            ("isdigit", 1),
+            ("isalpha", 1),
+            ("isalnum", 1),
+            ("toupper", 1),
+            ("tolower", 1),
+            ("stoi", 1),
+            ("stol", 1),
+            ("stoll", 1),
+            ("stod", 1),
         ] {
             let params = vec![Ty::Unknown; arity];
             let _ = self.symbols.define(Symbol {
@@ -159,6 +170,16 @@ impl Context {
             },
             kind: SymbolKind::Func,
         });
+        for name in ["tie", "make_tuple", "make_pair"] {
+            let _ = self.symbols.define(Symbol {
+                name: name.into(),
+                ty: Ty::Function {
+                    ret: Box::new(Ty::Unknown),
+                    params: vec![], // variadic
+                },
+                kind: SymbolKind::Func,
+            });
+        }
         for name in [
             "INT_MAX",
             "INT_MIN",

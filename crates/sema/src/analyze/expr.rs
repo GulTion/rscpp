@@ -64,7 +64,7 @@ impl Context {
                     if *arrow {
                         match bt.strip_cv_ref() {
                             Ty::Pointer(inner) => bt = *inner.clone(),
-                            Ty::Error | Ty::Unknown => {}
+                            Ty::Error | Ty::Unknown | Ty::Auto => {}
                             other => {
                                 self.err(*mspan, format!("base of `->` has type `{other}`, not a pointer"));
                             }
@@ -98,7 +98,7 @@ impl Context {
                 if *arrow {
                     match bt.strip_cv_ref() {
                         Ty::Pointer(inner) => bt = *inner.clone(),
-                        Ty::Error | Ty::Unknown => {}
+                        Ty::Error | Ty::Unknown | Ty::Auto => {}
                         other => {
                             self.err(*span, format!("base of `->` has type `{other}`, not a pointer"));
                         }
@@ -149,6 +149,13 @@ impl Context {
                 self.check_block(body);
                 self.symbols.pop();
                 Ty::Unknown
+            }
+            Expr::New { ty, args, .. } => {
+                for a in args {
+                    let _ = self.check_expr(a);
+                }
+                let t = self.resolve_ast_type(ty);
+                Ty::Pointer(Box::new(t))
             }
         }
     }

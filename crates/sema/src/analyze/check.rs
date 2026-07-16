@@ -107,8 +107,12 @@ impl Context {
                 ..
             } => {
                 self.symbols.push();
-                let _ = self.check_expr(iter);
-                let t = self.resolve_ast_type(ty);
+                let it = self.check_expr(iter);
+                let mut t = self.resolve_ast_type(ty);
+                if matches!(t.strip_cv_ref(), Ty::Auto) {
+                    let elem = self.elem_type(&it, iter.span());
+                    t = deduce_auto(&t, &elem);
+                }
                 for name in names {
                     let _ = self.symbols.define(Symbol {
                         name: name.name.clone(),
@@ -169,6 +173,9 @@ impl Context {
                         format!("cannot initialize `{ty}` with `{it}`"),
                     );
                 }
+                if needs_auto_deduce(&ty) {
+                    ty = deduce_auto(&ty, &it);
+                }
             }
             if let Err(_) = self.symbols.define(Symbol {
                 name: decl.name.name.clone(),
@@ -181,5 +188,23 @@ impl Context {
                 );
             }
         }
+    }
+}
+
+fn needs_auto_deduce(ty: &Ty) -> bool {
+    matches!(ty.strip_cv_ref(), Ty::Auto)
+        || matches!(ty, Ty::Pointer(inner) if matches!(inner.as_ref(), Ty::Auto))
+}
+
+fn deduce_auto(declared: &Ty, init: &Ty) -> Ty {
+    match declared {
+        Ty::Auto => init.clone(),
+        Ty::Const(inner) => Ty::Const(Box::new(deduce_auto(inner, init))),
+        Ty::Reference(inner) => Ty::Reference(Box::new(deduce_auto(inner, init))),
+        Ty::Pointer(inner) if matches!(inner.as_ref(), Ty::Auto) => match init.strip_cv_ref() {
+            Ty::Pointer(p) => Ty::Pointer(p.clone()),
+            other => Ty::Pointer(Box::new(other.clone())),
+        },
+        other => other.clone(),
     }
 }

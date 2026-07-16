@@ -40,6 +40,21 @@ pub fn call(
             ctx.modify(base, "pop_back", None, None, old, None, span);
             Ok(Value::Void)
         }
+        "front" => {
+            let v = elems
+                .first()
+                .cloned()
+                .ok_or_else(|| RuntimeError::at(span, "front on empty vector"))?;
+            Ok(ctx.query(base, "front", Some(Value::Int(0)), v, span))
+        }
+        "back" => {
+            let idx = elems.len().saturating_sub(1) as i64;
+            let v = elems
+                .last()
+                .cloned()
+                .ok_or_else(|| RuntimeError::at(span, "back on empty vector"))?;
+            Ok(ctx.query(base, "back", Some(Value::Int(idx)), v, span))
+        }
         "clear" => {
             if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
                 e.clear();

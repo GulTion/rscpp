@@ -243,6 +243,12 @@ pub enum Expr {
         body: Block,
         span: Span,
     },
+    /// `new T` / `new T(args)`
+    New {
+        ty: Type,
+        args: Vec<Expr>,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -279,6 +285,8 @@ pub enum BinaryOp {
     BitOr,
     And,
     Or,
+    /// Comma operator `a, b` (lowest precedence).
+    Comma,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -381,7 +389,8 @@ impl Expr {
             | Self::Cast { span, .. }
             | Self::InitList { span, .. }
             | Self::Conditional { span, .. }
-            | Self::Lambda { span, .. } => *span,
+            | Self::Lambda { span, .. }
+            | Self::New { span, .. } => *span,
             Self::Name(p) => p.span,
         }
     }

@@ -98,7 +98,8 @@ impl Parser {
         let start = name.span.start;
         let init = if self.at_punct(Punct::Eq) {
             self.bump();
-            Some(self.parse_expr()?)
+            // assignment-expr: `int a = 0, b = 1` must not eat the declarator comma
+            Some(self.parse_expr_bp(2)?)
         } else if self.at_punct(Punct::LBrace) {
             Some(self.parse_init_list()?)
         } else if self.at_punct(Punct::LParen) {
@@ -114,7 +115,7 @@ impl Parser {
                 Some(self.parse_call(callee)?)
             } else {
                 self.bump();
-                let e = self.parse_expr()?;
+                let e = self.parse_expr_bp(2)?;
                 self.expect_punct(Punct::RParen)?;
                 Some(e)
             }
