@@ -2,72 +2,285 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>rscpp WASM demo</title>
+  <title>rscpp · LeetCode runner</title>
   <style>
-    :root { color-scheme: light dark; font-family: ui-monospace, monospace; }
+    :root { color-scheme: light dark; font-family: ui-monospace, monospace; font-size: 14px; }
     body { max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem; }
-    textarea { width: 100%; height: 14rem; box-sizing: border-box; }
-    button { margin: 0.5rem 0 1rem; padding: 0.4rem 0.8rem; }
-    pre { background: #1111; padding: 0.75rem; overflow: auto; max-height: 28rem; white-space: pre-wrap; }
+    label { display: block; margin: 1rem 0 0.25rem; font-weight: 600; }
+    textarea, input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      font: inherit;
+    }
+    textarea { height: 16rem; }
+    #cases { height: 8rem; }
+    #method { max-width: 20rem; }
+    button { margin: 1rem 0.5rem 1rem 0; padding: 0.45rem 0.9rem; font: inherit; cursor: pointer; }
+    pre {
+      background: #1111;
+      padding: 0.75rem;
+      overflow: auto;
+      max-height: 32rem;
+      white-space: pre-wrap;
+    }
     .err { color: #c22; }
+    .ok { color: #282; }
+    .case {
+      border: 1px solid #8884;
+      border-radius: 4px;
+      padding: 0.5rem 0.75rem;
+      margin: 0.5rem 0;
+    }
+    .case.fail { border-color: #c444; }
+    .case.pass { border-color: #4a4; }
+    .hint { opacity: 0.75; font-size: 0.9em; margin: 0.25rem 0 0; }
   </style>
 </head>
 <body>
-  <h1>rscpp · run()</h1>
-  <p>C++ source in → value + events out (no stdin/stdout).</p>
-  <textarea id="src">int main() {
-    vector&lt;vector&lt;int&gt;&gt; adj = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
-    adj[0][1] = 5;
-    adj[1][2] = 7;
-    adj[0][2] = 10;
-    int sum = 0;
-    int i = 0;
-    while (i &lt; 3) {
-        int j = 0;
-        while (j &lt; 3) {
-            sum = sum + adj[i][j];
-            j = j + 1;
-        }
-        i = i + 1;
-    }
-    return sum;
-}</textarea>
-  <br />
-  <button id="run">Run</button>
-  <div id="meta"></div>
-  <pre id="out">Build WASM first:
-  wasm-pack build crates/wasm --target web
+  <h1>rscpp · LeetCode runner</h1>
+  <p>Paste a <code>class Solution { … }</code> (no <code>main</code>). Add test cases as JSON. Runs via <code>run_method</code>.</p>
 
-Then from the repo root:
-  python3 -m http.server 8080
-Open http://localhost:8080/examples/web/</pre>
+  <label for="solution">Solution (C++)</label>
+  <textarea id="solution">class Solution {
+public:
+    vector&lt;int&gt; twoSum(vector&lt;int&gt;&amp; nums, int target) {
+        map&lt;int, int&gt; seen;
+        for (int i = 0; i &lt; nums.size(); ++i) {
+            int need = target - nums[i];
+            if (seen.count(need)) {
+                return {seen[need], i};
+            }
+            seen[nums[i]] = i;
+        }
+        return {};
+    }
+};</textarea>
+
+  <label for="method">Method</label>
+  <input id="method" type="text" value="twoSum" />
+  <p class="hint">Called as <code>Solution::&lt;method&gt;</code> (e.g. <code>twoSum</code> → <code>Solution::twoSum</code>).</p>
+
+  <label for="cases">Test cases (JSON array)</label>
+  <textarea id="cases">[
+  { "args": [[2, 7, 11, 15], 9], "expect": [0, 1] },
+  { "args": [[3, 2, 4], 6], "expect": [1, 2] },
+  { "args": [[3, 3], 6], "expect": [0, 1] }
+]</textarea>
+  <p class="hint">Each item: <code>{ "args": [...], "expect": optional }</code>. <code>args</code> is passed to WASM as the method argument list (arrays → <code>vector</code>).</p>
+
+  <button id="run" type="button">Run test cases</button>
+  <label><input type="checkbox" id="showEvents" /> Show full event JSON per case</label>
+
+  <div id="meta"></div>
+  <div id="results"></div>
+  <pre id="out" hidden></pre>
 
   <script type="module">
-    const out = document.getElementById("out");
+    const solutionEl = document.getElementById("solution");
+    const methodEl = document.getElementById("method");
+    const casesEl = document.getElementById("cases");
     const meta = document.getElementById("meta");
-    const src = document.getElementById("src");
+    const results = document.getElementById("results");
+    const out = document.getElementById("out");
+    const showEventsEl = document.getElementById("showEvents");
+    const LS_SOLUTION = "rscpp.leetcode.solution";
+    const LS_CASES = "rscpp.leetcode.cases";
 
-    let runFn = null;
+    let runMethod = null;
+
     try {
       const mod = await import("../../crates/wasm/pkg/rscpp_wasm.js");
       await mod.default();
-      runFn = mod.run;
+      runMethod = mod.run_method;
       meta.textContent = "WASM ready.";
     } catch (e) {
-      meta.innerHTML = `<span class="err">Load failed — run wasm-pack (see below).</span>`;
+      meta.innerHTML = `<span class="err">Load failed — from repo root:<br>
+        wasm-pack build crates/wasm --target web<br>
+        python3 -m http.server 8080<br>
+        open http://localhost:8080/examples/web/</span>`;
       console.error(e);
     }
 
-    document.getElementById("run").onclick = () => {
-      if (!runFn) return;
+    // Restore persisted inputs.
+    try {
+      const savedSolution = localStorage.getItem(LS_SOLUTION);
+      if (savedSolution !== null) solutionEl.value = savedSolution;
+      const savedCases = localStorage.getItem(LS_CASES);
+      if (savedCases !== null) casesEl.value = savedCases;
+    } catch (_e) {
+      // Ignore storage errors (private mode / disabled storage).
+    }
+
+    // Persist inputs on every edit.
+    solutionEl.addEventListener("input", () => {
       try {
-        const result = runFn(src.value);
-        meta.textContent = result.ok
-          ? `ok · value=${JSON.stringify(result.value)} · ${result.events.length} events`
-          : `error · ${result.error?.message ?? result.error} · ${result.events.length} events`;
-        out.textContent = JSON.stringify(result, null, 2);
+        localStorage.setItem(LS_SOLUTION, solutionEl.value);
+      } catch (_e) {}
+    });
+    casesEl.addEventListener("input", () => {
+      try {
+        localStorage.setItem(LS_CASES, casesEl.value);
+      } catch (_e) {}
+    });
+
+    /** Decode return value for display / expect compare. */
+    function decodeValue(value, events) {
+      if (!value) return null;
+      if (value.kind === "Int" || value.kind === "Bool" || value.kind === "Float") {
+        return value.value;
+      }
+      if (value.kind === "Object" && Array.isArray(events)) {
+        const id = value.value;
+        const alloc = events.find((e) => e.kind === "Alloc" && e.id === id);
+        if (alloc?.elems?.length) {
+          return alloc.elems.map((v) => (v.kind === "Int" ? v.value : v));
+        }
+        if (alloc?.entries?.length) {
+          return Object.fromEntries(
+            alloc.entries.map((e) => [e.key?.Int ?? e.key, e.value?.value ?? e.value])
+          );
+        }
+        return { objectId: id };
+      }
+      return value;
+    }
+
+    function sameJson(a, b) {
+      return JSON.stringify(a) === JSON.stringify(b);
+    }
+
+    function parseCases(text) {
+      const raw = JSON.parse(text);
+      if (!Array.isArray(raw)) throw new Error("test cases must be a JSON array");
+      return raw.map((tc, i) => {
+        if (!tc || !Array.isArray(tc.args)) {
+          throw new Error(`case ${i}: need { "args": [...] }`);
+        }
+        return tc;
+      });
+    }
+
+    function qualifiedMethod(name) {
+      const n = name.trim();
+      if (!n) throw new Error("method name is empty");
+      return n.includes("::") ? n : `Solution::${n}`;
+    }
+
+    async function copyText(text) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+
+    document.getElementById("run").onclick = () => {
+      if (!runMethod) return;
+      results.innerHTML = "";
+      out.hidden = true;
+
+      let cases;
+      try {
+        cases = parseCases(casesEl.value);
       } catch (e) {
-        meta.innerHTML = `<span class="err">${e}</span>`;
+        meta.innerHTML = `<span class="err">Bad test cases: ${e.message}</span>`;
+        return;
+      }
+
+      let qname;
+      try {
+        qname = qualifiedMethod(methodEl.value);
+      } catch (e) {
+        meta.innerHTML = `<span class="err">${e.message}</span>`;
+        return;
+      }
+
+      const source = solutionEl.value;
+      const summary = { pass: 0, fail: 0, total: cases.length };
+      const detail = [];
+
+      for (let i = 0; i < cases.length; i++) {
+        const tc = cases[i];
+        let result;
+        try {
+          result = runMethod(source, qname, tc.args);
+        } catch (e) {
+          result = { ok: false, error: { message: String(e) }, events: [] };
+        }
+
+        const decoded = result.ok ? decodeValue(result.value, result.events) : null;
+        let passed = result.ok;
+        if (passed && tc.expect !== undefined) {
+          passed = sameJson(decoded, tc.expect);
+        }
+
+        if (passed) summary.pass++;
+        else summary.fail++;
+
+        const div = document.createElement("div");
+        div.className = `case ${passed ? "pass" : "fail"}`;
+        const status = !result.ok
+          ? `<span class="err">ERROR</span>`
+          : tc.expect !== undefined
+            ? (passed ? `<span class="ok">PASS</span>` : `<span class="err">FAIL</span>`)
+            : `<span class="ok">OK</span>`;
+
+        div.innerHTML = `
+          <strong>Case ${i + 1}</strong> ${status}
+          · args ${JSON.stringify(tc.args)}
+          ${tc.expect !== undefined ? `· expect ${JSON.stringify(tc.expect)}` : ""}
+          ${result.ok ? `· got ${JSON.stringify(decoded)}` : ""}
+          ${result.error ? `· <span class="err">${result.error.message ?? result.error}</span>` : ""}
+          · ${result.events?.length ?? 0} events
+        `;
+        const copyBtn = document.createElement("button");
+        copyBtn.type = "button";
+        copyBtn.textContent = "Copy Event JSON";
+        copyBtn.style.margin = "0.5rem 0 0";
+        copyBtn.style.padding = "0.2rem 0.55rem";
+        copyBtn.style.fontSize = "0.85em";
+        copyBtn.onclick = async () => {
+          try {
+            await copyText(JSON.stringify(result.events ?? [], null, 2));
+            const prev = copyBtn.textContent;
+            copyBtn.textContent = "Copied";
+            setTimeout(() => {
+              copyBtn.textContent = prev;
+            }, 1200);
+          } catch (e) {
+            meta.innerHTML = `<span class="err">Copy failed: ${e?.message ?? e}</span>`;
+          }
+        };
+        div.appendChild(document.createElement("br"));
+        div.appendChild(copyBtn);
+        results.appendChild(div);
+
+        detail.push({ case: i + 1, args: tc.args, expect: tc.expect, result });
+
+        if (showEventsEl.checked && result.events?.length) {
+          const pre = document.createElement("pre");
+          pre.textContent = JSON.stringify(result, null, 2);
+          pre.style.maxHeight = "12rem";
+          pre.style.fontSize = "0.85em";
+          results.appendChild(pre);
+        }
+      }
+
+      meta.textContent = `${summary.pass}/${summary.total} passed` +
+        (summary.fail ? ` · ${summary.fail} failed` : "") +
+        ` · ${qname}`;
+
+      if (showEventsEl.checked) {
+        out.hidden = false;
+        out.textContent = JSON.stringify(detail, null, 2);
       }
     };
   </script>

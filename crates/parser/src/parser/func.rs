@@ -1,0 +1,140 @@
+use super::Parser;
+use crate::error::ParseError;
+use rscpp_ast::*;
+use rscpp_lexer::{Keyword, Punct, Token, TokenKind};
+
+impl Parser {
+
+    pub(super) fn parse_function_rest(
+        &mut self,
+        start: usize,
+        return_type: Type,
+        name: Ident,
+    ) -> Result<FunctionDef, ParseError> {
+        self.expect_punct(Punct::LParen)?;
+        let mut params = Vec::new();
+        if !self.at_punct(Punct::RParen) {
+            loop {
+                params.push(self.parse_param()?);
+                if self.at_punct(Punct::Comma) {
+                    self.bump();
+                    continue;
+                }
+                break;
+            }
+        }
+        self.expect_punct(Punct::RParen)?;
+        let body = self.parse_block()?;
+        let end = body.span.end;
+        Ok(FunctionDef {
+            return_type,
+            name,
+            params,
+            body,
+            span: Span::new(start, end),
+        })
+    }
+
+    pub(super) fn parse_param(&mut self) -> Result<Param, ParseError> {
+        let start = self.peek_span().start;
+        let mut ty = self.parse_type()?;
+        // Optional ptr/ref after type for params like `int& nums`
+        ty = self.apply_ptr_suffixes(ty)?;
+        let name = if matches!(self.peek_kind(), TokenKind::Ident(_)) {
+            Some(self.parse_ident()?)
+        } else {
+            None
+        };
+        let end = name
+            .as_ref()
+            .map(|n| n.span.end)
+            .unwrap_or_else(|| ty.span().end);
+        Ok(Param {
+            ty,
+            name,
+            span: Span::new(start, end),
+        })
+    }
+
+    pub(super) fn parse_decl_rest(
+        &mut self,
+        start: usize,
+        ty: Type,
+        first_name: Ident,
+    ) -> Result<Decl, ParseError> {
+        let mut declarators = Vec::new();
+        declarators.push(self.parse_init_declarator_after_name(first_name)?);
+        while self.at_punct(Punct::Comma) {
+            self.bump();
+            // optional ptrs then name
+            let mut ptrs = Vec::new();
+            while self.at_punct(Punct::Star) || self.at_punct(Punct::Amp) {
+                if self.at_punct(Punct::Star) {
+                    self.bump();
+                    ptrs.push(PtrKind::Pointer);
+                } else {
+                    self.bump();
+                    ptrs.push(PtrKind::Reference);
+                }
+            }
+            let name = self.parse_ident()?;
+            let mut d = self.parse_init_declarator_after_name(name)?;
+            d.ptrs = ptrs;
+            declarators.push(d);
+        }
+        let end = self.expect_punct(Punct::Semi)?.span.end;
+        Ok(Decl {
+            ty,
+            declarators,
+            span: Span::new(start, end),
+        })
+    }
+
+    pub(super) fn parse_init_declarator_after_name(
+        &mut self,
+        name: Ident,
+    ) -> Result<InitDeclarator, ParseError> {
+        let start = name.span.start;
+        let init = if self.at_punct(Punct::Eq) {
+            self.bump();
+            Some(self.parse_expr()?)
+        } else if self.at_punct(Punct::LBrace) {
+            Some(self.parse_init_list()?)
+        } else {
+            None
+        };
+        let end = init
+            .as_ref()
+            .map(|e| e.span().end)
+            .unwrap_or(name.span.end);
+        Ok(InitDeclarator {
+            name,
+            ptrs: Vec::new(),
+            init,
+            span: Span::new(start, end),
+        })
+    }
+
+    pub(super) fn apply_ptr_suffixes(&mut self, mut ty: Type) -> Result<Type, ParseError> {
+        loop {
+            if self.at_punct(Punct::Star) {
+                let star = self.bump();
+                let span = Span::new(ty.span().start, star.span.end);
+                ty = Type::Pointer {
+                    inner: Box::new(ty),
+                    span,
+                };
+            } else if self.at_punct(Punct::Amp) {
+                let amp = self.bump();
+                let span = Span::new(ty.span().start, amp.span.end);
+                ty = Type::Reference {
+                    inner: Box::new(ty),
+                    span,
+                };
+            } else {
+                break;
+            }
+        }
+        Ok(ty)
+    }
+}

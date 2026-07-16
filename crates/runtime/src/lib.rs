@@ -1,5 +1,6 @@
 //! Tree-walking C++ interpreter with event stream.
 
+mod builtins;
 mod engine;
 mod error;
 mod event;

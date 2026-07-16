@@ -123,11 +123,13 @@ Every event has `"kind": "<Name>"` plus fields. Common: `span`.
 | kind | fields |
 |------|--------|
 | `VarCreate` | `call_id?`, `name`, `value`, `span` |
+| `VarDestroy` | `call_id?`, `name`, `value`, `span` |
 | `VarAssign` | `call_id?`, `name`, `old?`, `value`, `span` |
 | `Write` | `call_id?`, `slot`, `old?`, `value`, `span` |
 | `Swap` | `call_id?`, `a`, `b`, `value_a`, `value_b`, `span` |
 | `RefBind` | `call_id?`, `name`, `target` (slot), `span` |
 | `PtrMove` | `call_id?`, `name`, `to`, `span` |
+| `BuiltinSelect` | `call_id?`, `name`, `args[]`, `chosen`, `value`, `span` | chooser builtins (`min` / `max`), span points to selected argument |
 
 ### Heap & containers
 

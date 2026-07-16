@@ -238,6 +238,7 @@ fn format_event(e: &Event) -> String {
         Event::VarAssign { name, old, value, .. } => {
             format!("VarAssign {name}: {old:?} → {value}")
         }
+        Event::VarDestroy { name, value, .. } => format!("VarDestroy {name} (was {value})"),
         Event::Write {
             slot,
             old,
@@ -268,6 +269,13 @@ fn format_event(e: &Event) -> String {
             result,
             ..
         } => format!("Compare {left} {op} {right} → {result}"),
+        Event::BuiltinSelect {
+            name,
+            args,
+            chosen,
+            value,
+            ..
+        } => format!("BuiltinSelect {name} args={args:?} chose#{chosen} => {value}"),
         Event::Swap {
             value_a, value_b, ..
         } => format!("Swap {value_a} ↔ {value_b}"),

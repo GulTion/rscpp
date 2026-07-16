@@ -69,6 +69,12 @@ pub enum Event {
         value: Value,
         span: Span,
     },
+    VarDestroy {
+        call_id: Option<u64>,
+        name: String,
+        value: Value,
+        span: Span,
+    },
     VarAssign {
         call_id: Option<u64>,
         name: String,
@@ -117,6 +123,16 @@ pub enum Event {
         left: Value,
         right: Value,
         result: bool,
+        span: Span,
+    },
+    /// Builtin chooser (`min` / `max`) selected one input argument.
+    BuiltinSelect {
+        call_id: Option<u64>,
+        name: String,
+        args: Vec<Value>,
+        chosen: usize,
+        value: Value,
+        /// Span of the selected argument.
         span: Span,
     },
     /// Exchange of two slots (explicit `swap` or detected).

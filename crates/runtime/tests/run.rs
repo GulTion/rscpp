@@ -353,3 +353,111 @@ int main() {
     .unwrap();
     assert_eq!(eng.run_main().unwrap(), Value::Int(2));
 }
+
+#[test]
+fn leetcode_min_max_abs_and_climits() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  int a = min(3, 7);
+  int b = max(3, 7);
+  int c = std::min(10, std::max(1, 5));
+  int d = abs(-42);
+  int lo = INT_MAX;
+  int hi = INT_MIN;
+  return a + b + c + d + (lo > hi);
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(58));
+}
+
+#[test]
+fn int_max_dp_style() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  vector<int> v;
+  v.push_back(5);
+  v.push_back(2);
+  v.push_back(8);
+  int ans = INT_MAX;
+  int i = 0;
+  while (i < v.size()) {
+    ans = min(ans, v[i]);
+    i = i + 1;
+  }
+  return ans;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(2));
+}
+
+#[test]
+fn min_max_emit_builtin_select_with_chosen_span() {
+    let src = r#"
+int main() {
+  int a = 3;
+  int b = 7;
+  return max(a, b);
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(7));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::BuiltinSelect {
+            name,
+            chosen: 1,
+            value: Value::Int(7),
+            ..
+        } if name == "max"
+    )));
+}
+
+#[test]
+fn locals_emit_vardestroy_on_scope_exit() {
+    let src = r#"
+int main() {
+  int x = 1;
+  {
+    int y = 2;
+    x = x + y;
+  }
+  return x;
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(3));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::VarDestroy {
+            name,
+            value: Value::Int(2),
+            ..
+        } if name == "y"
+    )));
+}
+
+#[test]
+fn leetcode_algorithms_from_issues_work() {
+    let src = r#"
+int main() {
+  vector<int> v = {5, 2, 8, 2};
+  reverse(v.begin(), v.end());
+  int s = accumulate(v.begin(), v.end(), 0);
+  int lo_idx = lower_bound(v.begin(), v.end(), 2);
+  int hi_idx = upper_bound(v.begin(), v.end(), 2);
+  bool has8 = binary_search(v.begin(), v.end(), 8);
+  int mn = *min_element(v.begin(), v.end());
+  int mx = *max_element(v.begin(), v.end());
+  int p = __builtin_popcount(7);
+  return s + lo_idx + hi_idx + (has8 ? 1 : 0) + mn + mx + p;
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    let _ = eng.run_main().unwrap();
+}
