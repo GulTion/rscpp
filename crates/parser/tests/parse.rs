@@ -256,3 +256,19 @@ fn numeric_limits_template() {
     let tu = parse("int f() { return numeric_limits<int>::max(); }").unwrap();
     assert_eq!(tu.items.len(), 1);
 }
+
+#[test]
+fn call_operator_member() {
+    let tu = parse(
+        r#"
+    struct H {
+        size_t operator()(const vector<int>& v) const { return 0; }
+    };
+    "#,
+    )
+    .unwrap();
+    let Item::Class(c) = &tu.items[0] else {
+        panic!();
+    };
+    assert!(matches!(c.members[0], Member::Function(_)));
+}

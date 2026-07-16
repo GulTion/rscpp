@@ -139,11 +139,17 @@ impl Parser {
         let start = self.peek_span().start;
         self.skip_decl_specs();
         let ty = self.parse_type()?;
-        // `operator==` / `operator()` etc.
+        // `operator==` / `operator()` / `operator[]` etc.
         if self.at_keyword(Keyword::Operator) {
             let op_start = self.bump().span;
-            while !self.at_eof() && !self.at_punct(Punct::LParen) {
+            // Call operator: `operator()` — the `()` is the spelling, not params.
+            if self.at_punct(Punct::LParen) {
                 self.bump();
+                self.expect_punct(Punct::RParen)?;
+            } else {
+                while !self.at_eof() && !self.at_punct(Punct::LParen) {
+                    self.bump();
+                }
             }
             let name = Ident {
                 name: "operator".into(),
