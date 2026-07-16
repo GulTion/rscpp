@@ -202,6 +202,12 @@ impl Context {
         if d == s {
             return true;
         }
+        // `vector<int> v(n)` ctor call types as bare `vector` — allow same container name
+        if let (Ty::Named { name: dn, .. }, Ty::Named { name: sn, .. }) = (d, s) {
+            if dn == sn {
+                return true;
+            }
+        }
         // numeric promotions / conversions (loose)
         if d.is_numeric() && s.is_numeric() {
             return true;
