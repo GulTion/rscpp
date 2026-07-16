@@ -54,11 +54,30 @@ impl Parser {
             }
             break;
         }
-        // Optional ctor-initializer: `: mem(args), ...`
+        // Optional ctor-initializer: `: a(x), b{y} { body }`
         if self.at_punct(Punct::Colon) {
             self.bump();
-            while !self.at_eof() && !self.at_punct(Punct::LBrace) && !self.at_punct(Punct::Semi) {
-                self.bump();
+            loop {
+                if self.at_eof() || self.at_punct(Punct::Semi) || self.at_punct(Punct::LBrace) {
+                    break;
+                }
+                // member name
+                while matches!(self.peek_kind(), TokenKind::Ident(_))
+                    || self.at_punct(Punct::Scope)
+                    || self.at_punct(Punct::Tilde)
+                {
+                    self.bump();
+                }
+                if self.at_punct(Punct::LParen) {
+                    self.skip_balanced(Punct::LParen, Punct::RParen);
+                } else if self.at_punct(Punct::LBrace) {
+                    self.skip_balanced(Punct::LBrace, Punct::RBrace);
+                }
+                if self.at_punct(Punct::Comma) {
+                    self.bump();
+                    continue;
+                }
+                break;
             }
         }
         let body = if self.at_punct(Punct::LBrace) {

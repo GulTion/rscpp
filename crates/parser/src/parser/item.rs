@@ -6,6 +6,20 @@ use rscpp_lexer::{Keyword, Punct, Token, TokenKind};
 impl Parser {
 
     pub(super) fn parse_item(&mut self) -> Result<Item, ParseError> {
+        if self.at_keyword(Keyword::Template) {
+            self.skip_template_decl()?;
+            if self.at_eof() {
+                // Template was the last top-level decl.
+                return Ok(Item::UsingNamespace {
+                    path: Path {
+                        segments: vec![],
+                        span: Span::new(0, 0),
+                    },
+                    span: Span::new(0, 0),
+                });
+            }
+            return self.parse_item();
+        }
         if self.at_keyword(Keyword::Class) || self.at_keyword(Keyword::Struct) {
             return Ok(Item::Class(self.parse_class()?));
         }
@@ -80,6 +94,33 @@ impl Parser {
         if self.at_keyword(Keyword::Class) || self.at_keyword(Keyword::Struct) {
             return Ok(Member::Class(self.parse_class()?));
         }
+        if self.at_keyword(Keyword::Template) {
+            self.skip_template_decl()?;
+            return Ok(Member::Access(AccessSpec::Public));
+        }
+        if self.at_keyword(Keyword::Enum) {
+            // Soft: skip `enum Name { A, B };` — treat as no-op member.
+            self.bump();
+            if matches!(self.peek_kind(), TokenKind::Ident(_)) {
+                let _ = self.bump();
+            }
+            if self.at_punct(Punct::LBrace) {
+                self.bump();
+                let mut depth = 1i32;
+                while depth > 0 && !self.at_eof() {
+                    if self.at_punct(Punct::LBrace) {
+                        depth += 1;
+                    } else if self.at_punct(Punct::RBrace) {
+                        depth -= 1;
+                    }
+                    self.bump();
+                }
+            }
+            if self.at_punct(Punct::Semi) {
+                self.bump();
+            }
+            return Ok(Member::Access(AccessSpec::Public));
+        }
         // Destructor: `~Name()`
         if self.at_punct(Punct::Tilde) {
             let start = self.bump().span.start;
@@ -98,6 +139,20 @@ impl Parser {
         let start = self.peek_span().start;
         self.skip_decl_specs();
         let ty = self.parse_type()?;
+        // `operator==` / `operator()` etc.
+        if self.at_keyword(Keyword::Operator) {
+            let op_start = self.bump().span;
+            while !self.at_eof() && !self.at_punct(Punct::LParen) {
+                self.bump();
+            }
+            let name = Ident {
+                name: "operator".into(),
+                span: op_start,
+            };
+            return Ok(Member::Function(
+                self.parse_function_rest(start, ty, name)?,
+            ));
+        }
         // Constructor: `AllOne()` / `AllOne() { ... }` — type name is the ctor name.
         if self.at_punct(Punct::LParen) {
             if let Type::Named { path, args, .. } = &ty {
@@ -120,5 +175,52 @@ impl Parser {
         } else {
             Ok(Member::Field(self.parse_decl_rest(start, ty, name)?))
         }
+    }
+
+    /// Drop `template<…> class/struct/function …` (LeetCode helpers we don't need).
+    pub(super) fn skip_template_decl(&mut self) -> Result<(), ParseError> {
+        self.expect_keyword(Keyword::Template)?;
+        if self.at_punct(Punct::Lt) {
+            self.bump();
+            let mut depth = 1i32;
+            while depth > 0 && !self.at_eof() {
+                match self.peek_kind() {
+                    TokenKind::Punct(Punct::Lt) => depth += 1,
+                    TokenKind::Punct(Punct::Gt) => depth -= 1,
+                    TokenKind::Punct(Punct::GtGt) => depth -= 2,
+                    _ => {}
+                }
+                self.bump();
+            }
+        }
+        if self.at_keyword(Keyword::Class) || self.at_keyword(Keyword::Struct) {
+            let _ = self.parse_class()?;
+            return Ok(());
+        }
+        // function / using / alias — skip to `;` or `{…}`
+        while !self.at_eof()
+            && !self.at_punct(Punct::Semi)
+            && !self.at_punct(Punct::LBrace)
+        {
+            self.bump();
+        }
+        if self.at_punct(Punct::LBrace) {
+            self.bump();
+            let mut depth = 1i32;
+            while depth > 0 && !self.at_eof() {
+                if self.at_punct(Punct::LBrace) {
+                    depth += 1;
+                } else if self.at_punct(Punct::RBrace) {
+                    depth -= 1;
+                }
+                self.bump();
+            }
+            if self.at_punct(Punct::Semi) {
+                self.bump();
+            }
+        } else if self.at_punct(Punct::Semi) {
+            self.bump();
+        }
+        Ok(())
     }
 }

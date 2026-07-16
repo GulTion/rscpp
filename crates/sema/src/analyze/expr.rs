@@ -43,11 +43,16 @@ impl Context {
                     }
                     lt
                 } else {
-                    // compound assign: require numerics mostly
-                    if !lt.is_numeric() || !rt.is_numeric() {
-                        if lt != Ty::Error && rt != Ty::Error {
-                            self.err(*span, format!("invalid compound assignment on `{lt}` and `{rt}`"));
-                        }
+                    // compound assign: numerics, or string += …
+                    let ok = (lt.is_numeric() && rt.is_numeric())
+                        || matches!(lt.strip_cv_ref(), Ty::Named { name, .. } if name == "string")
+                        || matches!(lt, Ty::Unknown | Ty::Error | Ty::Auto)
+                        || matches!(rt, Ty::Unknown | Ty::Error | Ty::Auto);
+                    if !ok {
+                        self.err(
+                            *span,
+                            format!("invalid compound assignment on `{lt}` and `{rt}`"),
+                        );
                     }
                     lt
                 }

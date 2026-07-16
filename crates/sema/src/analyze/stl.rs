@@ -17,13 +17,10 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             ret: Box::new(Ty::Bool),
             params: vec![],
         }),
-        ("vector", "push_back") | ("vector", "emplace_back") => {
-            let elem = args.first().cloned().unwrap_or(Ty::Unknown);
-            Some(Ty::Function {
-                ret: Box::new(Ty::Void),
-                params: vec![elem],
-            })
-        }
+        ("vector", "push_back") | ("vector", "emplace_back") => Some(Ty::Function {
+            ret: Box::new(Ty::Void),
+            params: vec![], // variadic (pair emplace etc.)
+        }),
         ("vector", "pop_back") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![],
@@ -40,7 +37,13 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             params: vec![],
         }),
         ("vector", "begin") | ("vector", "end")
-        | ("vector", "cbegin") | ("vector", "cend") => Some(Ty::Function {
+        | ("vector", "cbegin") | ("vector", "cend")
+        | ("string", "begin") | ("string", "end")
+        | ("string", "cbegin") | ("string", "cend")
+        | ("string", "rbegin") | ("string", "rend")
+        | ("map", "begin") | ("map", "end")
+        | ("unordered_map", "begin") | ("unordered_map", "end")
+        | ("set", "begin") | ("set", "end") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),
             params: vec![],
         }),
@@ -61,9 +64,19 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             params: vec![],
         }),
         ("string", "npos") => Some(Ty::UInt),
+        ("string", "at") | ("vector", "at") | ("unordered_map", "at") | ("map", "at") => {
+            let elem = args.first().cloned().unwrap_or(Ty::Unknown);
+            Some(Ty::Function {
+                ret: Box::new(elem),
+                params: vec![Ty::Unknown],
+            })
+        },
         ("map", "insert") | ("unordered_map", "insert") | ("set", "insert")
-        | ("unordered_set", "insert")
-        | ("map", "emplace") | ("unordered_map", "emplace") | ("set", "emplace")
+        | ("unordered_set", "insert") => Some(Ty::Function {
+            ret: Box::new(Ty::Unknown),
+            params: vec![Ty::Unknown],
+        }),
+        ("map", "emplace") | ("unordered_map", "emplace") | ("set", "emplace")
         | ("unordered_set", "emplace") | ("stack", "emplace") | ("queue", "emplace")
         | ("priority_queue", "emplace") => Some(Ty::Function {
             ret: Box::new(Ty::Unknown),

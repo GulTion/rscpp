@@ -118,14 +118,35 @@ impl Parser {
         matches!(self.peek_kind(), TokenKind::Eof) && self.pending_gt == 0
     }
 
-    /// Skip storage / decl specs we don't model: `static`, `constexpr`, `inline`, `mutable`.
     pub(super) fn skip_decl_specs(&mut self) {
         while matches!(
             self.peek_kind(),
             TokenKind::Keyword(
-                Keyword::Static | Keyword::Constexpr | Keyword::Inline | Keyword::Mutable
+                Keyword::Static
+                    | Keyword::Constexpr
+                    | Keyword::Inline
+                    | Keyword::Mutable
+                    | Keyword::Explicit
+                    | Keyword::Virtual
+                    | Keyword::Friend
             )
         ) {
+            self.bump();
+        }
+    }
+
+    pub(super) fn skip_balanced(&mut self, open: Punct, close: Punct) {
+        if !self.at_punct(open) {
+            return;
+        }
+        self.bump();
+        let mut depth = 1i32;
+        while depth > 0 && !self.at_eof() {
+            if self.at_punct(open) {
+                depth += 1;
+            } else if self.at_punct(close) {
+                depth -= 1;
+            }
             self.bump();
         }
     }

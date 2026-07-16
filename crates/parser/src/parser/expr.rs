@@ -299,6 +299,13 @@ impl Parser {
                 let t = self.bump();
                 Ok(Expr::Nullptr { span: t.span })
             }
+            TokenKind::Keyword(Keyword::This) => {
+                let t = self.bump();
+                Ok(Expr::Name(Path::single(Ident {
+                    name: "this".into(),
+                    span: t.span,
+                })))
+            }
             TokenKind::Keyword(Keyword::Sizeof) => self.parse_sizeof(),
             TokenKind::Keyword(
                 Keyword::Void
@@ -354,19 +361,30 @@ impl Parser {
                 | Keyword::Auto,
             ) => true,
             TokenKind::Ident(_) => {
-                // `(foo)` could be grouping — only treat as cast if followed by type-ish then `)` then primary
-                // Heuristic: Ident / * / & then `)` then another primary token
+                // `(T*)expr` cast — do not treat `>>`/`>` as type syntax (that's `(N >> i)`).
                 let mut i = self.pos + 1;
+                let mut depth_lt = 0i32;
                 while let Some(t) = self.tokens.get(i) {
                     match &t.kind {
-                        TokenKind::Punct(Punct::Star | Punct::Amp | Punct::Lt | Punct::Gt | Punct::GtGt | Punct::Scope | Punct::Comma)
-                        | TokenKind::Ident(_)
-                        | TokenKind::Keyword(_) => {
+                        TokenKind::Punct(Punct::Lt) => {
+                            depth_lt += 1;
                             i += 1;
-                            continue;
                         }
+                        TokenKind::Punct(Punct::Gt | Punct::GtGt) if depth_lt > 0 => {
+                            depth_lt -= if matches!(t.kind, TokenKind::Punct(Punct::GtGt)) {
+                                2
+                            } else {
+                                1
+                            };
+                            if depth_lt < 0 {
+                                depth_lt = 0;
+                            }
+                            i += 1;
+                        }
+                        TokenKind::Punct(Punct::Star | Punct::Amp | Punct::Scope | Punct::Comma)
+                        | TokenKind::Ident(_)
+                        | TokenKind::Keyword(_) => i += 1,
                         TokenKind::Punct(Punct::RParen) => {
-                            // next after ) should look like expression start
                             return matches!(
                                 self.tokens.get(i + 1).map(|t| &t.kind),
                                 Some(

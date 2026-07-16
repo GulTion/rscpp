@@ -213,17 +213,20 @@ impl Context {
         }
         match op {
             Add | Sub | Mul | Div | Rem | BitAnd | BitXor | BitOr | Shl | Shr => {
+                let ls = lt.strip_cv_ref();
+                let rs = rt.strip_cv_ref();
+                if matches!(ls, Ty::Named { name, .. } if name == "string")
+                    || matches!(rs, Ty::Named { name, .. } if name == "string")
+                {
+                    return Ty::named("string", vec![]);
+                }
                 if (!lt.is_numeric() || !rt.is_numeric())
                     && *lt != Ty::Error
                     && *rt != Ty::Error
                 {
-                    // allow string + for later; for now error
                     self.err(span, format!("invalid operands `{lt}` and `{rt}` to binary op"));
                 }
-                // promote roughly: if either floating → double else int
-                if matches!(lt.strip_cv_ref(), Ty::Float | Ty::Double)
-                    || matches!(rt.strip_cv_ref(), Ty::Float | Ty::Double)
-                {
+                if matches!(ls, Ty::Float | Ty::Double) || matches!(rs, Ty::Float | Ty::Double) {
                     Ty::Double
                 } else {
                     Ty::Int

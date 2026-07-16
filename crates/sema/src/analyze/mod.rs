@@ -99,14 +99,51 @@ impl Context {
             },
             kind: SymbolKind::Func,
         });
-        let _ = self.symbols.define(Symbol {
-            name: "sort".into(),
-            ty: Ty::Function {
-                ret: Box::new(Ty::Void),
-                params: vec![Ty::Unknown, Ty::Unknown],
-            },
-            kind: SymbolKind::Func,
-        });
+        // Free functions with correct-ish return types (variadic = empty params).
+        let string_ty = Ty::named("string", vec![]);
+        for (name, ret) in [
+            ("to_string", string_ty.clone()),
+            ("move", Ty::Unknown),
+            ("forward", Ty::Unknown),
+            ("begin", Ty::Unknown),
+            ("end", Ty::Unknown),
+            ("cbegin", Ty::Unknown),
+            ("cend", Ty::Unknown),
+            ("rbegin", Ty::Unknown),
+            ("rend", Ty::Unknown),
+            ("sort", Ty::Void),
+            ("stable_sort", Ty::Void),
+            ("reverse", Ty::Void),
+            ("iota", Ty::Void),
+            ("fill", Ty::Void),
+            ("accumulate", Ty::Int),
+            ("max_element", Ty::Pointer(Box::new(Ty::Unknown))),
+            ("min_element", Ty::Pointer(Box::new(Ty::Unknown))),
+            ("lower_bound", Ty::Unknown),
+            ("upper_bound", Ty::Unknown),
+            ("binary_search", Ty::Bool),
+            ("tie", Ty::Unknown),
+            ("make_tuple", Ty::Unknown),
+            ("make_pair", Ty::Unknown),
+            ("distance", Ty::Int),
+            ("gcd", Ty::Int),
+            ("lcm", Ty::Int),
+            ("all_of", Ty::Bool),
+            ("any_of", Ty::Bool),
+            ("none_of", Ty::Bool),
+            ("nth_element", Ty::Void),
+            ("make_shared", Ty::Unknown),
+            ("make_unique", Ty::Unknown),
+        ] {
+            self.symbols.redefine(Symbol {
+                name: name.into(),
+                ty: Ty::Function {
+                    ret: Box::new(ret),
+                    params: vec![], // soft variadic
+                },
+                kind: SymbolKind::Func,
+            });
+        }
         for (name, arity) in [
             ("min", 2),
             ("max", 2),
@@ -117,22 +154,8 @@ impl Context {
             ("floor", 1),
             ("__builtin_popcount", 1),
             ("__builtin_popcountll", 1),
-            ("reverse", 2),
-            ("binary_search", 3),
-            ("lower_bound", 3),
-            ("upper_bound", 3),
-            ("accumulate", 3),
             ("size", 1),
             ("empty", 1),
-            ("begin", 1),
-            ("end", 1),
-            ("cbegin", 1),
-            ("cend", 1),
-            ("rbegin", 1),
-            ("rend", 1),
-            ("to_string", 1),
-            ("move", 1),
-            ("forward", 1),
             ("isdigit", 1),
             ("isalpha", 1),
             ("isalnum", 1),
@@ -153,29 +176,13 @@ impl Context {
                 kind: SymbolKind::Func,
             });
         }
-        let ptr_unknown = Ty::Pointer(Box::new(Ty::Unknown));
-        let _ = self.symbols.define(Symbol {
-            name: "min_element".into(),
-            ty: Ty::Function {
-                ret: Box::new(ptr_unknown.clone()),
-                params: vec![Ty::Unknown, Ty::Unknown],
-            },
-            kind: SymbolKind::Func,
-        });
-        let _ = self.symbols.define(Symbol {
-            name: "max_element".into(),
-            ty: Ty::Function {
-                ret: Box::new(ptr_unknown),
-                params: vec![Ty::Unknown, Ty::Unknown],
-            },
-            kind: SymbolKind::Func,
-        });
-        for name in ["tie", "make_tuple", "make_pair"] {
-            let _ = self.symbols.define(Symbol {
+        // Soft: min/max also allow 1-arg or 3+ via empty overload — redefine as variadic.
+        for name in ["min", "max"] {
+            let _ = self.symbols.redefine(Symbol {
                 name: name.into(),
                 ty: Ty::Function {
-                    ret: Box::new(Ty::Unknown),
-                    params: vec![], // variadic
+                    ret: Box::new(Ty::Int),
+                    params: vec![],
                 },
                 kind: SymbolKind::Func,
             });
