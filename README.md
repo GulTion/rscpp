@@ -44,6 +44,8 @@ python3 -m http.server 8080   # from repo root
 # open http://localhost:8080/examples/web/
 ```
 
+Build details, size tuning, and wasm-opt troubleshooting: **[`docs/wasm-build.md`](docs/wasm-build.md)**
+
 ```js
 import init, { run, run_method } from "./pkg/rscpp_wasm.js";
 await init();
