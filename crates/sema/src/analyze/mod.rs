@@ -58,6 +58,10 @@ impl Context {
             "string",
             "iostream",
             "size_t",
+            "int64_t",
+            "uint64_t",
+            "int32_t",
+            "uint32_t",
         ] {
             let _ = self.symbols.define(Symbol {
                 name: name.into(),
@@ -117,6 +121,11 @@ impl Context {
             ("lower_bound", 3),
             ("upper_bound", 3),
             ("accumulate", 3),
+            ("size", 1),
+            ("empty", 1),
+            ("begin", 1),
+            ("end", 1),
+            ("to_string", 1),
         ] {
             let params = vec![Ty::Unknown; arity];
             let _ = self.symbols.define(Symbol {

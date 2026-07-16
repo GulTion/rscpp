@@ -247,6 +247,20 @@ impl Parser {
                 Ok(Expr::Nullptr { span: t.span })
             }
             TokenKind::Ident(_) => Ok(Expr::Name(self.parse_path()?)),
+            TokenKind::Keyword(Keyword::StaticCast | Keyword::ReinterpretCast) => {
+                let start = self.bump().span.start;
+                self.expect_punct(Punct::Lt)?;
+                let ty = self.parse_type()?;
+                self.bump_template_gt()?;
+                self.expect_punct(Punct::LParen)?;
+                let expr = self.parse_expr()?;
+                let end = self.expect_punct(Punct::RParen)?.span.end;
+                Ok(Expr::Cast {
+                    ty,
+                    expr: Box::new(expr),
+                    span: Span::new(start, end),
+                })
+            }
             _ => Err(self.err(format!(
                 "expected expression, found {:?}",
                 self.peek_kind()

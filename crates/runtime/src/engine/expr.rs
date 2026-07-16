@@ -249,6 +249,32 @@ impl Engine {
                         }
                         return Ok((out.value, None));
                     }
+                    // C++17 free `size(c)` / `empty(c)`
+                    if (name == "size" || name == "std::size") && arg_vals.len() == 1 {
+                        let v = self.call_member(arg_vals[0].clone(), "size", &[], *span)?;
+                        return Ok((v, None));
+                    }
+                    if (name == "empty" || name == "std::empty") && arg_vals.len() == 1 {
+                        let v = self.call_member(arg_vals[0].clone(), "empty", &[], *span)?;
+                        return Ok((v, None));
+                    }
+                    if (name == "to_string" || name == "std::to_string") && arg_vals.len() == 1 {
+                        let s = match &arg_vals[0] {
+                            Value::Int(n) => n.to_string(),
+                            Value::Float(f) => f.to_string(),
+                            Value::Bool(b) => b.to_string(),
+                            Value::Char(c) => c.to_string(),
+                            other => {
+                                return Err(RuntimeError::at(
+                                    *span,
+                                    format!("to_string unsupported for `{other}`"),
+                                ))
+                            }
+                        };
+                        let id = self.heap.alloc(Object::String(s));
+                        self.emit_alloc(id, "string", *span);
+                        return Ok((Value::Object(id), None));
+                    }
                     // Type-construction: vector / pair as function name
                     if name == "pair" && arg_vals.len() == 2 {
                         let id = self.heap.alloc(Object::Pair {

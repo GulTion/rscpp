@@ -118,6 +118,18 @@ impl Parser {
         matches!(self.peek_kind(), TokenKind::Eof) && self.pending_gt == 0
     }
 
+    /// Skip storage / decl specs we don't model: `static`, `constexpr`, `inline`, `mutable`.
+    pub(super) fn skip_decl_specs(&mut self) {
+        while matches!(
+            self.peek_kind(),
+            TokenKind::Keyword(
+                Keyword::Static | Keyword::Constexpr | Keyword::Inline | Keyword::Mutable
+            )
+        ) {
+            self.bump();
+        }
+    }
+
     fn parse_translation_unit(&mut self) -> Result<TranslationUnit, ParseError> {
         let start = self.peek_span().start;
         let mut items = Vec::new();

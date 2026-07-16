@@ -87,6 +87,30 @@ impl Engine {
                     }
                 }
             }
+            // `vector<T> v(n);` / `vector<T> v(n, fill)`
+            if let Expr::Call { args, span, .. } = init {
+                if let Type::Named { path, args: targs, .. } = ty {
+                    let tname = path
+                        .segments
+                        .last()
+                        .map(|s| s.name.as_str())
+                        .unwrap_or("");
+                    if tname == "vector" && (args.len() == 1 || args.len() == 2) {
+                        let n = self.eval_expr(&args[0])?.as_int().map_err(RuntimeError::new)? as usize;
+                        let fill = if args.len() == 2 {
+                            self.eval_expr(&args[1])?
+                        } else if let Some(et) = targs.first() {
+                            self.default_value_for_type(et)?
+                        } else {
+                            Value::Int(0)
+                        };
+                        let elems = vec![fill; n];
+                        let id = self.heap.alloc(Object::Vector(elems));
+                        self.emit_alloc(id, "vector", *span);
+                        return Ok(Value::Object(id));
+                    }
+                }
+            }
             let v = self.eval_expr(init)?;
             if Self::type_is_ptr(ty) {
                 return Ok(match v {

@@ -63,7 +63,7 @@ impl Parser {
         first_name: Ident,
     ) -> Result<Decl, ParseError> {
         let mut declarators = Vec::new();
-        declarators.push(self.parse_init_declarator_after_name(first_name)?);
+        declarators.push(self.parse_init_declarator_after_name(first_name, &ty)?);
         while self.at_punct(Punct::Comma) {
             self.bump();
             // optional ptrs then name
@@ -78,7 +78,7 @@ impl Parser {
                 }
             }
             let name = self.parse_ident()?;
-            let mut d = self.parse_init_declarator_after_name(name)?;
+            let mut d = self.parse_init_declarator_after_name(name, &ty)?;
             d.ptrs = ptrs;
             declarators.push(d);
         }
@@ -93,6 +93,7 @@ impl Parser {
     pub(super) fn parse_init_declarator_after_name(
         &mut self,
         name: Ident,
+        ty: &Type,
     ) -> Result<InitDeclarator, ParseError> {
         let start = name.span.start;
         let init = if self.at_punct(Punct::Eq) {
@@ -100,6 +101,23 @@ impl Parser {
             Some(self.parse_expr()?)
         } else if self.at_punct(Punct::LBrace) {
             Some(self.parse_init_list()?)
+        } else if self.at_punct(Punct::LParen) {
+            // `T x(args);` — ctor / direct init
+            if let Some(tname) = named_type_ctor(ty) {
+                let callee = Expr::Name(Path {
+                    segments: vec![Ident {
+                        name: tname,
+                        span: name.span,
+                    }],
+                    span: name.span,
+                });
+                Some(self.parse_call(callee)?)
+            } else {
+                self.bump();
+                let e = self.parse_expr()?;
+                self.expect_punct(Punct::RParen)?;
+                Some(e)
+            }
         } else {
             None
         };
@@ -136,5 +154,15 @@ impl Parser {
             }
         }
         Ok(ty)
+    }
+}
+
+fn named_type_ctor(ty: &Type) -> Option<String> {
+    match ty {
+        Type::Named { path, .. } => path.segments.last().map(|s| s.name.clone()),
+        Type::Const { inner, .. } | Type::Reference { inner, .. } | Type::Pointer { inner, .. } => {
+            named_type_ctor(inner)
+        }
+        _ => None,
     }
 }

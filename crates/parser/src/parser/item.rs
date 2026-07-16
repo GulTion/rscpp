@@ -14,6 +14,7 @@ impl Parser {
         }
         // Function or declaration
         let start = self.peek_span().start;
+        self.skip_decl_specs();
         let ty = self.parse_type()?;
         let name = self.parse_ident()?;
         if self.at_punct(Punct::LParen) {
@@ -77,6 +78,7 @@ impl Parser {
             return Ok(Member::Access(kw));
         }
         let start = self.peek_span().start;
+        self.skip_decl_specs();
         let ty = self.parse_type()?;
         let name = self.parse_ident()?;
         if self.at_punct(Punct::LParen) {

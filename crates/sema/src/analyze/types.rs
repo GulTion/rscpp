@@ -246,6 +246,13 @@ impl Context {
                     .last()
                     .map(|s| s.name.as_str())
                     .unwrap_or("?");
+                match name {
+                    "int64_t" | "long long" => return Ty::LongLong,
+                    "uint64_t" | "size_t" => return Ty::ULongLong,
+                    "int32_t" => return Ty::Int,
+                    "uint32_t" => return Ty::UInt,
+                    _ => {}
+                }
                 // Unknown type name still allowed if looks like STL seed or class
                 if self.symbols.lookup(name).is_none()
                     && path.segments.len() == 1

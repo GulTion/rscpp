@@ -6,7 +6,8 @@ use rscpp_ast::*;
 
 pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
     match (name, field) {
-        ("vector", "size") | ("string", "size") | ("map", "size") | ("unordered_map", "size")
+        ("vector", "size") | ("string", "size") | ("string", "length")
+        | ("map", "size") | ("unordered_map", "size")
         | ("set", "size") | ("queue", "size") | ("stack", "size") => Some(Ty::Function {
             ret: Box::new(Ty::UInt),
             params: vec![],

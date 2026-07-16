@@ -64,6 +64,7 @@ impl Parser {
 
         if self.at_declaration_start() {
             let start = self.peek_span().start;
+            self.skip_decl_specs();
             let ty = self.parse_type()?;
             let name = self.parse_ident()?;
             return Ok(Stmt::Decl(self.parse_decl_rest(start, ty, name)?));
@@ -81,7 +82,11 @@ impl Parser {
     pub(super) fn at_declaration_start(&self) -> bool {
         match self.peek_kind() {
             TokenKind::Keyword(
-                Keyword::Const
+                Keyword::Static
+                | Keyword::Constexpr
+                | Keyword::Inline
+                | Keyword::Mutable
+                | Keyword::Const
                 | Keyword::Void
                 | Keyword::Bool
                 | Keyword::Char
@@ -168,6 +173,7 @@ impl Parser {
         // Range-for: `for (T name : expr)`
         if self.at_declaration_start() {
             let dstart = self.peek_span().start;
+            self.skip_decl_specs();
             let ty = self.parse_type()?;
             let name = self.parse_ident()?;
             if self.at_punct(Punct::Colon) {

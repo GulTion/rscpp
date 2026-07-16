@@ -203,3 +203,30 @@ fn range_for_stmt() {
     };
     assert!(matches!(f.body.stmts[0], Stmt::ForRange { .. }));
 }
+
+#[test]
+fn static_const_local_and_cast() {
+    let src = r#"
+    class Solution {
+    public:
+        int f() {
+            static const int N = 5;
+            return static_cast<int>(N);
+        }
+    };
+    "#;
+    let tu = parse(src).unwrap();
+    assert_eq!(tu.items.len(), 1);
+}
+
+#[test]
+fn vector_paren_init() {
+    let tu = parse("int f() { vector<int> dp(6); return 0; }").unwrap();
+    let Item::Function(f) = &tu.items[0] else {
+        panic!();
+    };
+    let Stmt::Decl(d) = &f.body.stmts[0] else {
+        panic!();
+    };
+    assert!(matches!(d.declarators[0].init, Some(Expr::Call { .. })));
+}
