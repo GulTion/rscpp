@@ -535,6 +535,171 @@ impl Engine {
                     return Ok((ret, None));
                 }
             }
+            // --- algorithm suite (LeetCode subset) ---
+            let base = name.strip_prefix("std::").unwrap_or(&name);
+            if matches!(base, "all_of" | "any_of" | "none_of") && args.len() == 3 {
+                let pred = self.eval_expr(&args[2])?;
+                let mode = match base {
+                    "all_of" => 0,
+                    "any_of" => 1,
+                    _ => 2,
+                };
+                let ret =
+                    self.builtin_all_any_none(&args[0], &args[1], &pred, mode, span)?;
+                return Ok((ret, None));
+            }
+            if base == "find" && args.len() == 3 {
+                let t = self.eval_expr(&args[2])?;
+                let ret = self.builtin_find(&args[0], &args[1], &t, span)?;
+                return Ok((ret, None));
+            }
+            if (base == "find_if" || base == "find_if_not") && args.len() == 3 {
+                let pred = self.eval_expr(&args[2])?;
+                let ret =
+                    self.builtin_find_if(&args[0], &args[1], &pred, base == "find_if_not", span)?;
+                return Ok((ret, None));
+            }
+            if base == "count" && args.len() == 3 {
+                let t = self.eval_expr(&args[2])?;
+                let ret = self.builtin_count(&args[0], &args[1], Some(&t), None, span)?;
+                return Ok((ret, None));
+            }
+            if base == "count_if" && args.len() == 3 {
+                let pred = self.eval_expr(&args[2])?;
+                let ret = self.builtin_count(&args[0], &args[1], None, Some(&pred), span)?;
+                return Ok((ret, None));
+            }
+            if base == "equal" && (args.len() == 3 || args.len() == 4) {
+                let pred = if args.len() == 4 {
+                    Some(self.eval_expr(&args[3])?)
+                } else {
+                    None
+                };
+                let ret =
+                    self.builtin_equal_ranges(&args[0], &args[1], &args[2], pred.as_ref(), span)?;
+                return Ok((ret, None));
+            }
+            if base == "search" && args.len() == 4 {
+                let ret =
+                    self.builtin_search(&args[0], &args[1], &args[2], &args[3], span)?;
+                return Ok((ret, None));
+            }
+            if base == "search_n" && args.len() == 4 {
+                let c = self.eval_expr(&args[2])?;
+                let v = self.eval_expr(&args[3])?;
+                let ret = self.builtin_search_n(&args[0], &args[1], &c, &v, span)?;
+                return Ok((ret, None));
+            }
+            if base == "adjacent_find" && (args.len() == 2 || args.len() == 3) {
+                let pred = if args.len() == 3 {
+                    Some(self.eval_expr(&args[2])?)
+                } else {
+                    None
+                };
+                let ret =
+                    self.builtin_adjacent_find(&args[0], &args[1], pred.as_ref(), span)?;
+                return Ok((ret, None));
+            }
+            if base == "fill" && args.len() == 3 {
+                let v = self.eval_expr(&args[2])?;
+                let ret = self.builtin_fill(&args[0], &args[1], &v, span)?;
+                return Ok((ret, None));
+            }
+            if base == "fill_n" && args.len() == 3 {
+                let c = self.eval_expr(&args[1])?;
+                let v = self.eval_expr(&args[2])?;
+                let ret = self.builtin_fill_n(&args[0], &c, &v, span)?;
+                return Ok((ret, None));
+            }
+            if (base == "copy" || base == "copy_if") && (args.len() == 3 || args.len() == 4) {
+                let pred = if base == "copy_if" && args.len() == 4 {
+                    Some(self.eval_expr(&args[3])?)
+                } else {
+                    None
+                };
+                let ret =
+                    self.builtin_copy(&args[0], &args[1], &args[2], pred.as_ref(), span)?;
+                return Ok((ret, None));
+            }
+            if base == "transform" && args.len() == 4 {
+                let op = self.eval_expr(&args[3])?;
+                let ret = self.builtin_transform(&args[0], &args[1], &args[2], &op, span)?;
+                return Ok((ret, None));
+            }
+            if base == "replace" && args.len() == 4 {
+                let old = self.eval_expr(&args[2])?;
+                let newv = self.eval_expr(&args[3])?;
+                let ret =
+                    self.builtin_replace(&args[0], &args[1], Some(&old), None, &newv, span)?;
+                return Ok((ret, None));
+            }
+            if base == "replace_if" && args.len() == 4 {
+                let pred = self.eval_expr(&args[2])?;
+                let newv = self.eval_expr(&args[3])?;
+                let ret =
+                    self.builtin_replace(&args[0], &args[1], None, Some(&pred), &newv, span)?;
+                return Ok((ret, None));
+            }
+            if base == "remove" && args.len() == 3 {
+                let v = self.eval_expr(&args[2])?;
+                let ret = self.builtin_remove(&args[0], &args[1], Some(&v), None, span)?;
+                return Ok((ret, None));
+            }
+            if base == "remove_if" && args.len() == 3 {
+                let pred = self.eval_expr(&args[2])?;
+                let ret = self.builtin_remove(&args[0], &args[1], None, Some(&pred), span)?;
+                return Ok((ret, None));
+            }
+            if base == "unique" && args.len() == 2 {
+                let ret = self.builtin_unique(&args[0], &args[1], span)?;
+                return Ok((ret, None));
+            }
+            if base == "rotate" && args.len() == 3 {
+                let ret = self.builtin_rotate(&args[0], &args[1], &args[2], span)?;
+                return Ok((ret, None));
+            }
+            if base == "generate" && args.len() == 3 {
+                let gen = self.eval_expr(&args[2])?;
+                let ret = self.builtin_generate(&args[0], &args[1], &gen, None, span)?;
+                return Ok((ret, None));
+            }
+            if base == "generate_n" && args.len() == 3 {
+                let c = self.eval_expr(&args[1])?;
+                let n = c.as_int().map_err(RuntimeError::new)? as usize;
+                let gen = self.eval_expr(&args[2])?;
+                let ret = self.builtin_generate(&args[0], &args[0], &gen, Some(n), span)?;
+                return Ok((ret, None));
+            }
+            if base == "equal_range" && (args.len() == 3 || args.len() == 4) {
+                let t = self.eval_expr(&args[2])?;
+                let cmp = if args.len() == 4 {
+                    Some(self.eval_expr(&args[3])?)
+                } else {
+                    None
+                };
+                let ret =
+                    self.builtin_equal_range_algo(&args[0], &args[1], &t, cmp.as_ref(), span)?;
+                return Ok((ret, None));
+            }
+            if base == "includes" && args.len() == 4 {
+                let ret =
+                    self.builtin_includes(&args[0], &args[1], &args[2], &args[3], span)?;
+                return Ok((ret, None));
+            }
+            if matches!(
+                base,
+                "merge"
+                    | "set_union"
+                    | "set_intersection"
+                    | "set_difference"
+                    | "set_symmetric_difference"
+            ) && args.len() == 5
+            {
+                let ret = self.builtin_set_op(
+                    &args[0], &args[1], &args[2], &args[3], &args[4], base, span,
+                )?;
+                return Ok((ret, None));
+            }
         }
 
         let arg_vals: Result<Vec<_>> = args.iter().map(|a| self.eval_expr(a)).collect();

@@ -157,7 +157,7 @@ Ref: [map](https://cplusplus.com/reference/map/map/). Runtime: `stl/map.rs` (sha
 | **(destructor)** | yes | |
 | **operator=** | partial | |
 | **begin** / **end** / **cbegin** / **cend** | partial | Stubs for `find != end` |
-| **rbegin** / **rend** / **crbegin** / **crend** | no | |
+| **rbegin** / **rend** / **crbegin** / **crend** | yes | Stubs |
 | **empty** / **size** | yes | |
 | **max_size** | no | |
 | **operator[]** | yes | Default-insert mapped type |
@@ -371,39 +371,39 @@ Ranges: `v.begin()`/`v.end()` or free `begin`/`end` on **vector** (string where 
 
 | Algo | Default | Cmp / pred | Notes |
 |------|---------|------------|--------|
-| `all_of` | no | no | |
-| `any_of` | no | no | |
-| `none_of` | no | no | |
+| `all_of` | yes | **yes** | |
+| `any_of` | yes | **yes** | |
+| `none_of` | yes | **yes** | |
 | `for_each` | no | no | |
-| `find` | no | n/a | |
-| `find_if` / `find_if_not` | no | no | |
+| `find` | yes | n/a | Index or `size` if missing |
+| `find_if` / `find_if_not` | yes | **yes** | |
 | `find_end` | no | no | |
 | `find_first_of` | no | no | |
-| `adjacent_find` | no | no | |
-| `count` | no | n/a | |
-| `count_if` | no | no | |
+| `adjacent_find` | yes | **yes** | |
+| `count` | yes | n/a | |
+| `count_if` | yes | **yes** | |
 | `mismatch` | no | no | |
-| `equal` | no | no | |
+| `equal` | yes | **yes** | Second range from begin only |
 | `is_permutation` | no | no | |
-| `search` / `search_n` | no | no | |
+| `search` / `search_n` | yes | no | |
 
 ### Modifying sequence
 
 | Algo | Default | Cmp / pred | Notes |
 |------|---------|------------|--------|
-| `copy` / `copy_n` / `copy_if` / `copy_backward` | no | no (`copy_if`) | |
+| `copy` / `copy_n` / `copy_if` / `copy_backward` | partial | no (`copy_if` yes) | `copy`/`copy_if` yes; `copy_n`/`copy_backward` no |
 | `move` / `move_backward` (ranges) | no | n/a | **Not** `std::move(x)` cast — that is **yes** (identity) under utilities |
 | `swap` | yes | n/a | Free `swap`/`std::swap` on lvalues |
 | `swap_ranges` / `iter_swap` | no | n/a | |
-| `transform` | no | no | |
-| `replace` / `replace_if` / `replace_copy*` | no | no | |
-| `fill` / `fill_n` | no | n/a | |
-| `generate` / `generate_n` | no | no | |
-| `remove` / `remove_if` / `remove_copy*` | no | no | |
-| `unique` / `unique_copy` | no | no | |
+| `transform` | yes | **yes** | Unary |
+| `replace` / `replace_if` / `replace_copy*` | partial | **yes** | In-place `replace`/`replace_if`; copy variants no |
+| `fill` / `fill_n` | yes | n/a | Full-range `fill`; `fill_n` from begin |
+| `generate` / `generate_n` | yes | **yes** | |
+| `remove` / `remove_if` / `remove_copy*` | partial | **yes** | Returns new end index; copy variants no |
+| `unique` / `unique_copy` | partial | no | `unique` yes; copy no |
 | `reverse` | yes | n/a | Vector (and string via range) |
 | `reverse_copy` | no | n/a | |
-| `rotate` / `rotate_copy` | no | n/a | |
+| `rotate` / `rotate_copy` | partial | n/a | `rotate` yes (middle as index); copy no |
 | `random_shuffle` / `shuffle` | no | no | |
 
 ### Partitions
