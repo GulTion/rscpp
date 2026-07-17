@@ -42,9 +42,15 @@ cargo run -p rscpp-pipeline -- examples/main.cpp
 cargo run -p rscpp-corpus -- --dir testing --limit 50
 # see docs/superpowers/specs/2026-07-16-rscpp-corpus-design.md
 
-# Browser demo
+# Browser demo (visualizer frontend)
 wasm-pack build crates/wasm --target web
-python3 -m http.server 8080   # from repo root
+pnpm install
+pnpm dev
+# → http://localhost:5173
+# Full guide: apps/demo/README.md
+
+# Legacy minimal WASM page (no visualizer UI)
+# python3 -m http.server 8080   # from repo root
 # open http://localhost:8080/examples/web/
 ```
 
