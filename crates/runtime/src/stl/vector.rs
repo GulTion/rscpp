@@ -52,7 +52,48 @@ pub fn call(
             Ok(ctx.query(base, "back", Some(Value::Int(idx)), v, span))
         }
         "clear" => Ok(ctx.clear(id, base, "clear", span)),
-        "begin" | "end" => Ok(Value::Int(0)),
+        "at" => {
+            let idx = Ctx::require_arg(args, method, span)?
+                .as_int()
+                .map_err(RuntimeError::new)? as usize;
+            let v = elems.get(idx).cloned().ok_or_else(|| {
+                RuntimeError::at(span, format!("vector::at index {idx} out of range"))
+            })?;
+            Ok(ctx.query(base, "at", Some(Value::Int(idx as i64)), v, span))
+        }
+        "reserve" => {
+            // ponytail: capacity tracking unused; growth is free
+            let _n = Ctx::require_arg(args, method, span)?;
+            ctx.modify(base, "reserve", None, None, None, None, span);
+            Ok(Value::Void)
+        }
+        "capacity" => {
+            let n = elems.len() as i64;
+            Ok(ctx.query(base, "capacity", None, Value::Int(n), span))
+        }
+        "resize" => {
+            let n = Ctx::require_arg(args, method, span)?
+                .as_int()
+                .map_err(RuntimeError::new)?;
+            if n < 0 {
+                return Err(RuntimeError::at(span, "vector::resize negative"));
+            }
+            let n = n as usize;
+            let fill = if args.len() >= 2 {
+                args[1].clone()
+            } else {
+                Value::Int(0)
+            };
+            if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
+                if n < e.len() {
+                    e.truncate(n);
+                } else {
+                    e.resize(n, fill);
+                }
+            }
+            ctx.modify(base, "resize", Some(n), None, None, None, span);
+            Ok(Value::Void)
+        }
         _ => Err(RuntimeError::at(
             span,
             format!("unknown vector method `{method}`"),

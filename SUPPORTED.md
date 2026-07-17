@@ -41,13 +41,13 @@ Ref: [vector](https://cplusplus.com/reference/vector/vector/). Runtime: `stl/vec
 | **rbegin** / **rend** / **crbegin** / **crend** | no | |
 | **size** | yes | |
 | **max_size** | no | |
-| **resize** | no | |
-| **capacity** | no | |
+| **resize** | yes | Grow with `0` or fill; shrink truncate |
+| **capacity** | yes | Returns `size` (reserve is no-op) |
 | **empty** | yes | |
-| **reserve** | no | |
+| **reserve** | yes | No-op |
 | **shrink_to_fit** | no | |
 | **operator[]** | yes | |
-| **at** | no | |
+| **at** | yes | Bounds-checked; same values as `[]` |
 | **front** / **back** | yes | |
 | **data** | no | |
 | **assign** | no | |
@@ -453,8 +453,8 @@ Ranges: `v.begin()`/`v.end()` or free `begin`/`end` on **vector** (string where 
 |------|---------|------------|--------|
 | `min` / `max` (two values) | yes | **no** | Ints via builtins; no cmp / init-list |
 | `minmax` | no | no | |
-| `min_element` | yes | **yes** | → `Ptr` Index |
-| `max_element` | yes | **yes** | → `Ptr` Index |
+| `min_element` / `ranges::min_element` | yes | **yes** | → `Ptr` Index; range form `(v)` / `(v, cmp)` |
+| `max_element` / `ranges::max_element` | yes | **yes** | → `Ptr` Index; range form `(v)` / `(v, cmp)` |
 | `minmax_element` | no | no | |
 
 ### Other

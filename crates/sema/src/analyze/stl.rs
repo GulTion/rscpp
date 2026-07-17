@@ -103,6 +103,10 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
             ret: Box::new(Ty::Void),
             params: vec![Ty::UInt],
         }),
+        ("vector", "capacity") | ("string", "capacity") => Some(Ty::Function {
+            ret: Box::new(Ty::UInt),
+            params: vec![],
+        }),
         ("vector", "resize") | ("string", "resize") | ("deque", "resize") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![], // 1 or 2 args
