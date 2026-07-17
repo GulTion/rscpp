@@ -81,6 +81,34 @@ pub enum Object {
         body: rscpp_ast::Block,
         captures: HashMap<String, Value>,
     },
+    /// `std::greater` / `plus` / … function object (`<functional>`).
+    Functor {
+        kind: FunctorKind,
+    },
+}
+
+/// Standard `<functional>` function-object kind (template args erased by parser).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FunctorKind {
+    Plus,
+    Minus,
+    Multiplies,
+    Divides,
+    Modulus,
+    Negate,
+    EqualTo,
+    NotEqualTo,
+    Greater,
+    Less,
+    GreaterEqual,
+    LessEqual,
+    LogicalAnd,
+    LogicalOr,
+    LogicalNot,
+    BitAnd,
+    BitOr,
+    BitXor,
+    BitNot,
 }
 
 impl Object {
@@ -98,6 +126,7 @@ impl Object {
             Object::PriorityQueue(_) => "priority_queue",
             Object::Class { .. } => "class",
             Object::Closure { .. } => "closure",
+            Object::Functor { .. } => "functor",
         }
     }
 
@@ -131,7 +160,7 @@ impl Object {
             Object::UnorderedSet(s) => s.len(),
             Object::PriorityQueue(h) => h.len(),
             Object::Pair { .. } => 2,
-            Object::Class { .. } | Object::Closure { .. } => 0,
+            Object::Class { .. } | Object::Closure { .. } | Object::Functor { .. } => 0,
         }
     }
 
@@ -149,7 +178,10 @@ impl Object {
             Object::Set(s) => s.clear(),
             Object::UnorderedSet(s) => s.clear(),
             Object::PriorityQueue(h) => h.clear(),
-            Object::Pair { .. } | Object::Class { .. } | Object::Closure { .. } => {}
+            Object::Pair { .. }
+            | Object::Class { .. }
+            | Object::Closure { .. }
+            | Object::Functor { .. } => {}
         }
     }
 
@@ -209,7 +241,7 @@ impl Object {
             Object::Class { fields, .. } => {
                 (fields.len(), fields.values().cloned().collect(), vec![])
             }
-            Object::Closure { .. } => (0, vec![], vec![]),
+            Object::Closure { .. } | Object::Functor { .. } => (0, vec![], vec![]),
         }
     }
 }

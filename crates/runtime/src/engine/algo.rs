@@ -96,33 +96,63 @@ impl Engine {
             }
         };
         if let Some(Value::Object(opid)) = cmp {
-            if matches!(self.heap.get(*opid), Some(Object::Closure { .. })) {
-                let mut elems = match self.heap.get(id) {
-                    Some(Object::Vector(e)) => e.clone(),
-                    _ => return Err(RuntimeError::at(span, "sort: not a vector")),
-                };
-                // Simple insertion sort with comparator (avoids FnMut borrow issues).
-                for i in 1..elems.len() {
-                    let mut j = i;
-                    while j > 0 {
-                        let less = self.call_closure(
-                            *opid,
-                            &[elems[j].clone(), elems[j - 1].clone()],
-                            span,
-                        )?;
-                        if less.as_bool().map_err(RuntimeError::new)? {
-                            elems.swap(j, j - 1);
-                            j -= 1;
-                        } else {
-                            break;
+            match self.heap.get(*opid).cloned() {
+                Some(Object::Closure { .. }) => {
+                    let mut elems = match self.heap.get(id) {
+                        Some(Object::Vector(e)) => e.clone(),
+                        _ => return Err(RuntimeError::at(span, "sort: not a vector")),
+                    };
+                    for i in 1..elems.len() {
+                        let mut j = i;
+                        while j > 0 {
+                            let less = self.call_closure(
+                                *opid,
+                                &[elems[j].clone(), elems[j - 1].clone()],
+                                span,
+                            )?;
+                            if less.as_bool().map_err(RuntimeError::new)? {
+                                elems.swap(j, j - 1);
+                                j -= 1;
+                            } else {
+                                break;
+                            }
                         }
                     }
+                    if let Some(Object::Vector(dst)) = self.heap.get_mut(id) {
+                        *dst = elems;
+                    }
                 }
-                if let Some(Object::Vector(dst)) = self.heap.get_mut(id) {
-                    *dst = elems;
+                Some(Object::Functor { kind }) => {
+                    let mut elems = match self.heap.get(id) {
+                        Some(Object::Vector(e)) => e.clone(),
+                        _ => return Err(RuntimeError::at(span, "sort: not a vector")),
+                    };
+                    for i in 1..elems.len() {
+                        let mut j = i;
+                        while j > 0 {
+                            let less = super::functor::functor_apply(
+                                kind,
+                                &[elems[j].clone(), elems[j - 1].clone()],
+                                span,
+                            )?;
+                            if less.as_bool().map_err(RuntimeError::new)? {
+                                elems.swap(j, j - 1);
+                                j -= 1;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(Object::Vector(dst)) = self.heap.get_mut(id) {
+                        *dst = elems;
+                    }
                 }
-            } else {
-                return Err(RuntimeError::at(span, "sort comparator must be a lambda"));
+                _ => {
+                    return Err(RuntimeError::at(
+                        span,
+                        "sort comparator must be a lambda or functional object",
+                    ))
+                }
             }
         } else if let Some(Object::Vector(elems)) = self.heap.get_mut(id) {
             elems.sort_by(|a, b| {
@@ -283,14 +313,25 @@ impl Engine {
         Ok(Value::Int(i as i64))
     }
 
-    /// `cmp(a,b)` if closure; else int `a < b`.
+    /// `cmp(a,b)` if closure/functor; else int `a < b`.
     fn cmp_less(&mut self, cmp: Option<&Value>, a: &Value, b: &Value, span: Span) -> Result<bool> {
         if let Some(Value::Object(opid)) = cmp {
-            if matches!(self.heap.get(*opid), Some(Object::Closure { .. })) {
-                let v = self.call_closure(*opid, &[a.clone(), b.clone()], span)?;
-                return v.as_bool().map_err(RuntimeError::new);
+            match self.heap.get(*opid).cloned() {
+                Some(Object::Closure { .. }) => {
+                    let v = self.call_closure(*opid, &[a.clone(), b.clone()], span)?;
+                    return v.as_bool().map_err(RuntimeError::new);
+                }
+                Some(Object::Functor { kind }) => {
+                    let v = super::functor::functor_apply(kind, &[a.clone(), b.clone()], span)?;
+                    return v.as_bool().map_err(RuntimeError::new);
+                }
+                _ => {
+                    return Err(RuntimeError::at(
+                        span,
+                        "comparator must be a lambda or functional object",
+                    ))
+                }
             }
-            return Err(RuntimeError::at(span, "comparator must be a lambda"));
         }
         let ai = a.as_int().map_err(RuntimeError::new)?;
         let bi = b.as_int().map_err(RuntimeError::new)?;
@@ -313,11 +354,20 @@ impl Engine {
             _ => vec![],
         };
         if let Some(Value::Object(opid)) = op {
-            if matches!(self.heap.get(*opid), Some(Object::Closure { .. })) {
-                for v in elems {
-                    acc = self.call_closure(*opid, &[acc, v], span)?;
+            match self.heap.get(*opid).cloned() {
+                Some(Object::Closure { .. }) => {
+                    for v in elems {
+                        acc = self.call_closure(*opid, &[acc, v], span)?;
+                    }
+                    return Ok(acc);
                 }
-                return Ok(acc);
+                Some(Object::Functor { kind }) => {
+                    for v in elems {
+                        acc = super::functor::functor_apply(kind, &[acc, v], span)?;
+                    }
+                    return Ok(acc);
+                }
+                _ => {}
             }
         }
         // Default: sum as ints

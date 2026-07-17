@@ -387,7 +387,21 @@ impl Engine {
                             let ret = self.call_closure(id, &arg_vals, span)?;
                             return Ok((ret, None));
                         }
+                        if let Some(Object::Functor { kind }) = self.heap.get(id).cloned() {
+                            let arg_vals: Result<Vec<_>> =
+                                args.iter().map(|a| self.eval_expr(a)).collect();
+                            let arg_vals = arg_vals?;
+                            let ret = super::functor::functor_apply(kind, &arg_vals, span)?;
+                            return Ok((ret, None));
+                        }
                     }
+                }
+            }
+            // `greater<int>()` / `plus<>()` — zero-arg functor construction (template args erased).
+            if args.is_empty() {
+                if let Some(kind) = super::functor::functor_kind(&name) {
+                    let id = self.heap.alloc(Object::Functor { kind });
+                    return Ok((Value::Object(id), None));
                 }
             }
             if (name == "swap" || name == "std::swap") && args.len() == 2 {
@@ -723,6 +737,21 @@ impl Engine {
             let (resolved, this) = self.resolve_fn_call(&name)?;
             let ret = self.call_fn(&resolved, &arg_vals, this)?;
             return Ok((ret, None));
+        }
+
+        // `greater<int>()(a,b)` — callee is itself a Call that yields a Functor/Closure.
+        let callee_v = self.eval_expr(callee)?;
+        if let Value::Object(id) = callee_v {
+            let arg_vals: Result<Vec<_>> = args.iter().map(|a| self.eval_expr(a)).collect();
+            let arg_vals = arg_vals?;
+            if matches!(self.heap.get(id), Some(Object::Closure { .. })) {
+                let ret = self.call_closure(id, &arg_vals, span)?;
+                return Ok((ret, None));
+            }
+            if let Some(Object::Functor { kind }) = self.heap.get(id).cloned() {
+                let ret = super::functor::functor_apply(kind, &arg_vals, span)?;
+                return Ok((ret, None));
+            }
         }
 
         Err(RuntimeError::at(span, "unsupported call"))

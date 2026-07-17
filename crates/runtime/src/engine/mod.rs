@@ -271,6 +271,7 @@ mod bind;
 mod call;
 mod exec;
 mod expr;
+mod functor;
 mod global;
 mod types;
 mod vars;

@@ -269,6 +269,96 @@ Ref: [unordered_set](https://cplusplus.com/reference/unordered_set/unordered_set
 
 ---
 
+## Function objects (`<functional>`)
+
+Ref: [cppreference `<functional>`](https://en.cppreference.com/w/cpp/utility/functional) / [header synopsis](https://en.cppreference.com/w/cpp/header/functional).  
+Status = **runtime** unless noted. Sema may seed names that do not execute. Prefer **lambdas** as algorithm comparators/ops (those work); standard functors generally do **not**.
+
+### Wrappers
+
+| Entity | Status | Notes |
+|--------|--------|--------|
+| `function` | **partial** | Assign lambda → call works; not full type-erasure / `target` / empty / `bad_function_call` |
+| `move_only_function` / `copyable_function` / `function_ref` | no | |
+| `mem_fn` | no | |
+| `reference_wrapper` | no | |
+| `unwrap_reference` / `unwrap_ref_decay` | no | |
+
+### Helper classes
+
+| Entity | Status | Notes |
+|--------|--------|--------|
+| `bad_function_call` | no | |
+| `is_bind_expression` / `is_placeholder` | no | |
+
+### Arithmetic operations
+
+| Entity | Status | Notes |
+|--------|--------|--------|
+| `plus` / `minus` / `multiplies` / `divides` / `modulus` / `negate` | **yes** | Ints; `T` erased; usable as `accumulate` op |
+
+### Comparisons
+
+| Entity | Status | Notes |
+|--------|--------|--------|
+| `equal_to` / `not_equal_to` | **yes** | Ints → Bool |
+| `greater` / `less` | **yes** | Usable as `sort` / bound / search / min/max cmp |
+| `greater_equal` / `less_equal` | **yes** | |
+| Transparent `T=void` specializations | partial | Same as typed — templates erased |
+
+### Concept-constrained comparisons (C++20)
+
+| Entity | Status |
+|--------|--------|
+| `ranges::equal_to` / `not_equal_to` / `greater` / `less` / `greater_equal` / `less_equal` | no |
+| `compare_three_way` | no |
+
+### Logical / bitwise
+
+| Entity | Status | Notes |
+|--------|--------|--------|
+| `logical_and` / `logical_or` / `logical_not` | **yes** | Bool-ish via `as_bool` |
+| `bit_and` / `bit_or` / `bit_xor` / `bit_not` | **yes** | Ints |
+
+### Negators / identity / searchers / hash
+
+| Entity | Status | Notes |
+|--------|--------|--------|
+| `not_fn` | no | |
+| `identity` | no | |
+| `default_searcher` / `boyer_moore_searcher` / `boyer_moore_horspool_searcher` | no | |
+| `hash` (+ specializations) | no | Maps use Rust hashing internally; no `std::hash` API |
+
+### Functions & placeholders
+
+| Entity | Status | Notes |
+|--------|--------|--------|
+| `bind` | no | Sema stub only |
+| `bind_front` / `bind_back` | no | |
+| `placeholders` (`_1`, `_2`, …) | no | |
+| `ref` / `cref` | no | Sema stub only |
+| `invoke` / `invoke_r` | no | |
+| `mem_fn` | no | |
+
+### Deprecated / removed (listed for completeness)
+
+| Entity | Status |
+|--------|--------|
+| `unary_function` / `binary_function` | no |
+| `bind1st` / `bind2nd` / `binder1st` / `binder2nd` | no |
+| `ptr_fun` / `mem_fun` / `mem_fun_ref` (+ types) | no |
+| `not1` / `not2` / `unary_negate` / `binary_negate` | no |
+
+### Related (not the header, but how LeetCode usually compares)
+
+| Feature | Status | Notes |
+|---------|--------|--------|
+| Lambda / closure as algo cmp or `accumulate` op | **yes** | See `<algorithm>` / `<numeric>` sections |
+| `<functional>` arithmetic / compare / logical / bitwise objects | **yes** | See tables above; ints (bools for logical) |
+| Function pointers as cmp | no | |
+
+---
+
 ## Algorithms (`<algorithm>`)
 
 Ref: [cplusplus.com `<algorithm>`](https://cplusplus.com/reference/algorithm/).  
