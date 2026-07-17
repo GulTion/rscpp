@@ -78,8 +78,11 @@ pub enum Object {
     UnorderedSet(HashSet<MapKey>),
     Stack(Vec<Value>),
     Queue(VecDeque<Value>),
-    /// Max-heap of integers (LeetCode default).
-    PriorityQueue(BinaryHeap<i64>),
+    /// Heap of integers. `min_heap` when Compare is `greater` (LeetCode subset).
+    PriorityQueue {
+        heap: BinaryHeap<i64>,
+        min_heap: bool,
+    },
     Class {
         name: String,
         fields: HashMap<String, Value>,
@@ -135,7 +138,7 @@ impl Object {
             Object::UnorderedSet(_) => "unordered_set",
             Object::Stack(_) => "stack",
             Object::Queue(_) => "queue",
-            Object::PriorityQueue(_) => "priority_queue",
+            Object::PriorityQueue { .. } => "priority_queue",
             Object::Class { .. } => "class",
             Object::Closure { .. } => "closure",
             Object::Functor { .. } => "functor",
@@ -162,7 +165,10 @@ impl Object {
             "unordered_set" => Object::UnorderedSet(HashSet::new()),
             "stack" => Object::Stack(vec![]),
             "queue" => Object::Queue(VecDeque::new()),
-            "priority_queue" => Object::PriorityQueue(BinaryHeap::new()),
+            "priority_queue" => Object::PriorityQueue {
+                heap: BinaryHeap::new(),
+                min_heap: false,
+            },
             _ => return None,
         })
     }
@@ -177,7 +183,7 @@ impl Object {
             Object::UnorderedMap(m) => m.len(),
             Object::Set(s) => s.len(),
             Object::UnorderedSet(s) => s.len(),
-            Object::PriorityQueue(h) => h.len(),
+            Object::PriorityQueue { heap, .. } => heap.len(),
             Object::Pair { .. } => 2,
             Object::Class { .. } | Object::Closure { .. } | Object::Functor { .. } => 0,
         }
@@ -201,7 +207,7 @@ impl Object {
             Object::UnorderedMap(m) => m.clear(),
             Object::Set(s) => s.clear(),
             Object::UnorderedSet(s) => s.clear(),
-            Object::PriorityQueue(h) => h.clear(),
+            Object::PriorityQueue { heap, .. } => heap.clear(),
             Object::Pair { .. }
             | Object::Class { .. }
             | Object::Closure { .. }
@@ -259,8 +265,12 @@ impl Object {
                     })
                     .collect(),
             ),
-            Object::PriorityQueue(h) => {
-                let v: Vec<Value> = h.iter().copied().map(Value::Int).collect();
+            Object::PriorityQueue { heap, min_heap } => {
+                let v: Vec<Value> = heap
+                    .iter()
+                    .copied()
+                    .map(|x| Value::Int(if *min_heap { -x } else { x }))
+                    .collect();
                 (v.len(), v, vec![])
             }
             Object::Class { fields, .. } => {

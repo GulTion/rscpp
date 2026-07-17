@@ -16,11 +16,13 @@ pub fn call(
         "empty" => Ok(ctx.empty(id, base, span)),
         "top" => {
             let v = match ctx.heap.get(id) {
-                Some(Object::PriorityQueue(h)) => h
-                    .peek()
-                    .copied()
-                    .map(Value::Int)
-                    .ok_or_else(|| RuntimeError::at(span, "top on empty priority_queue"))?,
+                Some(Object::PriorityQueue { heap, min_heap }) => {
+                    let raw = heap
+                        .peek()
+                        .copied()
+                        .ok_or_else(|| RuntimeError::at(span, "top on empty priority_queue"))?;
+                    Value::Int(if *min_heap { -raw } else { raw })
+                }
                 _ => return Err(RuntimeError::at(span, "not a priority_queue")),
             };
             Ok(ctx.query(base, "top", None, v, span))
@@ -29,8 +31,8 @@ pub fn call(
             let n = Ctx::require_arg(args, method, span)?
                 .as_int()
                 .map_err(RuntimeError::new)?;
-            if let Some(Object::PriorityQueue(h)) = ctx.heap.get_mut(id) {
-                h.push(n);
+            if let Some(Object::PriorityQueue { heap, min_heap }) = ctx.heap.get_mut(id) {
+                heap.push(if *min_heap { -n } else { n });
             }
             Ok(ctx.pushed(
                 base,
@@ -42,8 +44,9 @@ pub fn call(
             ))
         }
         "pop" => {
-            let old = if let Some(Object::PriorityQueue(h)) = ctx.heap.get_mut(id) {
-                h.pop().map(Value::Int)
+            let old = if let Some(Object::PriorityQueue { heap, min_heap }) = ctx.heap.get_mut(id)
+            {
+                heap.pop().map(|raw| Value::Int(if *min_heap { -raw } else { raw }))
             } else {
                 None
             };

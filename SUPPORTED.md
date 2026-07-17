@@ -144,7 +144,7 @@ Ref: [priority_queue](https://cplusplus.com/reference/queue/priority_queue/). Ru
 | **push** / **emplace** | yes | **ints only** |
 | **pop** | yes | |
 | **swap** (member) | no | Free `swap` partial |
-| Custom `Compare` / non-int `T` / underlying container | **no** | Max-heap of `i64` |
+| Custom `Compare` / non-int `T` / underlying container | partial | `greater<>` → min-heap of ints; other cmp **no** |
 | Non-member **swap** / `uses_allocator` | no / partial | |
 
 ### `map`

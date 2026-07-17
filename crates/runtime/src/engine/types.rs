@@ -195,6 +195,21 @@ impl Engine {
                     self.emit_alloc(id, "array", path.span);
                     return Ok(Value::Object(id));
                 }
+                if name == "priority_queue" {
+                    let min_heap = args.iter().any(|t| match t {
+                        Type::Named { path, .. } => path
+                            .segments
+                            .last()
+                            .is_some_and(|s| s.name == "greater"),
+                        _ => false,
+                    });
+                    let id = self.heap.alloc(Object::PriorityQueue {
+                        heap: std::collections::BinaryHeap::new(),
+                        min_heap,
+                    });
+                    self.emit_alloc(id, "priority_queue", path.span);
+                    return Ok(Value::Object(id));
+                }
                 if let Some(obj) = Object::empty_named(name) {
                     let kind = obj.kind_name().to_string();
                     let id = self.heap.alloc(obj);
