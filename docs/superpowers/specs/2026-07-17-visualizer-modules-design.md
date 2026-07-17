@@ -34,6 +34,8 @@ rscpp already emits a stable event stream from WASM (`run` / `run_method`). We n
 | Editor modes | One Editor + LC / CF run profiles |
 | DS Viewer | Representation engine; linear first; graph/tree usable |
 | Graph/tree render | **SVG + custom layout** (d3-hierarchy / dagre for positions only; no Cytoscape/React Flow) |
+| UI package surface | **Framework-agnostic `mount(el, …)`** — no React/Vue inside packages; any host framework later |
+| Demo host | Vite + TypeScript (vanilla DOM glue) — proves packages stay portable |
 | Code editor | CodeMirror 6 |
 | Layout | Layered packages (not mega-package, not single UI kit) |
 
@@ -58,6 +60,24 @@ runner → (rscpp WASM artifact; not timeline)
 ```
 
 Hosts may inject a `RunResult` without `@rscpp/runner` (e.g. precomputed fixtures, future remote runner).
+
+### UI module contract (portability)
+
+Editor, DS Viewer, and Seeker are **not** React/Vue components. Each exposes an imperative API:
+
+```ts
+type MountHandle = {
+  update(props: Partial<Props>): void;
+  destroy(): void;
+};
+
+function mount(container: HTMLElement, props: Props): MountHandle;
+```
+
+- Internals may use CodeMirror / SVG / DOM freely.
+- Props always include a shared `Timeline` (or a narrow view of it).
+- **Debug-friendly:** no framework magic; call `update` / inspect `timeline.snapshot()` from the console; demo is plain Vite TS.
+- When modules mature, thin adapters (`@rscpp/editor-react`, etc.) can wrap `mount` — out of scope for v1.
 
 ### Data flow
 
