@@ -104,7 +104,7 @@ function remountTimeline(next: { source: string; events: EventJson[]; run: RunRe
   editor.update({ timeline, source });
   ds.update({ timeline, objId: null });
   refreshPicker();
-  timeline.seek(0);
+  timeline.seek(timeline.length);
   wireDebug();
 }
 
