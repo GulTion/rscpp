@@ -28,7 +28,12 @@ window.__rscppDebug.timeline.index
 5. `browser_evaluate` → `() => [...window.__rscppDebug.snapshot().objects.keys()]`
 6. `browser_console_messages` — check for errors
 
-Stable testids: `seeker-root`, `seeker-scrubber`, `seeker-play`, `seeker-pause`, `seeker-speed`, `editor-pane`, `editor-run`, `editor-root`, `ds-pane`, `ds-root`, `ds-object-picker`, `ds-repr-select`, `fixture-select`.
+Stable testids: `seeker-root`, `seeker-scrubber`, `seeker-play`, `seeker-pause`, `seeker-speed`, `editor-pane`, `editor-run`, `editor-root`, `ds-pane`, `ds-root`, `ds-mode`, `ds-object-picker`, `ds-repr-select`, `ds-pane-title-*`, `fixture-select`.
+
+## DS mode
+
+- **All live Allocs** (default): every heap object at the playhead in stacked panes.
+- **Single object**: use Object picker + representation select.
 
 ## Complex fixtures
 
