@@ -138,6 +138,25 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
   });
   pauseBtn.addEventListener("click", () => timeline.pause());
 
+  function isTypingTarget(t: EventTarget | null): boolean {
+    if (!(t instanceof HTMLElement)) return false;
+    const tag = t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+    if (t.isContentEditable) return true;
+    if (t.closest(".cm-editor")) return true;
+    return false;
+  }
+
+  function onKeyDown(e: KeyboardEvent): void {
+    if (e.code !== "Space" && e.key !== " ") return;
+    if (e.repeat) return;
+    if (isTypingTarget(e.target)) return;
+    e.preventDefault();
+    if (timeline.playing) timeline.pause();
+    else timeline.play({ speed: Number(speed.value) });
+  }
+  window.addEventListener("keydown", onKeyDown);
+
   syncUi();
 
   return {
@@ -154,6 +173,7 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
     },
     destroy() {
       timeline.pause();
+      window.removeEventListener("keydown", onKeyDown);
       unsub();
       el.innerHTML = "";
     },

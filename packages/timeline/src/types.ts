@@ -49,6 +49,8 @@ export type Timeline = {
   step(delta: number): void;
   play(opts?: { speed?: number }): void;
   pause(): void;
+  /** Whether play() interval is active. */
+  readonly playing: boolean;
   snapshot(): HeapSnapshot;
   highlight(): HighlightRange[];
   setHoverHighlight(ranges: HighlightRange[] | null): void;

@@ -87,6 +87,9 @@ export function createTimeline(opts: {
         playTimer = null;
       }
     },
+    get playing() {
+      return playTimer !== null;
+    },
     snapshot() {
       return cloneSnapshot(snapshotCache);
     },
