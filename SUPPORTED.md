@@ -170,11 +170,7 @@ Ref: [map](https://cplusplus.com/reference/map/map/). Runtime: `stl/map.rs` (sha
 | **key_comp** / **value_comp** | no | |
 | **find** | partial | Presence stub vs `end`; no `it->second` |
 | **count** | yes | |
-| **lower_bound** / **upper_bound** / **equal_range** | no | |
-| **get_allocator** | no | |
-| Relational ops / non-member **swap** | no / partial | |
-| Range-for | yes | Pair `Alloc` or structured binding |
-| Custom Compare / Alloc | no | Ordered via `BTreeMap` keys |
+| **lower_bound** / **upper_bound** / **equal_range** | yes | Ordered `map` only; indexes / pair |
 
 ### `unordered_map`
 
@@ -215,7 +211,7 @@ Ref: [set](https://cplusplus.com/reference/set/set/). Runtime: `stl/set.rs` (sha
 | **(destructor)** | yes | |
 | **operator=** | partial | |
 | **begin** / **end** / **cbegin** / **cend** | partial | Stubs |
-| **rbegin** / **rend** / **crbegin** / **crend** | no | |
+| **rbegin** / **rend** / **crbegin** / **crend** | yes | Stubs |
 | **empty** / **size** | yes | |
 | **max_size** | no | |
 | **insert** / **emplace** | yes | Single key |
@@ -226,7 +222,7 @@ Ref: [set](https://cplusplus.com/reference/set/set/). Runtime: `stl/set.rs` (sha
 | **key_comp** / **value_comp** | no | |
 | **find** | partial | Presence stub |
 | **count** | yes | |
-| **lower_bound** / **upper_bound** / **equal_range** | no | |
+| **lower_bound** / **upper_bound** / **equal_range** | yes | Ordered `set` only; indexes / pair |
 | **get_allocator** | no | |
 | Relational ops / non-member **swap** | no / partial | |
 | Range-for | yes | |

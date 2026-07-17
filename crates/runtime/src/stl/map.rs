@@ -17,7 +17,49 @@ pub fn call(
         "empty" => Ok(ctx.empty(id, base, span)),
         "clear" => Ok(ctx.clear(id, base, format!("{kind}::clear"), span)),
         // ponytail: iterator stubs — end==0; find returns 1 if present else 0 (supports find!=end only)
-        "begin" | "end" | "cbegin" | "cend" => Ok(Value::Int(0)),
+        "begin" | "end" | "cbegin" | "cend" | "rbegin" | "rend" | "crbegin" | "crend" => {
+            Ok(Value::Int(0))
+        }
+        "lower_bound" | "upper_bound" => {
+            if kind != "map" {
+                return Err(RuntimeError::at(
+                    span,
+                    format!("{method} only on ordered map"),
+                ));
+            }
+            let key_v = Ctx::require_arg(args, method, span)?;
+            let key = ctx.value_to_key(&key_v)?;
+            let keys: Vec<MapKey> = match ctx.heap.get(id) {
+                Some(Object::Map(m)) => m.keys().cloned().collect(),
+                _ => {
+                    return Err(RuntimeError::at(span, "not a map"));
+                }
+            };
+            let idx = if method == "lower_bound" {
+                keys.iter().position(|k| *k >= key).unwrap_or(keys.len())
+            } else {
+                keys.iter().position(|k| *k > key).unwrap_or(keys.len())
+            };
+            Ok(ctx.query(base, method, Some(key_v), Value::Int(idx as i64), span))
+        }
+        "equal_range" => {
+            if kind != "map" {
+                return Err(RuntimeError::at(span, "equal_range only on ordered map"));
+            }
+            let key_v = Ctx::require_arg(args, method, span)?;
+            let key = ctx.value_to_key(&key_v)?;
+            let keys: Vec<MapKey> = match ctx.heap.get(id) {
+                Some(Object::Map(m)) => m.keys().cloned().collect(),
+                _ => return Err(RuntimeError::at(span, "not a map")),
+            };
+            let lo = keys.iter().position(|k| *k >= key).unwrap_or(keys.len());
+            let hi = keys.iter().position(|k| *k > key).unwrap_or(keys.len());
+            let pid = ctx.heap.alloc(Object::Pair {
+                first: Value::Int(lo as i64),
+                second: Value::Int(hi as i64),
+            });
+            Ok(ctx.query(base, method, Some(key_v), Value::Object(pid), span))
+        }
         "find" => {
             let key_v = Ctx::require_arg(args, "find", span)?;
             let key = ctx.value_to_key(&key_v)?;
