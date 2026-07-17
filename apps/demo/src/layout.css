@@ -1,0 +1,37 @@
+#root {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr auto;
+  height: 100vh;
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+#editor-pane {
+  grid-row: 1;
+  grid-column: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #ccc;
+}
+
+#ds-pane {
+  grid-row: 1;
+  grid-column: 2;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #ccc;
+}
+
+#seeker-pane {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+
+body {
+  margin: 0;
+}

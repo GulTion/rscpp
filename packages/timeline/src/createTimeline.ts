@@ -51,6 +51,9 @@ export function createTimeline(opts: {
     get source() {
       return source;
     },
+    get events() {
+      return events;
+    },
     seek(t: number) {
       const next = Math.max(0, Math.min(Math.floor(t), events.length));
       if (next === index) {

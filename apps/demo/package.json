@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@rscpp/timeline": "workspace:*",
-    "@rscpp/runner": "workspace:*"
+    "@rscpp/runner": "workspace:*",
+    "@rscpp/seeker": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

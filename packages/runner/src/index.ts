@@ -1,3 +1,4 @@
+/// <reference path="./rscpp-wasm.d.ts" />
 import type { RunResult } from "./types.js";
 
 type WasmApi = {

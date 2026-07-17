@@ -11,6 +11,7 @@ export default defineConfig({
       "rscpp-wasm": path.join(root, "crates/wasm/pkg/rscpp_wasm.js"),
       "@rscpp/timeline": path.join(root, "packages/timeline/src/index.ts"),
       "@rscpp/runner": path.join(root, "packages/runner/src/index.ts"),
+      "@rscpp/seeker": path.join(root, "packages/seeker/src/index.ts"),
     },
   },
   assetsInclude: ["**/*.wasm"],

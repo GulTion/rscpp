@@ -44,6 +44,7 @@ export type Timeline = {
   readonly length: number;
   readonly index: number;
   readonly source: string;
+  readonly events: EventJson[];
   seek(t: number): void;
   step(delta: number): void;
   play(opts?: { speed?: number }): void;
