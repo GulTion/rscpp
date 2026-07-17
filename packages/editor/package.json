@@ -1,0 +1,28 @@
+{
+  "name": "@rscpp/editor",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rscpp/timeline": "workspace:*",
+    "@rscpp/runner": "workspace:*",
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.36.0",
+    "@codemirror/commands": "^6.7.1",
+    "@codemirror/language": "^6.10.6",
+    "@codemirror/lang-cpp": "^6.0.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "jsdom": "^25.0.1"
+  }
+}

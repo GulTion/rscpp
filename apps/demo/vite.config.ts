@@ -12,6 +12,7 @@ export default defineConfig({
       "@rscpp/timeline": path.join(root, "packages/timeline/src/index.ts"),
       "@rscpp/runner": path.join(root, "packages/runner/src/index.ts"),
       "@rscpp/seeker": path.join(root, "packages/seeker/src/index.ts"),
+      "@rscpp/editor": path.join(root, "packages/editor/src/index.ts"),
     },
   },
   assetsInclude: ["**/*.wasm"],

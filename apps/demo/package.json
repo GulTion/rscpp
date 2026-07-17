@@ -11,7 +11,8 @@
   "dependencies": {
     "@rscpp/timeline": "workspace:*",
     "@rscpp/runner": "workspace:*",
-    "@rscpp/seeker": "workspace:*"
+    "@rscpp/seeker": "workspace:*",
+    "@rscpp/editor": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
