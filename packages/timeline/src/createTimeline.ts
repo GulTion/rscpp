@@ -68,14 +68,17 @@ export function createTimeline(opts: {
     },
     play(opts?: { speed?: number }) {
       timeline.pause();
-      const speed = opts?.speed ?? 30;
-      const ms = Math.max(1, Math.floor(1000 / speed));
+      const speed = Math.max(1, opts?.speed ?? 120);
+      // Batch steps when targeting high event rates so the UI isn't starved.
+      const batch = Math.max(1, Math.ceil(speed / 250));
+      const ticksPerSec = speed / batch;
+      const ms = Math.max(4, Math.floor(1000 / ticksPerSec));
       playTimer = setInterval(() => {
         if (index >= events.length) {
           timeline.pause();
           return;
         }
-        timeline.seek(index + 1);
+        timeline.seek(Math.min(index + batch, events.length));
       }, ms);
     },
     pause() {

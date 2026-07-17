@@ -67,11 +67,11 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
   pauseBtn.dataset.testid = "seeker-pause";
   const speed = document.createElement("select");
   speed.dataset.testid = "seeker-speed";
-  for (const s of [10, 30, 60, 120]) {
+  for (const s of [10, 30, 60, 120, 240, 500, 1000]) {
     const o = document.createElement("option");
     o.value = String(s);
     o.textContent = `${s}/s`;
-    if (s === 30) o.selected = true;
+    if (s === 120) o.selected = true;
     speed.appendChild(o);
   }
   const indexLabel = document.createElement("span");
