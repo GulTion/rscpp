@@ -28,4 +28,8 @@ window.__rscppDebug.timeline.index
 5. `browser_evaluate` → `() => [...window.__rscppDebug.snapshot().objects.keys()]`
 6. `browser_console_messages` — check for errors
 
-Stable testids: `seeker-root`, `seeker-scrubber`, `seeker-play`, `seeker-pause`, `seeker-speed`, `editor-pane`, `ds-pane`.
+Stable testids: `seeker-root`, `seeker-scrubber`, `seeker-play`, `seeker-pause`, `seeker-speed`, `editor-pane`, `editor-run`, `editor-root`, `ds-pane`, `ds-root`, `ds-object-picker`, `ds-repr-select`, `fixture-select`.
+
+## Fixture switcher
+
+Use `[data-testid=fixture-select]` → `parent_tree`, then pick object `#0` and set representation to `tree` via `[data-testid=ds-repr-select]`.
