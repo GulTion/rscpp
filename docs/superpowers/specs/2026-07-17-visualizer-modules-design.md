@@ -235,6 +235,24 @@ Purpose: exercise package APIs, fixtures, and UX stress — not product branding
 
 Suggested fixtures: small LC-style `twoSum`, loop-heavy nest, vector mutations, parent-array tree.
 
+### Debugging (console + Playwright MCP)
+
+- Demo mounts a **`window.__rscppDebug`** handle (dev only):
+
+```ts
+type RscppDebug = {
+  timeline: Timeline;
+  lastRun: RunResult | null;
+  seek(t: number): void;
+  snapshot(): HeapSnapshot;
+  highlight(): HighlightRange[];
+};
+```
+
+- Stable **`data-testid`** attributes on seeker scrubber, play button, object picker, editor root, DS root — so Playwright MCP can click/assert without brittle CSS.
+- Agent / human debug loop: start Vite → Playwright MCP `browser_navigate` → `browser_snapshot` / `browser_click` → `browser_evaluate` reading `__rscppDebug.snapshot()` / console.
+- Unit-test timeline/runner with Vitest; use MCP for **integration UX** (play, scrub, highlight visible), not as a substitute for package unit tests.
+
 ## Error handling
 
 | Case | Behavior |
