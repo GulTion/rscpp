@@ -13,6 +13,7 @@ import type { Timeline, ValueJson } from "@rscpp/timeline";
 import type { RunResult } from "@rscpp/runner";
 import { applyHighlights, highlightField } from "./decorations.js";
 import { formatChip } from "./chips.js";
+import { buildByteIndexMap, jsToByte } from "./spans.js";
 
 export type MountHandle = {
   update(props: Partial<EditorProps>): void;
@@ -183,18 +184,21 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
         EditorView.domEventHandlers({
           click: (_e, v) => {
             const pos = v.state.selection.main.head;
+            const doc = v.state.doc.toString();
+            const map = buildByteIndexMap(doc);
+            const bytePos = jsToByte(map, pos);
             const events = timeline.events;
             let best = -1;
             let bestDist = Infinity;
             for (let i = 0; i < events.length; i++) {
               const sp = events[i].span;
-              if (!sp) continue;
-              if (pos >= sp.start && pos < sp.end) {
+              if (!sp || sp.end <= sp.start) continue;
+              if (bytePos >= sp.start && bytePos < sp.end) {
                 best = i;
                 break;
               }
               const mid = (sp.start + sp.end) / 2;
-              const d = Math.abs(mid - pos);
+              const d = Math.abs(mid - bytePos);
               if (d < bestDist) {
                 bestDist = d;
                 best = i;
@@ -208,16 +212,22 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
     }),
   });
 
+  function paintHighlights(): void {
+    // Spans are UTF-8 bytes into the event source (= timeline.source).
+    applyHighlights(view, timeline.highlight(), timeline.source || view.state.doc.toString());
+  }
+
   let unsub = timeline.subscribe((ev) => {
-    if (ev.type === "highlight") applyHighlights(view, ev.ranges);
+    if (ev.type === "highlight" || ev.type === "tick" || ev.type === "seek") {
+      paintHighlights();
+    }
     if (ev.type === "tick") {
-      view.dispatch({}); // nudge plugins
       const plugin = view.plugin(chipPlugin);
       plugin?.rebuild(view);
       view.dispatch({});
     }
   });
-  applyHighlights(view, timeline.highlight());
+  paintHighlights();
 
   profileSel.addEventListener("change", () => {
     profile = profileSel.value as EditorProfile;
@@ -266,7 +276,13 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
         unsub();
         timeline = next.timeline;
         unsub = timeline.subscribe((ev) => {
-          if (ev.type === "highlight") applyHighlights(view, ev.ranges);
+          if (ev.type === "highlight" || ev.type === "tick" || ev.type === "seek") {
+            applyHighlights(
+              view,
+              timeline.highlight(),
+              timeline.source || view.state.doc.toString(),
+            );
+          }
           if (ev.type === "tick") {
             const plugin = view.plugin(chipPlugin);
             plugin?.rebuild(view);

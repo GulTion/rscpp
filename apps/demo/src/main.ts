@@ -46,7 +46,7 @@ root.innerHTML = `
           <option value="parent_tree">parent_tree</option>
         </select>
       </label>
-      <label>Object
+      <label>Object (single mode)
         <select data-testid="ds-object-picker"></select>
       </label>
     </div>
@@ -118,7 +118,7 @@ const dsHost = document.querySelector("#ds-host") as HTMLElement;
 const picker = document.querySelector("[data-testid=ds-object-picker]") as HTMLSelectElement;
 const fixtureSel = document.querySelector("[data-testid=fixture-select]") as HTMLSelectElement;
 
-let ds = mountDsViewer(dsHost, { timeline, objId: null });
+let ds = mountDsViewer(dsHost, { timeline, objId: null, mode: "all" });
 
 function refreshPicker(preferObjId?: number, preferRepr?: Representation): void {
   const allocs = listAllocIds(timeline);
@@ -141,8 +141,11 @@ function refreshPicker(preferObjId?: number, preferRepr?: Representation): void 
     picker.value = String(pick);
     ds.update({
       objId: pick,
+      mode: "all",
       ...(preferRepr ? { representation: preferRepr } : {}),
     });
+  } else {
+    ds.update({ mode: "all" });
   }
 }
 

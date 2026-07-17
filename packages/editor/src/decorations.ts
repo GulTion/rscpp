@@ -1,23 +1,27 @@
 import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import type { HighlightRange } from "@rscpp/timeline";
+import { buildByteIndexMap, spanBytesToJs } from "./spans.js";
 
-const setHighlights = StateEffect.define<HighlightRange[]>();
+const setHighlights = StateEffect.define<{
+  ranges: HighlightRange[];
+  source: string;
+}>();
 
 const KIND_COLOR: Record<string, string> = {
-  Write: "#f59e0b55",
-  Alloc: "#22c55e55",
-  ContainerMod: "#06b6d455",
-  LoopIter: "#3b82f655",
-  LoopEnd: "#3b82f633",
-  FnEnter: "#a855f755",
-  FnExit: "#a855f733",
-  Step: "#94a3b833",
-  error: "#ef444488",
+  Write: "#f59e0b88",
+  Alloc: "#22c55e88",
+  ContainerMod: "#06b6d488",
+  LoopIter: "#3b82f688",
+  LoopEnd: "#3b82f644",
+  FnEnter: "#a855f788",
+  FnExit: "#a855f744",
+  Step: "#94a3b866",
+  error: "#ef4444aa",
 };
 
 function markColor(kind: string): string {
-  return KIND_COLOR[kind] ?? "#64748b44";
+  return KIND_COLOR[kind] ?? "#64748b66";
 }
 
 export const highlightField = StateField.define({
@@ -27,17 +31,25 @@ export const highlightField = StateField.define({
   update(deco, tr) {
     for (const e of tr.effects) {
       if (e.is(setHighlights)) {
-        const ranges = e.value
-          .filter((r) => r.start < r.end)
-          .map((r) =>
-            Decoration.mark({
+        const { ranges, source } = e.value;
+        const map = buildByteIndexMap(source);
+        const docLen = tr.state.doc.length;
+        const built = ranges
+          .filter((r) => r.end > r.start)
+          .map((r) => {
+            const { from, to } = spanBytesToJs(map, r.start, r.end);
+            const a = Math.max(0, Math.min(from, docLen));
+            const b = Math.max(a, Math.min(to, docLen));
+            if (a >= b) return null;
+            return Decoration.mark({
               attributes: {
-                style: `background:${markColor(r.kind)}`,
+                style: `background:${markColor(r.kind)};border-radius:2px;`,
                 "data-hl-kind": r.kind,
               },
-            }).range(r.start, Math.min(r.end, tr.state.doc.length)),
-          );
-        return Decoration.set(ranges, true);
+            }).range(a, b);
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null);
+        return Decoration.set(built, true);
       }
     }
     return deco.map(tr.changes);
@@ -45,6 +57,18 @@ export const highlightField = StateField.define({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-export function applyHighlights(view: EditorView, ranges: HighlightRange[]): void {
-  view.dispatch({ effects: setHighlights.of(ranges) });
+export function applyHighlights(
+  view: EditorView,
+  ranges: HighlightRange[],
+  source: string,
+): void {
+  const map = buildByteIndexMap(source);
+  const first = ranges.find((r) => r.end > r.start);
+  const effects: unknown[] = [setHighlights.of({ ranges, source })];
+  // scroll first range into view (converted to CM coords)
+  if (first) {
+    const { from } = spanBytesToJs(map, first.start, first.end);
+    effects.push(EditorView.scrollIntoView(Math.min(from, view.state.doc.length), { y: "center" }));
+  }
+  view.dispatch({ effects: effects as never });
 }
