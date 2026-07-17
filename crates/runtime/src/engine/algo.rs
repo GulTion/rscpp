@@ -183,8 +183,17 @@ impl Engine {
         end: &Expr,
         span: Span,
     ) -> Result<ObjId> {
-        /// `v.begin()` / `begin(v)` / `cbegin(v)` → container expr
-        fn range_base<'a>(call: &'a Expr) -> Option<&'a Expr> {
+        Ok(self.resolve_sequence_range(begin, end, span)?.0)
+    }
+
+    /// Resolve `(v.begin(), v.end())` / reverse pair. Returns `(container, reversed)`.
+    pub(super) fn resolve_sequence_range(
+        &mut self,
+        begin: &Expr,
+        end: &Expr,
+        span: Span,
+    ) -> Result<(ObjId, bool)> {
+        fn iter_info<'a>(call: &'a Expr) -> Option<(&'a Expr, bool)> {
             let Expr::Call { callee, args, .. } = call else {
                 return None;
             };
@@ -194,30 +203,48 @@ impl Engine {
                     field,
                     arrow: false,
                     ..
-                } if matches!(field.name.as_str(), "begin" | "end" | "cbegin" | "cend")
-                    && args.is_empty() =>
-                {
-                    Some(base.as_ref())
+                } if args.is_empty() => {
+                    let rev = matches!(
+                        field.name.as_str(),
+                        "rbegin" | "rend" | "crbegin" | "crend"
+                    );
+                    let fwd = matches!(
+                        field.name.as_str(),
+                        "begin" | "end" | "cbegin" | "cend"
+                    );
+                    if rev || fwd {
+                        Some((base.as_ref(), rev))
+                    } else {
+                        None
+                    }
                 }
                 Expr::Name(path)
                     if args.len() == 1
                         && matches!(
                             path.segments.last().map(|s| s.name.as_str()),
-                            Some("begin" | "end" | "cbegin" | "cend")
+                            Some(
+                                "begin" | "end" | "cbegin" | "cend" | "rbegin" | "rend"
+                                    | "crbegin" | "crend"
+                            )
                         ) =>
                 {
-                    Some(&args[0])
+                    let name = path.segments.last().unwrap().name.as_str();
+                    let rev = matches!(name, "rbegin" | "rend" | "crbegin" | "crend");
+                    Some((&args[0], rev))
                 }
                 _ => None,
             }
         }
 
-        let (Some(bbase), Some(ebase)) = (range_base(begin), range_base(end)) else {
+        let (Some((bbase, brev)), Some((ebase, erev))) = (iter_info(begin), iter_info(end)) else {
             return Err(RuntimeError::at(
                 span,
                 "algorithm expects (v.begin(), v.end()) or (begin(v), end(v))",
             ));
         };
+        if brev != erev {
+            return Err(RuntimeError::at(span, "mixed forward/reverse iterators"));
+        }
         let b = self.eval_expr(bbase)?;
         let e = self.eval_expr(ebase)?;
         if b != e {
@@ -227,7 +254,7 @@ impl Engine {
             return Err(RuntimeError::at(span, "range must be a container"));
         };
         match self.heap.get(id) {
-            Some(Object::Vector(_)) | Some(Object::String(_)) => Ok(id),
+            Some(Object::Vector(_)) | Some(Object::String(_)) => Ok((id, brev)),
             _ => Err(RuntimeError::at(span, "range must be vector or string")),
         }
     }
@@ -446,6 +473,31 @@ impl Engine {
         span: Span,
     ) -> Result<Value> {
         let id = self.resolve_vector_range(begin, end, span)?;
+        self.element_ptr_on(id, want_max, cmp, span)
+    }
+
+    /// `ranges::max_element(v)` / `ranges::max_element(v, cmp)`.
+    pub(super) fn builtin_element_on_range(
+        &mut self,
+        range: &Expr,
+        want_max: bool,
+        cmp: Option<&Value>,
+        span: Span,
+    ) -> Result<Value> {
+        let v = self.eval_expr(range)?;
+        let Value::Object(id) = v else {
+            return Err(RuntimeError::at(span, "min/max_element expects a container"));
+        };
+        self.element_ptr_on(id, want_max, cmp, span)
+    }
+
+    fn element_ptr_on(
+        &mut self,
+        id: ObjId,
+        want_max: bool,
+        cmp: Option<&Value>,
+        span: Span,
+    ) -> Result<Value> {
         let elems: Vec<Value> = match self.heap.get(id) {
             Some(Object::Vector(e)) if !e.is_empty() => e.clone(),
             _ => {

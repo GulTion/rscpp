@@ -37,8 +37,8 @@ Ref: [vector](https://cplusplus.com/reference/vector/vector/). Runtime: `stl/vec
 | **(constructor)** | partial | Default / brace init; not full ctor overloads |
 | **(destructor)** | yes | |
 | **operator=** | partial | Normal assign; not full overload set |
-| **begin** / **end** / **cbegin** / **cend** | partial | Stubs for algos / range-for |
-| **rbegin** / **rend** / **crbegin** / **crend** | no | |
+| **begin** / **end** / **cbegin** / **cend** | yes | Index stubs: begin=`0`, end=`size` |
+| **rbegin** / **rend** / **crbegin** / **crend** | yes | Same index stubs; reverse range ctor supported |
 | **size** | yes | |
 | **max_size** | no | |
 | **resize** | yes | Grow with `0` or fill; shrink truncate |
@@ -53,8 +53,8 @@ Ref: [vector](https://cplusplus.com/reference/vector/vector/). Runtime: `stl/vec
 | **assign** | no | |
 | **push_back** / **emplace_back** | yes | |
 | **pop_back** | yes | |
-| **insert** / **emplace** | no | |
-| **erase** | no | |
+| **insert** / **emplace** | yes | By index (`begin()+i`); not full overloads |
+| **erase** | yes | One pos or `[first,last)` indexes; returns index |
 | **swap** (member) | no | Free `swap` partial |
 | **clear** | yes | |
 | **get_allocator** | no | |

@@ -184,12 +184,16 @@ impl Engine {
                             &args[0],
                             Expr::Call { callee, .. } if matches!(
                                 callee.as_ref(),
-                                Expr::Member { field, .. } if field.name == "begin" || field.name == "cbegin"
+                                Expr::Member { field, .. } if matches!(
+                                    field.name.as_str(),
+                                    "begin" | "cbegin" | "rbegin" | "crbegin"
+                                )
                             ) || matches!(
                                 callee.as_ref(),
                                 Expr::Name(p) if matches!(
                                     p.segments.last().map(|s| s.name.as_str()),
-                                    Some("begin" | "cbegin" | "std::begin" | "std::cbegin")
+                                    Some("begin" | "cbegin" | "rbegin" | "crbegin"
+                                        | "std::begin" | "std::cbegin")
                                 )
                             )
                         );
@@ -207,6 +211,26 @@ impl Engine {
                                 Value::Int(0)
                             };
                             let elems = vec![fill; n];
+                            let id = self.heap.alloc(Object::Vector(elems));
+                            self.emit_alloc(id, "vector", *span);
+                            return Ok(Value::Object(id));
+                        }
+                        // `vector<T> r(v.begin(), v.end())` / `vector(v.rbegin(), v.rend())`
+                        if args.len() == 2 {
+                            let (vid, rev) =
+                                self.resolve_sequence_range(&args[0], &args[1], *span)?;
+                            let mut elems = match self.heap.get(vid) {
+                                Some(Object::Vector(e)) => e.clone(),
+                                _ => {
+                                    return Err(RuntimeError::at(
+                                        *span,
+                                        "vector range ctor needs a vector",
+                                    ))
+                                }
+                            };
+                            if rev {
+                                elems.reverse();
+                            }
                             let id = self.heap.alloc(Object::Vector(elems));
                             self.emit_alloc(id, "vector", *span);
                             return Ok(Value::Object(id));

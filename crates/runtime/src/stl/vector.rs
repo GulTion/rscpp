@@ -1,7 +1,15 @@
 use super::{Ctx, Result};
 use crate::error::RuntimeError;
-use crate::value::{ObjId, Object, Value};
+use crate::value::{Address, ObjId, Object, Value};
 use rscpp_ast::Span;
+
+fn seq_index(id: ObjId, pos: &Value, span: Span) -> Result<usize> {
+    match pos {
+        Value::Int(i) if *i >= 0 => Ok(*i as usize),
+        Value::Ptr(Address::Index { obj, index }) if *obj == id => Ok(*index),
+        _ => Err(RuntimeError::at(span, "insert/erase position")),
+    }
+}
 
 pub fn call(
     ctx: &mut Ctx<'_>,
@@ -15,7 +23,10 @@ pub fn call(
         return Err(RuntimeError::at(span, "not a vector"));
     };
     match method {
-        "begin" | "end" | "cbegin" | "cend" => Ok(Value::Int(0)),
+        "begin" | "cbegin" => Ok(Value::Int(0)),
+        "end" | "cend" => Ok(Value::Int(elems.len() as i64)),
+        "rbegin" | "crbegin" => Ok(Value::Int(0)),
+        "rend" | "crend" => Ok(Value::Int(elems.len() as i64)),
         "size" => Ok(ctx.size(id, base, span)),
         "empty" => Ok(ctx.empty(id, base, span)),
         "push_back" | "emplace_back" => {
@@ -93,6 +104,48 @@ pub fn call(
             }
             ctx.modify(base, "resize", Some(n), None, None, None, span);
             Ok(Value::Void)
+        }
+        "insert" | "emplace" => {
+            if args.len() < 2 {
+                return Err(RuntimeError::at(span, format!("{method} needs pos, value")));
+            }
+            let pos = seq_index(id, &args[0], span)?;
+            let v = args[1].clone();
+            let len = elems.len();
+            if pos > len {
+                return Err(RuntimeError::at(span, "insert past end"));
+            }
+            if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
+                e.insert(pos, v.clone());
+            }
+            Ok(ctx.pushed(base, method, Some(pos), None, v, span))
+        }
+        "erase" => {
+            if args.is_empty() {
+                return Err(RuntimeError::at(span, "erase needs position"));
+            }
+            let first = seq_index(id, &args[0], span)?;
+            if args.len() >= 2 {
+                let last = seq_index(id, &args[1], span)?;
+                if last < first {
+                    return Err(RuntimeError::at(span, "erase invalid range"));
+                }
+                if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
+                    if last > e.len() || first > e.len() {
+                        return Err(RuntimeError::at(span, "erase out of range"));
+                    }
+                    e.drain(first..last);
+                }
+                ctx.modify(base, "erase", Some(first), None, None, None, span);
+            } else if let Some(Object::Vector(e)) = ctx.heap.get_mut(id) {
+                if first >= e.len() {
+                    return Err(RuntimeError::at(span, "erase out of range"));
+                }
+                e.remove(first);
+                ctx.modify(base, "erase", Some(first), None, None, None, span);
+            }
+            // Return stub iterator = index (LeetCode erase-remove)
+            Ok(Value::Int(first as i64))
         }
         _ => Err(RuntimeError::at(
             span,
