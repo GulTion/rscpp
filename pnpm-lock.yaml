@@ -10,6 +10,9 @@ importers:
 
   apps/demo:
     dependencies:
+      '@rscpp/runner':
+        specifier: workspace:*
+        version: link:../../packages/runner
       '@rscpp/timeline':
         specifier: workspace:*
         version: link:../../packages/timeline
@@ -20,6 +23,19 @@ importers:
       vite:
         specifier: ^6.0.6
         version: 6.4.3
+
+  packages/runner:
+    dependencies:
+      '@rscpp/timeline':
+        specifier: workspace:*
+        version: link:../timeline
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9
 
   packages/timeline:
     devDependencies:

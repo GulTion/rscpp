@@ -1,0 +1,734 @@
+{
+  "args": [
+    [
+      2,
+      7,
+      11,
+      15
+    ],
+    9
+  ],
+  "events": [
+    {
+      "elems": [
+        {
+          "kind": "Int",
+          "value": 2
+        },
+        {
+          "kind": "Int",
+          "value": 7
+        },
+        {
+          "kind": "Int",
+          "value": 11
+        },
+        {
+          "kind": "Int",
+          "value": 15
+        }
+      ],
+      "id": 0,
+      "kind": "Alloc",
+      "size": 4,
+      "span": {
+        "end": 0,
+        "start": 0
+      },
+      "type_name": "vector"
+    },
+    {
+      "elems": [],
+      "id": 1,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 0,
+        "start": 0
+      },
+      "type_name": "Solution"
+    },
+    {
+      "args": [
+        {
+          "kind": "Object",
+          "value": 0
+        },
+        {
+          "kind": "Int",
+          "value": 9
+        }
+      ],
+      "call_id": 0,
+      "kind": "FnEnter",
+      "name": "Solution::twoSum",
+      "parent_id": null,
+      "span": {
+        "end": 562,
+        "start": 238
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "nums",
+      "span": {
+        "end": 274,
+        "start": 270
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 0
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "nums",
+      "span": {
+        "end": 274,
+        "start": 270
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 0
+        }
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "target",
+      "span": {
+        "end": 286,
+        "start": 280
+      },
+      "value": {
+        "kind": "Int",
+        "value": 9
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 562,
+        "start": 288
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 317,
+        "start": 298
+      }
+    },
+    {
+      "elems": [],
+      "id": 2,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 301,
+        "start": 298
+      },
+      "type_name": "map"
+    },
+    {
+      "kind": "VarCreate",
+      "name": "seen",
+      "span": {
+        "end": 316,
+        "start": 312
+      },
+      "value": {
+        "kind": "Object",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 537,
+        "start": 326
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 341,
+        "start": 331
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "i",
+      "span": {
+        "end": 340,
+        "start": 335
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 4
+      },
+      "span": {
+        "end": 357,
+        "start": 346
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 4
+      },
+      "span": {
+        "end": 357,
+        "start": 342
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 537,
+        "start": 326
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 537,
+        "start": 364
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 406,
+        "start": 378
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 405,
+        "start": 398
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "need",
+      "span": {
+        "end": 405,
+        "start": 382
+      },
+      "value": {
+        "kind": "Int",
+        "value": 7
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 496,
+        "start": 419
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": {
+        "kind": "Int",
+        "value": 7
+      },
+      "kind": "ContainerLookup",
+      "op": "count",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 439,
+        "start": 423
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 496,
+        "start": 419
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 527,
+        "start": 509
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 521,
+        "start": 514
+      }
+    },
+    {
+      "kind": "Write",
+      "old": null,
+      "slot": {
+        "key": "2",
+        "kind": "MapEntry",
+        "obj": 2
+      },
+      "span": {
+        "end": 522,
+        "start": 509
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": null,
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "map_default_insert",
+      "span": {
+        "end": 522,
+        "start": 509
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "key": "2",
+        "kind": "MapEntry",
+        "obj": 2
+      },
+      "span": {
+        "end": 526,
+        "start": 509
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": null,
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "map_assign",
+      "span": {
+        "end": 526,
+        "start": 509
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "need",
+      "span": {
+        "end": 537,
+        "start": 364
+      },
+      "value": {
+        "kind": "Int",
+        "value": 7
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 537,
+        "start": 364
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 362,
+        "start": 359
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 362,
+        "start": 359
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 4
+      },
+      "span": {
+        "end": 357,
+        "start": 346
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 4
+      },
+      "span": {
+        "end": 357,
+        "start": 342
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 537,
+        "start": 326
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 537,
+        "start": 364
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 406,
+        "start": 378
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 7
+      },
+      "span": {
+        "end": 405,
+        "start": 398
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "need",
+      "span": {
+        "end": 405,
+        "start": 382
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 496,
+        "start": 419
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerLookup",
+      "op": "count",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 439,
+        "start": 423
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 496,
+        "start": 419
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 496,
+        "start": 441
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 482,
+        "start": 459
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 477,
+        "start": 467
+      }
+    },
+    {
+      "elems": [
+        {
+          "kind": "Int",
+          "value": 0
+        },
+        {
+          "kind": "Int",
+          "value": 1
+        }
+      ],
+      "id": 3,
+      "kind": "Alloc",
+      "size": 2,
+      "span": {
+        "end": 481,
+        "start": 466
+      },
+      "type_name": "vector"
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 496,
+        "start": 441
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "need",
+      "span": {
+        "end": 537,
+        "start": 364
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 537,
+        "start": 364
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 537,
+        "start": 326
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "id": 2,
+      "kind": "Dealloc",
+      "span": {
+        "end": 562,
+        "start": 288
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "seen",
+      "span": {
+        "end": 562,
+        "start": 288
+      },
+      "value": {
+        "kind": "Object",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 562,
+        "start": 288
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 0,
+      "reason": "return",
+      "span": {
+        "end": 562,
+        "start": 238
+      }
+    },
+    {
+      "call_id": 0,
+      "kind": "FnExit",
+      "name": "Solution::twoSum",
+      "parent_id": null,
+      "ret": {
+        "kind": "Object",
+        "value": 3
+      },
+      "span": {
+        "end": 562,
+        "start": 238
+      }
+    }
+  ],
+  "method": "Solution::twoSum",
+  "ok": true,
+  "source": "// LeetCode 1. Two Sum — class Solution style (rscpp subset, no #include).\n// Run: cargo run -p rscpp-pipeline -- examples/two_sum.cpp\n// Expect: main() → Int(1)  meaning indices [0, 1] encoded as 0*10+1\n\nclass Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        map<int, int> seen;\n        for (int i = 0; i < nums.size(); ++i) {\n            int need = target - nums[i];\n            if (seen.count(need)) {\n                return {seen[need], i};\n            }\n            seen[nums[i]] = i;\n        }\n        return {};\n    }\n};\n\nint main() {\n    vector<int> nums;\n    nums.push_back(2);\n    nums.push_back(7);\n    nums.push_back(11);\n    nums.push_back(15);\n\n    Solution s;\n    vector<int> ans = s.twoSum(nums, 9);\n    // 2 + 7 == 9 → indices 0 and 1\n    return ans[0] * 10 + ans[1];\n}\n",
+  "value": {
+    "kind": "Object",
+    "value": 3
+  }
+}

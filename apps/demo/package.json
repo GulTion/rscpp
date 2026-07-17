@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@rscpp/timeline": "workspace:*"
+    "@rscpp/timeline": "workspace:*",
+    "@rscpp/runner": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
