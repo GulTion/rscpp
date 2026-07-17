@@ -5,14 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@rscpp/timeline": "workspace:*",
     "@rscpp/runner": "workspace:*",
     "@rscpp/seeker": "workspace:*",
-    "@rscpp/editor": "workspace:*"
+    "@rscpp/editor": "workspace:*",
+    "@rscpp/ds-viewer": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

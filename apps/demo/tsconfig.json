@@ -3,8 +3,15 @@
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noEmit": true,
-    "rootDir": "src",
-    "resolveJsonModule": true
+    "baseUrl": ".",
+    "resolveJsonModule": true,
+    "paths": {
+      "@rscpp/timeline": ["../../packages/timeline/src/index.ts"],
+      "@rscpp/runner": ["../../packages/runner/src/index.ts"],
+      "@rscpp/seeker": ["../../packages/seeker/src/index.ts"],
+      "@rscpp/editor": ["../../packages/editor/src/index.ts"],
+      "@rscpp/ds-viewer": ["../../packages/ds-viewer/src/index.ts"]
+    }
   },
   "include": ["src/**/*"]
 }
