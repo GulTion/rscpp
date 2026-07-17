@@ -7,3 +7,7 @@ Cargo.lock
 *~
 .fuse_hidden*
 testing/
+node_modules/
+dist/
+*.tsbuildinfo
+.pnpm-store/
