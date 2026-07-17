@@ -40,21 +40,50 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
   el.dataset.testid = "seeker-root";
   el.innerHTML = "";
 
-  const track = document.createElement("div");
-  track.style.cssText =
-    "position:relative;height:12px;background:#ddd;border-radius:4px;margin:8px 0;";
-  track.dataset.testid = "seeker-track";
+  // Single scrubber bar: segment colors + progress + thumb + hover tooltip
+  const barWrap = document.createElement("div");
+  barWrap.style.cssText = "position:relative;margin:10px 0 4px;padding-top:22px;";
+  barWrap.dataset.testid = "seeker-scrubber";
 
-  const scrubber = document.createElement("input");
-  scrubber.type = "range";
-  scrubber.min = "0";
-  scrubber.dataset.testid = "seeker-scrubber";
-  scrubber.style.cssText = "width:100%;position:relative;z-index:2;";
+  const bar = document.createElement("div");
+  bar.style.cssText =
+    "position:relative;height:14px;background:#e2e8f0;border-radius:7px;cursor:pointer;overflow:hidden;user-select:none;";
+  bar.dataset.testid = "seeker-track";
+
+  const progress = document.createElement("div");
+  progress.style.cssText =
+    "position:absolute;left:0;top:0;bottom:0;width:0%;background:#94a3b844;pointer-events:none;z-index:1;";
+  progress.dataset.testid = "seeker-progress";
+
+  const thumb = document.createElement("div");
+  thumb.style.cssText =
+    "position:absolute;top:50%;width:14px;height:14px;margin-left:-7px;margin-top:-7px;left:0%;border-radius:50%;background:#0f172a;border:2px solid #fff;box-shadow:0 1px 3px #0003;pointer-events:none;z-index:3;";
+  thumb.dataset.testid = "seeker-thumb";
 
   const tooltip = document.createElement("div");
-  tooltip.style.cssText =
-    "font:12px monospace;min-height:1.2em;color:#333;margin-top:4px;";
+  tooltip.style.cssText = [
+    "position:absolute",
+    "bottom:calc(100% - 18px)",
+    "left:0",
+    "transform:translateX(-50%)",
+    "display:none",
+    "z-index:5",
+    "max-width:min(420px,80vw)",
+    "padding:4px 8px",
+    "border-radius:6px",
+    "background:#0f172a",
+    "color:#f8fafc",
+    "font:11px/1.35 ui-monospace,monospace",
+    "white-space:nowrap",
+    "overflow:hidden",
+    "text-overflow:ellipsis",
+    "pointer-events:none",
+    "box-shadow:0 4px 12px #0004",
+  ].join(";");
   tooltip.dataset.testid = "seeker-tooltip";
+
+  bar.append(progress, thumb);
+  barWrap.append(tooltip, bar);
 
   const controls = document.createElement("div");
   controls.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap;";
@@ -79,46 +108,51 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
   indexLabel.style.font = "12px monospace";
 
   controls.append(playBtn, pauseBtn, speed, indexLabel);
-  el.append(track, scrubber, tooltip, controls);
+  el.append(barWrap, controls);
+
+  let dragging = false;
+
+  function indexFromClientX(clientX: number): number {
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / Math.max(rect.width, 1)));
+    return Math.round(ratio * timeline.length);
+  }
 
   function paintSegments(): void {
-    track.querySelectorAll("[data-seg]").forEach((n) => n.remove());
+    bar.querySelectorAll("[data-seg]").forEach((n) => n.remove());
     const len = Math.max(timeline.length, 1);
     for (const seg of buildLoopSegments(timeline.events)) {
       const end = seg.endIndex ?? timeline.length;
       const left = (seg.startIndex / len) * 100;
       const width = Math.max(((end - seg.startIndex + 1) / len) * 100, 0.5);
-      const bar = document.createElement("div");
-      bar.dataset.seg = String(seg.loop_id);
-      bar.style.cssText = `position:absolute;left:${left}%;width:${width}%;top:0;bottom:0;background:${COLORS[seg.loop_id % COLORS.length]};opacity:0.45;border-radius:2px;z-index:1;pointer-events:none;`;
-      track.appendChild(bar);
+      const segEl = document.createElement("div");
+      segEl.dataset.seg = String(seg.loop_id);
+      segEl.style.cssText = `position:absolute;left:${left}%;width:${width}%;top:0;bottom:0;background:${COLORS[seg.loop_id % COLORS.length]};opacity:0.55;z-index:0;pointer-events:none;`;
+      bar.insertBefore(segEl, progress);
     }
   }
 
   function syncUi(): void {
-    scrubber.max = String(timeline.length);
-    scrubber.value = String(timeline.index);
+    const len = Math.max(timeline.length, 1);
+    const pct = (timeline.index / len) * 100;
+    progress.style.width = `${pct}%`;
+    thumb.style.left = `${pct}%`;
     indexLabel.textContent = `${timeline.index} / ${timeline.length}`;
     paintSegments();
   }
 
-  let unsub = timeline.subscribe((ev) => {
-    if (ev.type === "tick" || ev.type === "seek") syncUi();
-  });
+  function showTooltipAt(clientX: number, t: number): void {
+    const rect = bar.getBoundingClientRect();
+    const wrapRect = barWrap.getBoundingClientRect();
+    const x = clientX - wrapRect.left;
+    tooltip.style.left = `${x}px`;
+    tooltip.style.display = "block";
 
-  scrubber.addEventListener("input", () => {
-    timeline.seek(Number(scrubber.value));
-  });
-
-  scrubber.addEventListener("mousemove", (e) => {
-    const rect = scrubber.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    const t = Math.round(ratio * timeline.length);
     const events = timeline.events;
     const ev = t > 0 ? events[t - 1] : undefined;
     if (ev?.span) {
       const { line, snippet } = lineAtByte(source, ev.span.start);
-      tooltip.textContent = `L${line}: ${snippet.slice(0, 80)}`;
+      tooltip.textContent = `t=${t} · L${line}: ${snippet.slice(0, 72)}`;
       timeline.setHoverHighlight([
         { start: ev.span.start, end: ev.span.end, kind: ev.kind },
       ]);
@@ -126,11 +160,43 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
       tooltip.textContent = `t=${t}`;
       timeline.setHoverHighlight(null);
     }
+    void rect;
+  }
+
+  function hideTooltip(): void {
+    tooltip.style.display = "none";
+    timeline.setHoverHighlight(null);
+  }
+
+  function onPointer(clientX: number, seek: boolean): void {
+    const t = indexFromClientX(clientX);
+    showTooltipAt(clientX, t);
+    if (seek) timeline.seek(t);
+  }
+
+  bar.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    bar.setPointerCapture(e.pointerId);
+    onPointer(e.clientX, true);
+  });
+  bar.addEventListener("pointermove", (e) => {
+    if (dragging) onPointer(e.clientX, true);
+    else onPointer(e.clientX, false);
+  });
+  bar.addEventListener("pointerup", (e) => {
+    dragging = false;
+    try {
+      bar.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  });
+  bar.addEventListener("pointerleave", () => {
+    if (!dragging) hideTooltip();
   });
 
-  scrubber.addEventListener("mouseleave", () => {
-    timeline.setHoverHighlight(null);
-    tooltip.textContent = "";
+  let unsub = timeline.subscribe((ev) => {
+    if (ev.type === "tick" || ev.type === "seek") syncUi();
   });
 
   playBtn.addEventListener("click", () => {
