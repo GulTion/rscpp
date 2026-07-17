@@ -199,7 +199,22 @@ impl Engine {
                     return Err(RuntimeError::at(*span, "cannot index non-object"));
                 };
                 match self.heap.get(id).cloned() {
-                    Some(Object::Vector(elems)) => {
+                    Some(Object::Vector(elems))
+                    | Some(Object::List(elems))
+                    | Some(Object::Array { elems, .. }) => {
+                        let i = idx_val.as_int().map_err(RuntimeError::new)? as usize;
+                        let v = elems
+                            .get(i)
+                            .cloned()
+                            .ok_or_else(|| RuntimeError::at(*span, "index out of bounds"))?;
+                        let v = if emit_index_lookup {
+                            self.query(Value::Object(id), "index", Some(idx_val), v, *span)
+                        } else {
+                            v
+                        };
+                        Ok((v, Some(LValue::Index { obj: id, index: i })))
+                    }
+                    Some(Object::Deque(elems)) => {
                         let i = idx_val.as_int().map_err(RuntimeError::new)? as usize;
                         let v = elems
                             .get(i)
@@ -490,28 +505,35 @@ impl Engine {
                 let ret = self.builtin_partial_sum(&args[0], &args[1], &args[2], span)?;
                 return Ok((ret, None));
             }
-            if (name == "min_element" || name == "std::min_element")
-                && (args.len() == 2 || args.len() == 3)
-            {
-                let cmp = if args.len() == 3 {
-                    Some(self.eval_expr(&args[2])?)
-                } else {
-                    None
-                };
-                let ret =
-                    self.builtin_element_ptr(&args[0], &args[1], false, cmp.as_ref(), span)?;
-                return Ok((ret, None));
-            }
-            if (name == "max_element" || name == "std::max_element")
-                && (args.len() == 2 || args.len() == 3)
-            {
-                let cmp = if args.len() == 3 {
-                    Some(self.eval_expr(&args[2])?)
-                } else {
-                    None
-                };
-                let ret = self.builtin_element_ptr(&args[0], &args[1], true, cmp.as_ref(), span)?;
-                return Ok((ret, None));
+            if let Some(want_max) = minmax_element_kind(&name) {
+                // Iterator form: (begin, end[, cmp]) — classic + ranges.
+                // Range form: (v) / (v, cmp) — ranges::*.
+                let looks_iters = args.len() >= 2 && is_begin_expr(&args[0]);
+                if looks_iters && (args.len() == 2 || args.len() == 3) {
+                    let cmp = if args.len() == 3 {
+                        Some(self.eval_expr(&args[2])?)
+                    } else {
+                        None
+                    };
+                    let ret = self.builtin_element_ptr(
+                        &args[0],
+                        &args[1],
+                        want_max,
+                        cmp.as_ref(),
+                        span,
+                    )?;
+                    return Ok((ret, None));
+                }
+                if !looks_iters && (args.len() == 1 || args.len() == 2) {
+                    let cmp = if args.len() == 2 {
+                        Some(self.eval_expr(&args[1])?)
+                    } else {
+                        None
+                    };
+                    let ret =
+                        self.builtin_element_on_range(&args[0], want_max, cmp.as_ref(), span)?;
+                    return Ok((ret, None));
+                }
             }
         }
 
@@ -905,5 +927,39 @@ impl Engine {
                 format!("tie expects {n} values from pair/tuple"),
             )),
         }
+    }
+}
+
+/// `max_element` / `std::max_element` / `ranges::max_element` / `std::ranges::…`
+fn minmax_element_kind(name: &str) -> Option<bool> {
+    let n = name.strip_prefix("std::").unwrap_or(name);
+    let n = n.strip_prefix("ranges::").unwrap_or(n);
+    match n {
+        "max_element" => Some(true),
+        "min_element" => Some(false),
+        _ => None,
+    }
+}
+
+fn is_begin_expr(expr: &Expr) -> bool {
+    let Expr::Call { callee, args, .. } = expr else {
+        return false;
+    };
+    match callee.as_ref() {
+        Expr::Member {
+            field,
+            arrow: false,
+            ..
+        } if matches!(field.name.as_str(), "begin" | "cbegin") && args.is_empty() => true,
+        Expr::Name(path)
+            if args.len() == 1
+                && matches!(
+                    path.segments.last().map(|s| s.name.as_str()),
+                    Some("begin" | "cbegin")
+                ) =>
+        {
+            true
+        }
+        _ => false,
     }
 }

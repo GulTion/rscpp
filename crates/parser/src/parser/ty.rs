@@ -85,10 +85,18 @@ impl Parser {
             if !self.at_punct(Punct::Gt) && !self.at_punct(Punct::GtGt) {
                 loop {
                     // Non-type template args: `bitset<32>`, `array<int,4>`
-                    if matches!(self.peek_kind(), TokenKind::IntLit { .. }) {
+                    // Encode as Named path `"<N>"` so runtime can recover the value.
+                    if let TokenKind::IntLit { value, .. } = self.peek_kind().clone() {
                         let tok = self.bump();
-                        args.push(Type::Builtin {
-                            kind: BuiltinType::Int,
+                        args.push(Type::Named {
+                            path: Path {
+                                segments: vec![Ident {
+                                    name: value.to_string(),
+                                    span: tok.span,
+                                }],
+                                span: tok.span,
+                            },
+                            args: vec![],
                             span: tok.span,
                         });
                     } else {

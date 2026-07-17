@@ -129,34 +129,90 @@ impl Engine {
         match lv {
             LValue::Name(n) => self.assign_name(n, val, span),
             LValue::Index { obj, index } => {
-                let Some(Object::Vector(elems)) = self.heap.get_mut(*obj) else {
-                    return Err(RuntimeError::at(span, "index assignment on non-vector"));
-                };
-                if *index >= elems.len() {
-                    return Err(RuntimeError::at(span, "index out of bounds"));
+                match self.heap.get_mut(*obj) {
+                    Some(Object::Vector(elems)) | Some(Object::List(elems)) => {
+                        if *index >= elems.len() {
+                            return Err(RuntimeError::at(span, "index out of bounds"));
+                        }
+                        let old = elems[*index].clone();
+                        elems[*index] = val.clone();
+                        self.emit(Event::Write {
+                            slot: Slot::Index {
+                                obj: *obj,
+                                index: *index,
+                            },
+                            old: Some(old.clone()),
+                            value: val.clone(),
+                            span,
+                        });
+                        self.emit(Event::ContainerMod {
+                            container: Value::Object(*obj),
+                            kind: "index_assign".into(),
+                            index: Some(*index),
+                            key: Some(Value::Int(*index as i64)),
+                            old: Some(old),
+                            value: Some(val),
+                            elems: vec![],
+                            span,
+                        });
+                        Ok(())
+                    }
+                    Some(Object::Array { elems, n }) => {
+                        if *index >= *n {
+                            return Err(RuntimeError::at(span, "index out of bounds"));
+                        }
+                        let old = elems[*index].clone();
+                        elems[*index] = val.clone();
+                        self.emit(Event::Write {
+                            slot: Slot::Index {
+                                obj: *obj,
+                                index: *index,
+                            },
+                            old: Some(old.clone()),
+                            value: val.clone(),
+                            span,
+                        });
+                        self.emit(Event::ContainerMod {
+                            container: Value::Object(*obj),
+                            kind: "index_assign".into(),
+                            index: Some(*index),
+                            key: Some(Value::Int(*index as i64)),
+                            old: Some(old),
+                            value: Some(val),
+                            elems: vec![],
+                            span,
+                        });
+                        Ok(())
+                    }
+                    Some(Object::Deque(elems)) => {
+                        if *index >= elems.len() {
+                            return Err(RuntimeError::at(span, "index out of bounds"));
+                        }
+                        let old = elems[*index].clone();
+                        elems[*index] = val.clone();
+                        self.emit(Event::Write {
+                            slot: Slot::Index {
+                                obj: *obj,
+                                index: *index,
+                            },
+                            old: Some(old.clone()),
+                            value: val.clone(),
+                            span,
+                        });
+                        self.emit(Event::ContainerMod {
+                            container: Value::Object(*obj),
+                            kind: "index_assign".into(),
+                            index: Some(*index),
+                            key: Some(Value::Int(*index as i64)),
+                            old: Some(old),
+                            value: Some(val),
+                            elems: vec![],
+                            span,
+                        });
+                        Ok(())
+                    }
+                    _ => Err(RuntimeError::at(span, "index assignment on non-sequence")),
                 }
-                let old = elems[*index].clone();
-                elems[*index] = val.clone();
-                self.emit(Event::Write {
-                    slot: Slot::Index {
-                        obj: *obj,
-                        index: *index,
-                    },
-                    old: Some(old.clone()),
-                    value: val.clone(),
-                    span,
-                });
-                self.emit(Event::ContainerMod {
-                    container: Value::Object(*obj),
-                    kind: "index_assign".into(),
-                    index: Some(*index),
-                    key: Some(Value::Int(*index as i64)),
-                    old: Some(old),
-                    value: Some(val),
-                    elems: vec![],
-                    span,
-                });
-                Ok(())
             }
             LValue::MapEntry { obj, key } => {
                 let key_s = key.to_string();

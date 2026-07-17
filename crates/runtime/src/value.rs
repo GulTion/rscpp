@@ -58,6 +58,15 @@ impl fmt::Display for MapKey {
 #[derive(Debug, Clone)]
 pub enum Object {
     Vector(Vec<Value>),
+    /// `std::deque` — double-ended.
+    Deque(VecDeque<Value>),
+    /// `std::list` — vector-backed (no node semantics).
+    List(Vec<Value>),
+    /// `std::array` — fixed length `n`.
+    Array {
+        elems: Vec<Value>,
+        n: usize,
+    },
     Pair {
         first: Value,
         second: Value,
@@ -115,6 +124,9 @@ impl Object {
     pub fn kind_name(&self) -> &'static str {
         match self {
             Object::Vector(_) => "vector",
+            Object::Deque(_) => "deque",
+            Object::List(_) => "list",
+            Object::Array { .. } => "array",
             Object::Pair { .. } => "pair",
             Object::String(_) => "string",
             Object::Map(_) => "map",
@@ -133,6 +145,12 @@ impl Object {
     pub fn empty_named(name: &str) -> Option<Self> {
         Some(match name {
             "vector" => Object::Vector(vec![]),
+            "deque" => Object::Deque(VecDeque::new()),
+            "list" => Object::List(vec![]),
+            "array" => Object::Array {
+                elems: vec![],
+                n: 0,
+            },
             "string" => Object::String(String::new()),
             "pair" => Object::Pair {
                 first: Value::Int(0),
@@ -151,8 +169,9 @@ impl Object {
 
     pub fn len(&self) -> usize {
         match self {
-            Object::Vector(e) | Object::Stack(e) => e.len(),
-            Object::Queue(q) => q.len(),
+            Object::Vector(e) | Object::Stack(e) | Object::List(e) => e.len(),
+            Object::Array { n, .. } => *n,
+            Object::Deque(q) | Object::Queue(q) => q.len(),
             Object::String(s) => s.len(),
             Object::Map(m) => m.len(),
             Object::UnorderedMap(m) => m.len(),
@@ -170,8 +189,13 @@ impl Object {
 
     pub fn clear(&mut self) {
         match self {
-            Object::Vector(e) | Object::Stack(e) => e.clear(),
-            Object::Queue(q) => q.clear(),
+            Object::Vector(e) | Object::Stack(e) | Object::List(e) => e.clear(),
+            Object::Array { elems, n } => {
+                for e in elems.iter_mut().take(*n) {
+                    *e = Value::Int(0);
+                }
+            }
+            Object::Deque(q) | Object::Queue(q) => q.clear(),
             Object::String(s) => s.clear(),
             Object::Map(m) => m.clear(),
             Object::UnorderedMap(m) => m.clear(),
@@ -190,8 +214,9 @@ impl Object {
     pub fn alloc_snapshot(&self) -> (usize, Vec<Value>, Vec<crate::event::AllocEntry>) {
         use crate::event::AllocEntry;
         match self {
-            Object::Vector(e) | Object::Stack(e) => (e.len(), e.clone(), vec![]),
-            Object::Queue(q) => (q.len(), q.iter().cloned().collect(), vec![]),
+            Object::Vector(e) | Object::Stack(e) | Object::List(e) => (e.len(), e.clone(), vec![]),
+            Object::Array { elems, n } => (*n, elems.clone(), vec![]),
+            Object::Deque(q) | Object::Queue(q) => (q.len(), q.iter().cloned().collect(), vec![]),
             Object::Pair { first, second } => (2, vec![first.clone(), second.clone()], vec![]),
             Object::String(s) => (s.len(), s.chars().map(Value::Char).collect(), vec![]),
             Object::Map(m) => (

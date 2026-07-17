@@ -44,6 +44,10 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         | ("deque", "emplace_back")
         | ("deque", "push_front")
         | ("deque", "emplace_front")
+        | ("list", "push_back")
+        | ("list", "emplace_back")
+        | ("list", "push_front")
+        | ("list", "emplace_front")
         | ("string", "push_back") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![],
@@ -51,6 +55,8 @@ pub(crate) fn stl_member(name: &str, args: &[Ty], field: &str) -> Option<Ty> {
         ("vector", "pop_back")
         | ("deque", "pop_back")
         | ("deque", "pop_front")
+        | ("list", "pop_back")
+        | ("list", "pop_front")
         | ("string", "pop_back") => Some(Ty::Function {
             ret: Box::new(Ty::Void),
             params: vec![],

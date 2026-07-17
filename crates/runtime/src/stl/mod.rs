@@ -1,5 +1,8 @@
 //! Per-container STL method implementations (one file per type).
 
+mod array;
+mod deque;
+mod list;
 mod map;
 mod priority_queue;
 mod queue;
@@ -141,6 +144,9 @@ pub fn call_method(
 ) -> Result<Value> {
     match kind {
         "vector" => vector::call(ctx, id, base, method, args, span),
+        "deque" => deque::call(ctx, id, base, method, args, span),
+        "list" => list::call(ctx, id, base, method, args, span),
+        "array" => array::call(ctx, id, base, method, args, span),
         "string" => string::call(ctx, id, base, method, args, span),
         "map" | "unordered_map" => map::call(ctx, id, base, kind, method, args, span),
         "set" | "unordered_set" => set::call(ctx, id, base, method, args, span),

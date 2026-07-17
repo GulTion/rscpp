@@ -135,7 +135,15 @@ impl Engine {
             }
             Address::Heap(id) => Ok(Value::Object(*id)),
             Address::Index { obj, index } => match self.heap.get(*obj) {
-                Some(Object::Vector(e)) => e
+                Some(Object::Vector(e)) | Some(Object::List(e)) => e
+                    .get(*index)
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::new("index out of bounds")),
+                Some(Object::Array { elems, n }) if *index < *n => elems
+                    .get(*index)
+                    .cloned()
+                    .ok_or_else(|| RuntimeError::new("index out of bounds")),
+                Some(Object::Deque(e)) => e
                     .get(*index)
                     .cloned()
                     .ok_or_else(|| RuntimeError::new("index out of bounds")),

@@ -71,30 +71,36 @@ Ref: [vector\<bool\>](https://cplusplus.com/reference/vector/vector-bool/).
 
 ### `deque`
 
-Ref: [deque](https://cplusplus.com/reference/deque/deque/).
+Ref: [deque](https://cplusplus.com/reference/deque/deque/). Runtime: `stl/deque.rs`.
 
 | Item | Status | Notes |
 |------|--------|--------|
-| Container type | **no** | Sema may know the name; **no** heap object / methods |
-| All members (`[]`, `push_front`/`back`, iterators, …) | **no** | |
+| Container type | **yes** | `Object::Deque(VecDeque)` |
+| `[]` / `at` / `front` / `back` | yes | |
+| `push_front` / `push_back` / `pop_*` / `emplace_*` | yes | |
+| `size` / `empty` / `clear` / begin/end stubs | yes | |
+| Other members | **no** | |
 
 ### `list`
 
-Ref: [list](https://cplusplus.com/reference/list/list/).
+Ref: [list](https://cplusplus.com/reference/list/list/). Runtime: `stl/list.rs` (vector-backed).
 
 | Item | Status | Notes |
 |------|--------|--------|
-| Container type | **no** | Sema may know some members; **no** runtime |
-| All members (`splice`, `merge`, `sort`, …) | **no** | |
+| Container type | **yes** | No node/`splice` semantics |
+| `push_front` / `back` / `pop_*` / `front` / `back` | yes | |
+| `insert` / `erase` / begin/end | yes | Index stubs |
+| `splice` / member `merge` / `sort` | **no** | |
 
 ### `array`
 
-Ref: [array](https://cplusplus.com/reference/array/array/).
+Ref: [array](https://cplusplus.com/reference/array/array/). Runtime: `stl/array.rs`.
 
 | Item | Status | Notes |
 |------|--------|--------|
-| Container type | **no** | Seeded in sema only; **no** runtime |
-| All members (`fill`, `at`, `data`, …) | **no** | |
+| Container type | **yes** | Fixed `n` from `array<T,N>` NTTP |
+| `[]` / `at` / `front` / `back` / `fill` / `size` | yes | |
+| Other | **no** | |
 
 ### `stack`
 

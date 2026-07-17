@@ -254,8 +254,12 @@ impl Engine {
             return Err(RuntimeError::at(span, "range must be a container"));
         };
         match self.heap.get(id) {
-            Some(Object::Vector(_)) | Some(Object::String(_)) => Ok((id, brev)),
-            _ => Err(RuntimeError::at(span, "range must be vector or string")),
+            Some(Object::Vector(_))
+            | Some(Object::Deque(_))
+            | Some(Object::List(_))
+            | Some(Object::Array { .. })
+            | Some(Object::String(_)) => Ok((id, brev)),
+            _ => Err(RuntimeError::at(span, "range must be a sequence container")),
         }
     }
 

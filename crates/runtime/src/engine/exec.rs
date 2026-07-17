@@ -412,12 +412,14 @@ impl Engine {
                 }
 
                 let len = match self.heap.get(id) {
-                    Some(Object::Vector(e)) => e.len(),
+                    Some(Object::Vector(e)) | Some(Object::List(e)) => e.len(),
+                    Some(Object::Array { n, .. }) => *n,
+                    Some(Object::Deque(e)) => e.len(),
                     Some(Object::String(s)) => s.chars().count(),
                     _ => {
                         return Err(RuntimeError::at(
                             *span,
-                            "range-for only supports vector/string for now",
+                            "range-for only supports sequence containers",
                         ))
                     }
                 };
@@ -431,7 +433,17 @@ impl Engine {
                             Value::Ref(Address::Index { obj: id, index: i })
                         } else {
                             match self.heap.get(id) {
-                                Some(Object::Vector(e)) => e.get(i).cloned().ok_or_else(|| {
+                                Some(Object::Vector(e)) | Some(Object::List(e)) => {
+                                    e.get(i).cloned().ok_or_else(|| {
+                                        RuntimeError::at(*span, "index out of bounds")
+                                    })?
+                                }
+                                Some(Object::Array { elems, .. }) => {
+                                    elems.get(i).cloned().ok_or_else(|| {
+                                        RuntimeError::at(*span, "index out of bounds")
+                                    })?
+                                }
+                                Some(Object::Deque(e)) => e.get(i).cloned().ok_or_else(|| {
                                     RuntimeError::at(*span, "index out of bounds")
                                 })?,
                                 Some(Object::String(s)) => {

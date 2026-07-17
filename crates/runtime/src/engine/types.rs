@@ -175,6 +175,26 @@ impl Engine {
             }),
             Type::Named { path, args, .. } => {
                 let name = path.segments.last().map(|s| s.name.as_str()).unwrap_or("");
+                if name == "array" {
+                    let n = args
+                        .get(1)
+                        .and_then(|t| match t {
+                            Type::Named { path, .. } => {
+                                path.segments.last()?.name.parse::<usize>().ok()
+                            }
+                            _ => None,
+                        })
+                        .unwrap_or(0);
+                    let fill = if let Some(et) = args.first() {
+                        self.default_value_for_type(et)?
+                    } else {
+                        Value::Int(0)
+                    };
+                    let elems = vec![fill; n];
+                    let id = self.heap.alloc(Object::Array { elems, n });
+                    self.emit_alloc(id, "array", path.span);
+                    return Ok(Value::Object(id));
+                }
                 if let Some(obj) = Object::empty_named(name) {
                     let kind = obj.kind_name().to_string();
                     let id = self.heap.alloc(obj);
