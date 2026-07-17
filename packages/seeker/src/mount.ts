@@ -42,8 +42,13 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
 
   // Single scrubber bar: segment colors + progress + thumb + hover tooltip
   const barWrap = document.createElement("div");
-  barWrap.style.cssText = "position:relative;margin:10px 0 4px;padding-top:22px;";
+  barWrap.style.cssText = "position:relative;margin:8px 0 4px;padding-top:28px;";
   barWrap.dataset.testid = "seeker-scrubber";
+
+  const markers = document.createElement("div");
+  markers.style.cssText =
+    "position:absolute;left:0;right:0;top:0;height:26px;pointer-events:none;z-index:4;";
+  markers.dataset.testid = "seeker-loop-markers";
 
   const bar = document.createElement("div");
   bar.style.cssText =
@@ -63,11 +68,11 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
   const tooltip = document.createElement("div");
   tooltip.style.cssText = [
     "position:absolute",
-    "bottom:calc(100% - 18px)",
+    "bottom:calc(100% - 4px)",
     "left:0",
     "transform:translateX(-50%)",
     "display:none",
-    "z-index:5",
+    "z-index:6",
     "max-width:min(420px,80vw)",
     "padding:4px 8px",
     "border-radius:6px",
@@ -83,7 +88,7 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
   tooltip.dataset.testid = "seeker-tooltip";
 
   bar.append(progress, thumb);
-  barWrap.append(tooltip, bar);
+  barWrap.append(tooltip, markers, bar);
 
   const controls = document.createElement("div");
   controls.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap;";
@@ -120,15 +125,89 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
 
   function paintSegments(): void {
     bar.querySelectorAll("[data-seg]").forEach((n) => n.remove());
+    markers.innerHTML = "";
     const len = Math.max(timeline.length, 1);
-    for (const seg of buildLoopSegments(timeline.events)) {
+    const segs = buildLoopSegments(timeline.events);
+    for (const seg of segs) {
       const end = seg.endIndex ?? timeline.length;
       const left = (seg.startIndex / len) * 100;
       const width = Math.max(((end - seg.startIndex + 1) / len) * 100, 0.5);
+      const color = COLORS[seg.loop_id % COLORS.length];
       const segEl = document.createElement("div");
       segEl.dataset.seg = String(seg.loop_id);
-      segEl.style.cssText = `position:absolute;left:${left}%;width:${width}%;top:0;bottom:0;background:${COLORS[seg.loop_id % COLORS.length]};opacity:0.55;z-index:0;pointer-events:none;`;
+      segEl.style.cssText = `position:absolute;left:${left}%;width:${width}%;top:0;bottom:0;background:${color};opacity:0.55;z-index:0;pointer-events:none;`;
       bar.insertBefore(segEl, progress);
+
+      // Static marker at loop start (first LoopIter of this instance)
+      const tip = document.createElement("button");
+      tip.type = "button";
+      tip.dataset.testid = `seeker-loop-start-${seg.loop_id}-${seg.startIndex}`;
+      tip.dataset.loopId = String(seg.loop_id);
+      tip.title = `Loop started · id ${seg.loop_id} · t=${seg.startIndex}`;
+      tip.setAttribute("aria-label", `Loop started, id ${seg.loop_id}`);
+      tip.style.cssText = [
+        "position:absolute",
+        `left:${left}%`,
+        "bottom:0",
+        "transform:translateX(-50%)",
+        "pointer-events:auto",
+        "cursor:pointer",
+        "border:none",
+        "padding:0",
+        "background:transparent",
+        "display:flex",
+        "flex-direction:column",
+        "align-items:center",
+        "gap:1px",
+        "z-index:4",
+      ].join(";");
+
+      const label = document.createElement("span");
+      label.textContent = "loop start";
+      label.style.cssText = [
+        "font:9px/1 ui-sans-serif,system-ui,sans-serif",
+        "font-weight:600",
+        "letter-spacing:0.02em",
+        "padding:2px 5px",
+        "border-radius:4px",
+        `background:${color}`,
+        "color:#fff",
+        "white-space:nowrap",
+        "box-shadow:0 1px 2px #0003",
+      ].join(";");
+
+      const tick = document.createElement("span");
+      tick.style.cssText = [
+        "width:0",
+        "height:0",
+        "border-left:4px solid transparent",
+        "border-right:4px solid transparent",
+        `border-top:5px solid ${color}`,
+      ].join(";");
+
+      tip.append(label, tick);
+      tip.addEventListener("click", (e) => {
+        e.stopPropagation();
+        timeline.seek(seg.startIndex);
+      });
+      tip.addEventListener("pointerenter", (e) => {
+        e.stopPropagation();
+        const rect = tip.getBoundingClientRect();
+        const wrapRect = barWrap.getBoundingClientRect();
+        tooltip.style.left = `${rect.left + rect.width / 2 - wrapRect.left}px`;
+        tooltip.style.display = "block";
+        tooltip.textContent = `Loop started · id ${seg.loop_id} · t=${seg.startIndex}`;
+        const ev = timeline.events[seg.startIndex];
+        if (ev?.span) {
+          timeline.setHoverHighlight([
+            { start: ev.span.start, end: ev.span.end, kind: ev.kind },
+          ]);
+        }
+      });
+      tip.addEventListener("pointerleave", () => {
+        if (!dragging) hideTooltip();
+      });
+      markers.appendChild(tip);
     }
   }
 
