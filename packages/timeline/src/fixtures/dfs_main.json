@@ -1,0 +1,5625 @@
+{
+  "args": null,
+  "events": [
+    {
+      "args": [],
+      "call_id": 0,
+      "kind": "FnEnter",
+      "name": "main",
+      "parent_id": null,
+      "span": {
+        "end": 1207,
+        "start": 918
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 1207,
+        "start": 929
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 945,
+        "start": 935
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "n",
+      "span": {
+        "end": 944,
+        "start": 939
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1001,
+        "start": 950
+      }
+    },
+    {
+      "elems": [],
+      "id": 0,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 979,
+        "start": 977
+      },
+      "type_name": "vector"
+    },
+    {
+      "elems": [],
+      "id": 1,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 983,
+        "start": 981
+      },
+      "type_name": "vector"
+    },
+    {
+      "elems": [],
+      "id": 2,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 987,
+        "start": 985
+      },
+      "type_name": "vector"
+    },
+    {
+      "elems": [],
+      "id": 3,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 991,
+        "start": 989
+      },
+      "type_name": "vector"
+    },
+    {
+      "elems": [],
+      "id": 4,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 995,
+        "start": 993
+      },
+      "type_name": "vector"
+    },
+    {
+      "elems": [],
+      "id": 5,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 999,
+        "start": 997
+      },
+      "type_name": "vector"
+    },
+    {
+      "elems": [
+        {
+          "kind": "Object",
+          "value": 0
+        },
+        {
+          "kind": "Object",
+          "value": 1
+        },
+        {
+          "kind": "Object",
+          "value": 2
+        },
+        {
+          "kind": "Object",
+          "value": 3
+        },
+        {
+          "kind": "Object",
+          "value": 4
+        },
+        {
+          "kind": "Object",
+          "value": 5
+        }
+      ],
+      "id": 6,
+      "kind": "Alloc",
+      "size": 6,
+      "span": {
+        "end": 1000,
+        "start": 976
+      },
+      "type_name": "vector"
+    },
+    {
+      "kind": "VarCreate",
+      "name": "adj",
+      "span": {
+        "end": 1000,
+        "start": 970
+      },
+      "value": {
+        "kind": "Object",
+        "value": 6
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1026,
+        "start": 1006
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 0
+      },
+      "span": {
+        "end": 1012,
+        "start": 1006
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "index": 0,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 1025,
+        "start": 1006
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1051,
+        "start": 1031
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 1
+      },
+      "span": {
+        "end": 1037,
+        "start": 1031
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 1
+      },
+      "index": 0,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 1050,
+        "start": 1031
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1076,
+        "start": 1056
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 1
+      },
+      "span": {
+        "end": 1062,
+        "start": 1056
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 1
+      },
+      "index": 1,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 1075,
+        "start": 1056
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1101,
+        "start": 1081
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 2
+      },
+      "span": {
+        "end": 1087,
+        "start": 1081
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": 0,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 1100,
+        "start": 1081
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1126,
+        "start": 1106
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 3
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 3
+      },
+      "span": {
+        "end": 1112,
+        "start": 1106
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 3
+      },
+      "index": 0,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 1125,
+        "start": 1106
+      },
+      "value": {
+        "kind": "Int",
+        "value": 4
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1151,
+        "start": 1131
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 4
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 4
+      },
+      "span": {
+        "end": 1137,
+        "start": 1131
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 4
+      },
+      "index": 0,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 1150,
+        "start": 1131
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1167,
+        "start": 1156
+      }
+    },
+    {
+      "elems": [],
+      "id": 7,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 1164,
+        "start": 1156
+      },
+      "type_name": "Solution"
+    },
+    {
+      "kind": "VarCreate",
+      "name": "s",
+      "span": {
+        "end": 1166,
+        "start": 1165
+      },
+      "value": {
+        "kind": "Object",
+        "value": 7
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1205,
+        "start": 1172
+      }
+    },
+    {
+      "args": [
+        {
+          "kind": "Int",
+          "value": 6
+        },
+        {
+          "kind": "Object",
+          "value": 6
+        }
+      ],
+      "call_id": 1,
+      "kind": "FnEnter",
+      "name": "Solution::countComponents",
+      "parent_id": 0,
+      "span": {
+        "end": 913,
+        "start": 491
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "n",
+      "span": {
+        "end": 516,
+        "start": 515
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "adj",
+      "span": {
+        "end": 542,
+        "start": 539
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 6
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "adj",
+      "span": {
+        "end": 542,
+        "start": 539
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 6
+        }
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 913,
+        "start": 544
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 570,
+        "start": 554
+      }
+    },
+    {
+      "elems": [],
+      "id": 8,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 560,
+        "start": 554
+      },
+      "type_name": "vector"
+    },
+    {
+      "kind": "VarCreate",
+      "name": "vis",
+      "span": {
+        "end": 569,
+        "start": 566
+      },
+      "value": {
+        "kind": "Object",
+        "value": 8
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 589,
+        "start": 579
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "i",
+      "span": {
+        "end": 588,
+        "start": 583
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 676,
+        "start": 598
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 610,
+        "start": 605
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 676,
+        "start": 598
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 643,
+        "start": 626
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 0,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 642,
+        "start": 626
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 666,
+        "start": 656
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 610,
+        "start": 605
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 676,
+        "start": 598
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 643,
+        "start": 626
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 1,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 642,
+        "start": 626
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 666,
+        "start": 656
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 1
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 2
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 610,
+        "start": 605
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 676,
+        "start": 598
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 643,
+        "start": 626
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 2,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 642,
+        "start": 626
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 666,
+        "start": 656
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 2
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 3
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 610,
+        "start": 605
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 676,
+        "start": 598
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 643,
+        "start": 626
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 3,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 642,
+        "start": 626
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 666,
+        "start": 656
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 3
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 4
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 3
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 4
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 4
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 610,
+        "start": 605
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 676,
+        "start": 598
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 643,
+        "start": 626
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 4,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 642,
+        "start": 626
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 666,
+        "start": 656
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 4
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 5
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 4
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 5
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 5
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 610,
+        "start": 605
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 676,
+        "start": 598
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 643,
+        "start": 626
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 5,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "push_back",
+      "span": {
+        "end": 642,
+        "start": 626
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 666,
+        "start": 656
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 5
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 5
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 665,
+        "start": 656
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 676,
+        "start": 612
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 6
+      },
+      "op": "Lt",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 610,
+        "start": 605
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 0,
+      "reason": "exhausted",
+      "span": {
+        "end": 676,
+        "start": 598
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 699,
+        "start": 685
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "comps",
+      "span": {
+        "end": 698,
+        "start": 689
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 714,
+        "start": 708
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 713,
+        "start": 708
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 6
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 713,
+        "start": 708
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 885,
+        "start": 723
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 735,
+        "start": 730
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 1,
+      "span": {
+        "end": 885,
+        "start": 723
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 852,
+        "start": 751
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 761,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 766,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 852,
+        "start": 751
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 852,
+        "start": 768
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 803,
+        "start": 786
+      }
+    },
+    {
+      "args": [
+        {
+          "kind": "Int",
+          "value": 0
+        },
+        {
+          "kind": "Object",
+          "value": 6
+        },
+        {
+          "kind": "Object",
+          "value": 8
+        }
+      ],
+      "call_id": 2,
+      "kind": "FnEnter",
+      "name": "Solution::dfs",
+      "parent_id": 1,
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "u",
+      "span": {
+        "end": 214,
+        "start": 213
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 6
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 6
+        }
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 8
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 8
+        }
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 281,
+        "start": 270
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "index": 0,
+        "kind": "Index",
+        "obj": 8
+      },
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 0,
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "index_assign",
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 300,
+        "start": 290
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "i",
+      "span": {
+        "end": 299,
+        "start": 294
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 0
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 2,
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 367,
+        "start": 349
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 0
+      },
+      "span": {
+        "end": 363,
+        "start": 357
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 366,
+        "start": 357
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "v",
+      "span": {
+        "end": 366,
+        "start": 353
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 446,
+        "start": 380
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 390,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 395,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 446,
+        "start": 380
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 446,
+        "start": 397
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 432,
+        "start": 415
+      }
+    },
+    {
+      "args": [
+        {
+          "kind": "Int",
+          "value": 1
+        },
+        {
+          "kind": "Object",
+          "value": 6
+        },
+        {
+          "kind": "Object",
+          "value": 8
+        }
+      ],
+      "call_id": 3,
+      "kind": "FnEnter",
+      "name": "Solution::dfs",
+      "parent_id": 2,
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "u",
+      "span": {
+        "end": 214,
+        "start": 213
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 6
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 6
+        }
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 8
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 8
+        }
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 281,
+        "start": 270
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "index": 1,
+        "kind": "Index",
+        "obj": 8
+      },
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 1,
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "index_assign",
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 300,
+        "start": 290
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "i",
+      "span": {
+        "end": 299,
+        "start": 294
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 1
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 1
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 3,
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 367,
+        "start": 349
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 1
+      },
+      "span": {
+        "end": 363,
+        "start": 357
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 1
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 366,
+        "start": 357
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "v",
+      "span": {
+        "end": 366,
+        "start": 353
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 446,
+        "start": 380
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 390,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 395,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 446,
+        "start": 380
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 469,
+        "start": 459
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "v",
+      "span": {
+        "end": 479,
+        "start": 335
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 1
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 1
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 3,
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 367,
+        "start": 349
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 1
+      },
+      "span": {
+        "end": 363,
+        "start": 357
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 1
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 366,
+        "start": 357
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "v",
+      "span": {
+        "end": 366,
+        "start": 353
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 446,
+        "start": 380
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 390,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 395,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 446,
+        "start": 380
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 446,
+        "start": 397
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 432,
+        "start": 415
+      }
+    },
+    {
+      "args": [
+        {
+          "kind": "Int",
+          "value": 2
+        },
+        {
+          "kind": "Object",
+          "value": 6
+        },
+        {
+          "kind": "Object",
+          "value": 8
+        }
+      ],
+      "call_id": 4,
+      "kind": "FnEnter",
+      "name": "Solution::dfs",
+      "parent_id": 3,
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "u",
+      "span": {
+        "end": 214,
+        "start": 213
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 6
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 6
+        }
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 8
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 8
+        }
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 281,
+        "start": 270
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "index": 2,
+        "kind": "Index",
+        "obj": 8
+      },
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 2,
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "index_assign",
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 300,
+        "start": 290
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "i",
+      "span": {
+        "end": 299,
+        "start": 294
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 2
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 4,
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 367,
+        "start": 349
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 2
+      },
+      "span": {
+        "end": 363,
+        "start": 357
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 366,
+        "start": 357
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "v",
+      "span": {
+        "end": 366,
+        "start": 353
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 446,
+        "start": 380
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 390,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 395,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 446,
+        "start": 380
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 469,
+        "start": 459
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "v",
+      "span": {
+        "end": 479,
+        "start": 335
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 2
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Lt",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 4,
+      "reason": "exhausted",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 485,
+        "start": 260
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "call_id": 4,
+      "kind": "FnExit",
+      "name": "Solution::dfs",
+      "parent_id": 3,
+      "ret": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 446,
+        "start": 397
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 469,
+        "start": 459
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 1
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "v",
+      "span": {
+        "end": 479,
+        "start": 335
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 1
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 1
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 2
+      },
+      "op": "Lt",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 3,
+      "reason": "exhausted",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 485,
+        "start": 260
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "call_id": 3,
+      "kind": "FnExit",
+      "name": "Solution::dfs",
+      "parent_id": 2,
+      "ret": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 446,
+        "start": 397
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 469,
+        "start": 459
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "v",
+      "span": {
+        "end": 479,
+        "start": 335
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 0
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 0
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Lt",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 2,
+      "reason": "exhausted",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 485,
+        "start": 260
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "call_id": 2,
+      "kind": "FnExit",
+      "name": "Solution::dfs",
+      "parent_id": 1,
+      "ret": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 838,
+        "start": 820
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "comps",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 837,
+        "start": 820
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "comps"
+      },
+      "span": {
+        "end": 837,
+        "start": 820
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 852,
+        "start": 768
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 875,
+        "start": 865
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 735,
+        "start": 730
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 1,
+      "span": {
+        "end": 885,
+        "start": 723
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 852,
+        "start": 751
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 1
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 761,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 766,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 852,
+        "start": 751
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 875,
+        "start": 865
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 1
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 2
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 735,
+        "start": 730
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 1,
+      "span": {
+        "end": 885,
+        "start": 723
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 852,
+        "start": 751
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 2
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 761,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 766,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 852,
+        "start": 751
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 875,
+        "start": 865
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 2
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 3
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 735,
+        "start": 730
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 1,
+      "span": {
+        "end": 885,
+        "start": 723
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 852,
+        "start": 751
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 3
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 761,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 766,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 852,
+        "start": 751
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 852,
+        "start": 768
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 803,
+        "start": 786
+      }
+    },
+    {
+      "args": [
+        {
+          "kind": "Int",
+          "value": 3
+        },
+        {
+          "kind": "Object",
+          "value": 6
+        },
+        {
+          "kind": "Object",
+          "value": 8
+        }
+      ],
+      "call_id": 5,
+      "kind": "FnEnter",
+      "name": "Solution::dfs",
+      "parent_id": 1,
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "u",
+      "span": {
+        "end": 214,
+        "start": 213
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 6
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 6
+        }
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 8
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 8
+        }
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 281,
+        "start": 270
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "index": 3,
+        "kind": "Index",
+        "obj": 8
+      },
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 3,
+      "key": {
+        "kind": "Int",
+        "value": 3
+      },
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "index_assign",
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 300,
+        "start": 290
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "i",
+      "span": {
+        "end": 299,
+        "start": 294
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 3
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 3
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 3
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 5,
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 367,
+        "start": 349
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 3
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 3
+      },
+      "span": {
+        "end": 363,
+        "start": 357
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 3
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 4
+      },
+      "span": {
+        "end": 366,
+        "start": 357
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "v",
+      "span": {
+        "end": 366,
+        "start": 353
+      },
+      "value": {
+        "kind": "Int",
+        "value": 4
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 446,
+        "start": 380
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 4
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 390,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 395,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 446,
+        "start": 380
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 446,
+        "start": 397
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 432,
+        "start": 415
+      }
+    },
+    {
+      "args": [
+        {
+          "kind": "Int",
+          "value": 4
+        },
+        {
+          "kind": "Object",
+          "value": 6
+        },
+        {
+          "kind": "Object",
+          "value": 8
+        }
+      ],
+      "call_id": 6,
+      "kind": "FnEnter",
+      "name": "Solution::dfs",
+      "parent_id": 5,
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "u",
+      "span": {
+        "end": 214,
+        "start": 213
+      },
+      "value": {
+        "kind": "Int",
+        "value": 4
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 6
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 6
+        }
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 8
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 8
+        }
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 281,
+        "start": 270
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "index": 4,
+        "kind": "Index",
+        "obj": 8
+      },
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 4,
+      "key": {
+        "kind": "Int",
+        "value": 4
+      },
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "index_assign",
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 300,
+        "start": 290
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "i",
+      "span": {
+        "end": 299,
+        "start": 294
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 4
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 4
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 4
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 6,
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 367,
+        "start": 349
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 4
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 4
+      },
+      "span": {
+        "end": 363,
+        "start": 357
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 4
+      },
+      "key": {
+        "kind": "Int",
+        "value": 0
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 3
+      },
+      "span": {
+        "end": 366,
+        "start": 357
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "v",
+      "span": {
+        "end": 366,
+        "start": 353
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 446,
+        "start": 380
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 3
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 390,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 395,
+        "start": 384
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 446,
+        "start": 380
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 469,
+        "start": 459
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "v",
+      "span": {
+        "end": 479,
+        "start": 335
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 4
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 4
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 4
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Lt",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 6,
+      "reason": "exhausted",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 485,
+        "start": 260
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "call_id": 6,
+      "kind": "FnExit",
+      "name": "Solution::dfs",
+      "parent_id": 5,
+      "ret": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 446,
+        "start": 397
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 469,
+        "start": 459
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 468,
+        "start": 459
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "v",
+      "span": {
+        "end": 479,
+        "start": 335
+      },
+      "value": {
+        "kind": "Int",
+        "value": 4
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 479,
+        "start": 335
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 3
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 3
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 3
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Lt",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 5,
+      "reason": "exhausted",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 485,
+        "start": 260
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "call_id": 5,
+      "kind": "FnExit",
+      "name": "Solution::dfs",
+      "parent_id": 1,
+      "ret": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 838,
+        "start": 820
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "comps",
+      "old": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 837,
+        "start": 820
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 1
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "comps"
+      },
+      "span": {
+        "end": 837,
+        "start": 820
+      },
+      "value": {
+        "kind": "Int",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 852,
+        "start": 768
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 875,
+        "start": 865
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 3
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 4
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 3
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 4
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 4
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 735,
+        "start": 730
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 1,
+      "span": {
+        "end": 885,
+        "start": 723
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 852,
+        "start": 751
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 4
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 761,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 1
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 766,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 852,
+        "start": 751
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 875,
+        "start": 865
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 4
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 5
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 4
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 5
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 5
+      },
+      "op": "Lt",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 735,
+        "start": 730
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 1,
+      "span": {
+        "end": 885,
+        "start": 723
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 852,
+        "start": 751
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "key": {
+        "kind": "Int",
+        "value": 5
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 761,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 766,
+        "start": 755
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 852,
+        "start": 751
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 852,
+        "start": 768
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 803,
+        "start": 786
+      }
+    },
+    {
+      "args": [
+        {
+          "kind": "Int",
+          "value": 5
+        },
+        {
+          "kind": "Object",
+          "value": 6
+        },
+        {
+          "kind": "Object",
+          "value": 8
+        }
+      ],
+      "call_id": 7,
+      "kind": "FnEnter",
+      "name": "Solution::dfs",
+      "parent_id": 1,
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "u",
+      "span": {
+        "end": 214,
+        "start": 213
+      },
+      "value": {
+        "kind": "Int",
+        "value": 5
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 6
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "adj",
+      "span": {
+        "end": 240,
+        "start": 237
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 6
+        }
+      }
+    },
+    {
+      "kind": "RefBind",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "target": {
+        "kind": "Object",
+        "obj": 8
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "vis",
+      "span": {
+        "end": 258,
+        "start": 255
+      },
+      "value": {
+        "kind": "Ref",
+        "value": {
+          "kind": "Heap",
+          "value": 8
+        }
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 281,
+        "start": 270
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "slot": {
+        "index": 5,
+        "kind": "Index",
+        "obj": 8
+      },
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 8
+      },
+      "index": 5,
+      "key": {
+        "kind": "Int",
+        "value": 5
+      },
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "index_assign",
+      "span": {
+        "end": 280,
+        "start": 270
+      },
+      "value": {
+        "kind": "Int",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 300,
+        "start": 290
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "i",
+      "span": {
+        "end": 299,
+        "start": 294
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 479,
+        "start": 309
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 6
+      },
+      "key": {
+        "kind": "Int",
+        "value": 5
+      },
+      "kind": "ContainerLookup",
+      "op": "index",
+      "result": {
+        "kind": "Object",
+        "value": 5
+      },
+      "span": {
+        "end": 326,
+        "start": 320
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 5
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "size",
+      "result": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 333,
+        "start": 320
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 0
+      },
+      "op": "Lt",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 333,
+        "start": 316
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 485,
+        "start": 260
+      },
+      "value": {
+        "kind": "Int",
+        "value": 0
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 485,
+        "start": 260
+      }
+    },
+    {
+      "call_id": 7,
+      "kind": "FnExit",
+      "name": "Solution::dfs",
+      "parent_id": 1,
+      "ret": {
+        "kind": "Int",
+        "value": 0
+      },
+      "span": {
+        "end": 485,
+        "start": 200
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 838,
+        "start": 820
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "comps",
+      "old": {
+        "kind": "Int",
+        "value": 2
+      },
+      "span": {
+        "end": 837,
+        "start": 820
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 2
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "comps"
+      },
+      "span": {
+        "end": 837,
+        "start": 820
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 852,
+        "start": 768
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 875,
+        "start": 865
+      }
+    },
+    {
+      "kind": "VarAssign",
+      "name": "i",
+      "old": {
+        "kind": "Int",
+        "value": 5
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
+      "kind": "Write",
+      "old": {
+        "kind": "Int",
+        "value": 5
+      },
+      "slot": {
+        "kind": "Local",
+        "name": "i"
+      },
+      "span": {
+        "end": 874,
+        "start": 865
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 885,
+        "start": 737
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Int",
+        "value": 6
+      },
+      "op": "Lt",
+      "result": false,
+      "right": {
+        "kind": "Int",
+        "value": 6
+      },
+      "span": {
+        "end": 735,
+        "start": 730
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 1,
+      "reason": "exhausted",
+      "span": {
+        "end": 885,
+        "start": 723
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 907,
+        "start": 894
+      }
+    },
+    {
+      "id": 8,
+      "kind": "Dealloc",
+      "span": {
+        "end": 913,
+        "start": 544
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "vis",
+      "span": {
+        "end": 913,
+        "start": 544
+      },
+      "value": {
+        "kind": "Object",
+        "value": 8
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 913,
+        "start": 544
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "comps",
+      "span": {
+        "end": 913,
+        "start": 544
+      },
+      "value": {
+        "kind": "Int",
+        "value": 3
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 913,
+        "start": 544
+      }
+    },
+    {
+      "call_id": 1,
+      "kind": "FnExit",
+      "name": "Solution::countComponents",
+      "parent_id": 0,
+      "ret": {
+        "kind": "Int",
+        "value": 3
+      },
+      "span": {
+        "end": 913,
+        "start": 491
+      }
+    },
+    {
+      "id": 6,
+      "kind": "Dealloc",
+      "span": {
+        "end": 1207,
+        "start": 929
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "adj",
+      "span": {
+        "end": 1207,
+        "start": 929
+      },
+      "value": {
+        "kind": "Object",
+        "value": 6
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "n",
+      "span": {
+        "end": 1207,
+        "start": 929
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
+      "id": 7,
+      "kind": "Dealloc",
+      "span": {
+        "end": 1207,
+        "start": 929
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "s",
+      "span": {
+        "end": 1207,
+        "start": 929
+      },
+      "value": {
+        "kind": "Object",
+        "value": 7
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 1207,
+        "start": 929
+      }
+    },
+    {
+      "call_id": 0,
+      "kind": "FnExit",
+      "name": "main",
+      "parent_id": null,
+      "ret": {
+        "kind": "Int",
+        "value": 3
+      },
+      "span": {
+        "end": 1207,
+        "start": 918
+      }
+    }
+  ],
+  "method": null,
+  "ok": true,
+  "source": "// Connected components via DFS (LeetCode-style class methods).\n// Graph: 0—1—2   3—4   5  → 3 components\n// Run: cargo run -p rscpp-pipeline -- examples/dfs.cpp\n\nclass Solution {\npublic:\n    void dfs(int u, vector<vector<int>>& adj, vector<int>& vis) {\n        vis[u] = 1;\n        int i = 0;\n        while (i < adj[u].size()) {\n            int v = adj[u][i];\n            if (vis[v] == 0) {\n                dfs(v, adj, vis);\n            }\n            i = i + 1;\n        }\n    }\n\n    int countComponents(int n, vector<vector<int>>& adj) {\n        vector<int> vis;\n        int i = 0;\n        while (i < n) {\n            vis.push_back(0);\n            i = i + 1;\n        }\n        int comps = 0;\n        i = 0;\n        while (i < n) {\n            if (vis[i] == 0) {\n                dfs(i, adj, vis);\n                comps = comps + 1;\n            }\n            i = i + 1;\n        }\n        return comps;\n    }\n};\n\nint main() {\n    int n = 6;\n    vector<vector<int>> adj = {{}, {}, {}, {}, {}, {}};\n    adj[0].push_back(1);\n    adj[1].push_back(0);\n    adj[1].push_back(2);\n    adj[2].push_back(1);\n    adj[3].push_back(4);\n    adj[4].push_back(3);\n    Solution s;\n    return s.countComponents(n, adj);\n}\n",
+  "value": {
+    "kind": "Int",
+    "value": 3
+  }
+}

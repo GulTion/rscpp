@@ -30,6 +30,17 @@ window.__rscppDebug.timeline.index
 
 Stable testids: `seeker-root`, `seeker-scrubber`, `seeker-play`, `seeker-pause`, `seeker-speed`, `editor-pane`, `editor-run`, `editor-root`, `ds-pane`, `ds-root`, `ds-object-picker`, `ds-repr-select`, `fixture-select`.
 
-## Fixture switcher
+## Complex fixtures
 
-Use `[data-testid=fixture-select]` → `parent_tree`, then pick object `#0` and set representation to `tree` via `[data-testid=ds-repr-select]`.
+| Fixture | Events | DS tip |
+|---------|--------|--------|
+| `dfs` | ~410 | Object `#6 vector` (adj) → representation `graph` |
+| `dfs_main` | ~444 | Same graph via `main` (CF profile) |
+| `valid_parentheses` | ~270 | Object `#2 stack` → `stack`; scrub to watch push/pop |
+| `valid_parentheses_main` | ~213 | Full main with two isValid calls |
+
+Regenerate:
+
+```bash
+cargo run -p rscpp-wasm --example dump_complex_fixtures
+```

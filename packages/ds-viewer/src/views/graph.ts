@@ -98,6 +98,15 @@ export function renderGraph(
     ids.add(e.from);
     ids.add(e.to);
   });
+  // Include isolated adjacency rows (e.g. component {5})
+  const elems = obj.elems ?? [];
+  if (elems.every((e) => e.kind === "Object")) {
+    elems.forEach((_, i) => ids.add(i));
+  }
+  if (ids.size === 0) {
+    host.textContent = "no graph edges";
+    return;
+  }
   if (ids.size > MAX_NODES) {
     host.textContent = `graph too large (${ids.size} > ${MAX_NODES}); use table`;
     return;

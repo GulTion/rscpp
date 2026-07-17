@@ -1,0 +1,2298 @@
+{
+  "args": null,
+  "events": [
+    {
+      "args": [],
+      "call_id": 0,
+      "kind": "FnEnter",
+      "name": "main",
+      "parent_id": null,
+      "span": {
+        "end": 1177,
+        "start": 921
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 1177,
+        "start": 932
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 951,
+        "start": 938
+      }
+    },
+    {
+      "elems": [],
+      "id": 0,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 946,
+        "start": 938
+      },
+      "type_name": "Solution"
+    },
+    {
+      "kind": "VarCreate",
+      "name": "sol",
+      "span": {
+        "end": 950,
+        "start": 947
+      },
+      "value": {
+        "kind": "Object",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1047,
+        "start": 994
+      }
+    },
+    {
+      "elems": [
+        {
+          "kind": "Char",
+          "value": "("
+        },
+        {
+          "kind": "Char",
+          "value": ")"
+        },
+        {
+          "kind": "Char",
+          "value": "["
+        },
+        {
+          "kind": "Char",
+          "value": "]"
+        },
+        {
+          "kind": "Char",
+          "value": "{"
+        },
+        {
+          "kind": "Char",
+          "value": "}"
+        }
+      ],
+      "id": 1,
+      "kind": "Alloc",
+      "size": 6,
+      "span": {
+        "end": 1019,
+        "start": 1011
+      },
+      "type_name": "string"
+    },
+    {
+      "args": [
+        {
+          "kind": "Object",
+          "value": 1
+        }
+      ],
+      "call_id": 1,
+      "kind": "FnEnter",
+      "name": "Solution::isValid",
+      "parent_id": 0,
+      "span": {
+        "end": 916,
+        "start": 230
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "s",
+      "span": {
+        "end": 251,
+        "start": 250
+      },
+      "value": {
+        "kind": "Object",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 916,
+        "start": 253
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 278,
+        "start": 263
+      }
+    },
+    {
+      "elems": [],
+      "id": 2,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 268,
+        "start": 263
+      },
+      "type_name": "stack"
+    },
+    {
+      "kind": "VarCreate",
+      "name": "st",
+      "span": {
+        "end": 277,
+        "start": 275
+      },
+      "value": {
+        "kind": "Object",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "c",
+      "span": {
+        "end": 305,
+        "start": 304
+      },
+      "value": {
+        "kind": "Char",
+        "value": "("
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 873,
+        "start": 325
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "("
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 337,
+        "start": 329
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 873,
+        "start": 325
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 409,
+        "start": 363
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 395,
+        "start": 381
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": null,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "stack::emplace",
+      "span": {
+        "end": 394,
+        "start": 381
+      },
+      "value": {
+        "kind": "Char",
+        "value": "("
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 409,
+        "start": 363
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "c",
+      "span": {
+        "end": 305,
+        "start": 304
+      },
+      "value": {
+        "kind": "Char",
+        "value": ")"
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 873,
+        "start": 325
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 337,
+        "start": 329
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 349,
+        "start": 341
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "span": {
+        "end": 361,
+        "start": 353
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 873,
+        "start": 325
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 873,
+        "start": 415
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 502,
+        "start": 433
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "empty",
+      "result": {
+        "kind": "Bool",
+        "value": false
+      },
+      "span": {
+        "end": 447,
+        "start": 437
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 502,
+        "start": 433
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 539,
+        "start": 519
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "top",
+      "result": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 538,
+        "start": 530
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "top",
+      "span": {
+        "end": 538,
+        "start": 524
+      },
+      "value": {
+        "kind": "Char",
+        "value": "("
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 565,
+        "start": 556
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": null,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Char",
+        "value": "("
+      },
+      "op": "stack::pop",
+      "span": {
+        "end": 564,
+        "start": 556
+      },
+      "value": null
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 663,
+        "start": 582
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "span": {
+        "end": 594,
+        "start": 586
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "("
+      },
+      "op": "Ne",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 608,
+        "start": 598
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 663,
+        "start": 582
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 761,
+        "start": 680
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "span": {
+        "end": 692,
+        "start": 684
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 761,
+        "start": 680
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 859,
+        "start": 778
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "span": {
+        "end": 790,
+        "start": 782
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 859,
+        "start": 778
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "top",
+      "span": {
+        "end": 873,
+        "start": 415
+      },
+      "value": {
+        "kind": "Char",
+        "value": "("
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 873,
+        "start": 415
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "c",
+      "span": {
+        "end": 305,
+        "start": 304
+      },
+      "value": {
+        "kind": "Char",
+        "value": "["
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 873,
+        "start": 325
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "["
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 337,
+        "start": 329
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "["
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 349,
+        "start": 341
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 873,
+        "start": 325
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 409,
+        "start": 363
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 395,
+        "start": 381
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": null,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "stack::emplace",
+      "span": {
+        "end": 394,
+        "start": 381
+      },
+      "value": {
+        "kind": "Char",
+        "value": "["
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 409,
+        "start": 363
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "c",
+      "span": {
+        "end": 305,
+        "start": 304
+      },
+      "value": {
+        "kind": "Char",
+        "value": "]"
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 873,
+        "start": 325
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 337,
+        "start": 329
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 349,
+        "start": 341
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "span": {
+        "end": 361,
+        "start": 353
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 873,
+        "start": 325
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 873,
+        "start": 415
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 502,
+        "start": 433
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "empty",
+      "result": {
+        "kind": "Bool",
+        "value": false
+      },
+      "span": {
+        "end": 447,
+        "start": 437
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 502,
+        "start": 433
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 539,
+        "start": 519
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "top",
+      "result": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 538,
+        "start": 530
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "top",
+      "span": {
+        "end": 538,
+        "start": 524
+      },
+      "value": {
+        "kind": "Char",
+        "value": "["
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 565,
+        "start": 556
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": null,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Char",
+        "value": "["
+      },
+      "op": "stack::pop",
+      "span": {
+        "end": 564,
+        "start": 556
+      },
+      "value": null
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 663,
+        "start": 582
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "span": {
+        "end": 594,
+        "start": 586
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 663,
+        "start": 582
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 761,
+        "start": 680
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "span": {
+        "end": 692,
+        "start": 684
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "["
+      },
+      "op": "Ne",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 706,
+        "start": 696
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 761,
+        "start": 680
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 859,
+        "start": 778
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "span": {
+        "end": 790,
+        "start": 782
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 859,
+        "start": 778
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "top",
+      "span": {
+        "end": 873,
+        "start": 415
+      },
+      "value": {
+        "kind": "Char",
+        "value": "["
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 873,
+        "start": 415
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "c",
+      "span": {
+        "end": 305,
+        "start": 304
+      },
+      "value": {
+        "kind": "Char",
+        "value": "{"
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 873,
+        "start": 325
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 337,
+        "start": 329
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 349,
+        "start": 341
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "span": {
+        "end": 361,
+        "start": 353
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 873,
+        "start": 325
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 409,
+        "start": 363
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 395,
+        "start": 381
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": null,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "stack::emplace",
+      "span": {
+        "end": 394,
+        "start": 381
+      },
+      "value": {
+        "kind": "Char",
+        "value": "{"
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 409,
+        "start": 363
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 0,
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "c",
+      "span": {
+        "end": 305,
+        "start": 304
+      },
+      "value": {
+        "kind": "Char",
+        "value": "}"
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 873,
+        "start": 325
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 337,
+        "start": 329
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 349,
+        "start": 341
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "span": {
+        "end": 361,
+        "start": 353
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 873,
+        "start": 325
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 873,
+        "start": 415
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 502,
+        "start": 433
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "empty",
+      "result": {
+        "kind": "Bool",
+        "value": false
+      },
+      "span": {
+        "end": 447,
+        "start": 437
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 502,
+        "start": 433
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 539,
+        "start": 519
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "top",
+      "result": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "span": {
+        "end": 538,
+        "start": 530
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "top",
+      "span": {
+        "end": 538,
+        "start": 524
+      },
+      "value": {
+        "kind": "Char",
+        "value": "{"
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 565,
+        "start": 556
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "index": null,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "op": "stack::pop",
+      "span": {
+        "end": 564,
+        "start": 556
+      },
+      "value": null
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 663,
+        "start": 582
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "span": {
+        "end": 594,
+        "start": 586
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 663,
+        "start": 582
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 761,
+        "start": 680
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "span": {
+        "end": 692,
+        "start": 684
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 761,
+        "start": 680
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 859,
+        "start": 778
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": "}"
+      },
+      "span": {
+        "end": 790,
+        "start": 782
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "op": "Ne",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "span": {
+        "end": 804,
+        "start": 794
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 859,
+        "start": 778
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "top",
+      "span": {
+        "end": 873,
+        "start": 415
+      },
+      "value": {
+        "kind": "Char",
+        "value": "{"
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 873,
+        "start": 415
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 0,
+      "reason": "exhausted",
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "c",
+      "span": {
+        "end": 883,
+        "start": 287
+      },
+      "value": {
+        "kind": "Char",
+        "value": "}"
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 910,
+        "start": 892
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 2
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "empty",
+      "result": {
+        "kind": "Bool",
+        "value": true
+      },
+      "span": {
+        "end": 909,
+        "start": 899
+      }
+    },
+    {
+      "id": 2,
+      "kind": "Dealloc",
+      "span": {
+        "end": 916,
+        "start": 253
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "st",
+      "span": {
+        "end": 916,
+        "start": 253
+      },
+      "value": {
+        "kind": "Object",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 916,
+        "start": 253
+      }
+    },
+    {
+      "id": 1,
+      "kind": "Dealloc",
+      "span": {
+        "end": 0,
+        "start": 0
+      }
+    },
+    {
+      "call_id": 1,
+      "kind": "FnExit",
+      "name": "Solution::isValid",
+      "parent_id": 0,
+      "ret": {
+        "kind": "Bool",
+        "value": true
+      },
+      "span": {
+        "end": 916,
+        "start": 230
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 1047,
+        "start": 994
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1161,
+        "start": 1113
+      }
+    },
+    {
+      "elems": [
+        {
+          "kind": "Char",
+          "value": "("
+        },
+        {
+          "kind": "Char",
+          "value": "]"
+        }
+      ],
+      "id": 3,
+      "kind": "Alloc",
+      "size": 2,
+      "span": {
+        "end": 1133,
+        "start": 1129
+      },
+      "type_name": "string"
+    },
+    {
+      "args": [
+        {
+          "kind": "Object",
+          "value": 3
+        }
+      ],
+      "call_id": 2,
+      "kind": "FnEnter",
+      "name": "Solution::isValid",
+      "parent_id": 0,
+      "span": {
+        "end": 916,
+        "start": 230
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "s",
+      "span": {
+        "end": 251,
+        "start": 250
+      },
+      "value": {
+        "kind": "Object",
+        "value": 3
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 916,
+        "start": 253
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 278,
+        "start": 263
+      }
+    },
+    {
+      "elems": [],
+      "id": 4,
+      "kind": "Alloc",
+      "size": 0,
+      "span": {
+        "end": 268,
+        "start": 263
+      },
+      "type_name": "stack"
+    },
+    {
+      "kind": "VarCreate",
+      "name": "st",
+      "span": {
+        "end": 277,
+        "start": 275
+      },
+      "value": {
+        "kind": "Object",
+        "value": 4
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 1,
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "c",
+      "span": {
+        "end": 305,
+        "start": 304
+      },
+      "value": {
+        "kind": "Char",
+        "value": "("
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 873,
+        "start": 325
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "("
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 337,
+        "start": 329
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 873,
+        "start": 325
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 409,
+        "start": 363
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 395,
+        "start": 381
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 4
+      },
+      "index": null,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": null,
+      "op": "stack::emplace",
+      "span": {
+        "end": 394,
+        "start": 381
+      },
+      "value": {
+        "kind": "Char",
+        "value": "("
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 409,
+        "start": 363
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "LoopIter",
+      "loop_id": 1,
+      "span": {
+        "end": 883,
+        "start": 287
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "c",
+      "span": {
+        "end": 305,
+        "start": 304
+      },
+      "value": {
+        "kind": "Char",
+        "value": "]"
+      }
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 873,
+        "start": 325
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 337,
+        "start": 329
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 349,
+        "start": 341
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": "{"
+      },
+      "span": {
+        "end": 361,
+        "start": 353
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 873,
+        "start": 325
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 873,
+        "start": 415
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 502,
+        "start": 433
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 4
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "empty",
+      "result": {
+        "kind": "Bool",
+        "value": false
+      },
+      "span": {
+        "end": 447,
+        "start": 437
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 502,
+        "start": 433
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 539,
+        "start": 519
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 4
+      },
+      "key": null,
+      "kind": "ContainerLookup",
+      "op": "top",
+      "result": {
+        "kind": "Char",
+        "value": "("
+      },
+      "span": {
+        "end": 538,
+        "start": 530
+      }
+    },
+    {
+      "kind": "VarCreate",
+      "name": "top",
+      "span": {
+        "end": 538,
+        "start": 524
+      },
+      "value": {
+        "kind": "Char",
+        "value": "("
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 565,
+        "start": 556
+      }
+    },
+    {
+      "container": {
+        "kind": "Object",
+        "value": 4
+      },
+      "index": null,
+      "key": null,
+      "kind": "ContainerMod",
+      "old": {
+        "kind": "Char",
+        "value": "("
+      },
+      "op": "stack::pop",
+      "span": {
+        "end": 564,
+        "start": 556
+      },
+      "value": null
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 663,
+        "start": 582
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": false,
+      "right": {
+        "kind": "Char",
+        "value": ")"
+      },
+      "span": {
+        "end": 594,
+        "start": 586
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 663,
+        "start": 582
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 761,
+        "start": 680
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "op": "Eq",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": "]"
+      },
+      "span": {
+        "end": 692,
+        "start": 684
+      }
+    },
+    {
+      "kind": "Compare",
+      "left": {
+        "kind": "Char",
+        "value": "("
+      },
+      "op": "Ne",
+      "result": true,
+      "right": {
+        "kind": "Char",
+        "value": "["
+      },
+      "span": {
+        "end": 706,
+        "start": 696
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 761,
+        "start": 680
+      },
+      "then_taken": true
+    },
+    {
+      "kind": "ScopeEnter",
+      "span": {
+        "end": 761,
+        "start": 708
+      }
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 743,
+        "start": 730
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 761,
+        "start": 708
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "top",
+      "span": {
+        "end": 873,
+        "start": 415
+      },
+      "value": {
+        "kind": "Char",
+        "value": "("
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 873,
+        "start": 415
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 883,
+        "start": 311
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "c",
+      "span": {
+        "end": 883,
+        "start": 287
+      },
+      "value": {
+        "kind": "Char",
+        "value": "]"
+      }
+    },
+    {
+      "id": 4,
+      "kind": "Dealloc",
+      "span": {
+        "end": 916,
+        "start": 253
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "st",
+      "span": {
+        "end": 916,
+        "start": 253
+      },
+      "value": {
+        "kind": "Object",
+        "value": 4
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 916,
+        "start": 253
+      }
+    },
+    {
+      "kind": "LoopEnd",
+      "loop_id": 1,
+      "reason": "return",
+      "span": {
+        "end": 916,
+        "start": 230
+      }
+    },
+    {
+      "id": 3,
+      "kind": "Dealloc",
+      "span": {
+        "end": 0,
+        "start": 0
+      }
+    },
+    {
+      "call_id": 2,
+      "kind": "FnExit",
+      "name": "Solution::isValid",
+      "parent_id": 0,
+      "ret": {
+        "kind": "Bool",
+        "value": false
+      },
+      "span": {
+        "end": 916,
+        "start": 230
+      }
+    },
+    {
+      "kind": "Branch",
+      "span": {
+        "end": 1161,
+        "start": 1113
+      },
+      "then_taken": false
+    },
+    {
+      "kind": "Step",
+      "span": {
+        "end": 1175,
+        "start": 1166
+      }
+    },
+    {
+      "id": 0,
+      "kind": "Dealloc",
+      "span": {
+        "end": 1177,
+        "start": 932
+      }
+    },
+    {
+      "kind": "VarDestroy",
+      "name": "sol",
+      "span": {
+        "end": 1177,
+        "start": 932
+      },
+      "value": {
+        "kind": "Object",
+        "value": 0
+      }
+    },
+    {
+      "kind": "ScopeExit",
+      "span": {
+        "end": 1177,
+        "start": 932
+      }
+    },
+    {
+      "call_id": 0,
+      "kind": "FnExit",
+      "name": "main",
+      "parent_id": null,
+      "ret": {
+        "kind": "Int",
+        "value": 1
+      },
+      "span": {
+        "end": 1177,
+        "start": 921
+      }
+    }
+  ],
+  "method": null,
+  "ok": true,
+  "source": "// LeetCode 20. Valid Parentheses — subset-friendly (no map iterators).\n// Run: cargo run -p rscpp-pipeline -- examples/valid_parentheses.cpp\n// Or: run_method(src, \"Solution::isValid\", [\"()[]{}\"])\n\nclass Solution {\npublic:\n    bool isValid(string s) {\n        stack<char> st;\n        for (const auto& c : s) {\n            if (c == '(' || c == '[' || c == '{') {\n                st.emplace(c);\n            } else {\n                if (st.empty()) {\n                    return false;\n                }\n                char top = st.top();\n                st.pop();\n                if (c == ')' && top != '(') {\n                    return false;\n                }\n                if (c == ']' && top != '[') {\n                    return false;\n                }\n                if (c == '}' && top != '{') {\n                    return false;\n                }\n            }\n        }\n        return st.empty();\n    }\n};\n\nint main() {\n    Solution sol;\n    // \"()[]{}\" is valid → return 1\n    if (!sol.isValid(\"()[]{}\")) {\n        return 0;\n    }\n    // \"(]\" is invalid → return 1 only if both checks pass\n    if (sol.isValid(\"(]\")) {\n        return 0;\n    }\n    return 1;\n}\n",
+  "value": {
+    "kind": "Int",
+    "value": 1
+  }
+}
