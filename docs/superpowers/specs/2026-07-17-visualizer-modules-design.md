@@ -33,6 +33,7 @@ rscpp already emits a stable event stream from WASM (`run` / `run_method`). We n
 | First host | Demo site as lab |
 | Editor modes | One Editor + LC / CF run profiles |
 | DS Viewer | Representation engine; linear first; graph/tree usable |
+| Graph/tree render | **SVG + custom layout** (d3-hierarchy / dagre for positions only; no Cytoscape/React Flow) |
 | Code editor | CodeMirror 6 |
 | Layout | Layered packages (not mega-package, not single UI kit) |
 
@@ -44,7 +45,7 @@ packages/
   timeline/   @rscpp/timeline   pure TS, no DOM
   runner/     @rscpp/runner     WASM bind → RunResult
   editor/     @rscpp/editor     CodeMirror 6 + profiles
-  ds-viewer/  @rscpp/ds-viewer  canvases + representation engine
+  ds-viewer/  @rscpp/ds-viewer  SVG/DOM views + representation engine
   seeker/     @rscpp/seeker     scrubber / play UI
 ```
 
@@ -173,11 +174,18 @@ Given `ObjectState` at playhead `t`, propose ordered candidates:
 
 User selects a representation; preference is remembered per `ObjId` for the session (in-memory map; optional `localStorage` later).
 
+### Rendering stack
+
+- **Linear views** (array, table, stack, queue): DOM or lightweight SVG — prefer whichever keeps update cost O(changed cells), not full remount.
+- **Graph / tree:** **SVG + custom drawing**; layout libraries only for **positions** (e.g. `d3-hierarchy` for trees, `dagre` for DAGs). No Cytoscape / React Flow in v1 — keeps the package host-agnostic and morphs under our control.
+- Mount into a host-provided container element (no framework requirement inside `ds-viewer`).
+- Priority: **interaction + tick latency** over fancy layout. Cap node count for layout (e.g. skip force-style layouts; use layered/hierarchy); if `|V|` is huge, fall back to table or sampled view rather than freezing the scrubber.
+
 ### v1 fidelity
 
 - **Polished:** array, table, stack, queue (linear).
-- **Usable:** graph (nodes/edges from edge-list or adjacency), tree (parent array or nested).
-- Animation: **snapshot-diff morphs** — compare previous vs current object state on tick; animate insert / remove / move / recolor. No separate tween timeline beyond CSS/canvas transitions keyed off the diff.
+- **Usable:** graph (nodes/edges from edge-list or adjacency), tree (parent array or nested) via SVG + custom layout.
+- Animation: **snapshot-diff morphs** — compare previous vs current object state on tick; animate insert / remove / move / recolor with SVG attribute / CSS transitions keyed off the diff (not a second animation timeline).
 
 ### Object picker
 
