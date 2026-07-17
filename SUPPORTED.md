@@ -430,17 +430,17 @@ Ranges: `v.begin()`/`v.end()` or free `begin`/`end` on **vector** (string where 
 |------|---------|------------|--------|
 | `lower_bound` | yes | **yes** | Returns index `Int` |
 | `upper_bound` | yes | **yes** | Returns index `Int` |
-| `equal_range` | no | no | |
+| `equal_range` | yes | **yes** | Pair of indexes |
 | `binary_search` | yes | **yes** | Returns `Bool` |
 
 ### Merge / set ops (sorted ranges)
 
 | Algo | Default | Cmp / pred | Notes |
 |------|---------|------------|--------|
-| `merge` / `inplace_merge` | no | no | |
-| `includes` | no | no | |
-| `set_union` / `set_intersection` | no | no | |
-| `set_difference` / `set_symmetric_difference` | no | no | |
+| `merge` / `inplace_merge` | partial | no | `merge` yes; `inplace_merge` no |
+| `includes` | yes | no | |
+| `set_union` / `set_intersection` | yes | no | |
+| `set_difference` / `set_symmetric_difference` | yes | no | |
 
 ### Heap
 

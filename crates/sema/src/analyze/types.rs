@@ -45,6 +45,19 @@ impl Context {
                 return Ty::named(&last.name, vec![]);
             }
         }
+        // std::ranges::max_element
+        if path.segments.len() == 3
+            && path.segments[0].name == "std"
+            && path.segments[1].name == "ranges"
+        {
+            if let Some(sym) = self.symbols.lookup(&last.name) {
+                return sym.ty.clone();
+            }
+            return Ty::Function {
+                ret: Box::new(Ty::Unknown),
+                params: vec![],
+            };
+        }
         // Class::static_member / nested name (e.g. numeric_limits::max)
         if path.segments.len() == 2 {
             let first = &path.segments[0];

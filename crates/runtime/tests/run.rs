@@ -767,6 +767,23 @@ private:
 }
 
 #[test]
+fn ranges_max_element_matches_classic() {
+    let src = r#"
+int main() {
+  vector<int> v = {5, 2, 8, 2};
+  int a = *max_element(v.begin(), v.end());
+  int b = *ranges::max_element(v);
+  int c = *std::ranges::max_element(v.begin(), v.end());
+  int d = *ranges::min_element(v);
+  return a * 1000 + b * 100 + c * 10 + d;
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    // a=b=c=8, d=2 → 8882
+    assert_eq!(eng.run_main().unwrap(), Value::Int(8882));
+}
+
+#[test]
 fn tie_assign_from_pair() {
     let src = r#"
 int main() {
