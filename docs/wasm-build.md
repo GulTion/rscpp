@@ -91,8 +91,10 @@ Typical sizes (approximate, machine-dependent):
 
 | Stage | Artifact |
 |-------|----------|
-| `cargo build --target wasm32-unknown-unknown --release` | ~700 KB (`target/.../rscpp_wasm.wasm`) |
-| `wasm-pack build` (with wasm-opt) | ~330 KB (`crates/wasm/pkg/rscpp_wasm_bg.wasm`) |
+| `cargo build --target wasm32-unknown-unknown --release` | ~830 KB (`target/.../rscpp_wasm.wasm`) |
+| `wasm-pack build` (with wasm-opt) | ~430 KB (`crates/wasm/pkg/rscpp_wasm_bg.wasm`) |
+
+Growth past ~330 KB tracks runtime coverage (lambdas/closures, nested class ctors, STL algos, map/set range-for, etc.). Extra `wasm-opt` passes rarely reclaim much once `-Oz` has already run.
 
 ## Troubleshooting
 

@@ -5,10 +5,9 @@ use crate::ty::Ty;
 use rscpp_ast::*;
 
 impl Context {
-
     pub(super) fn check_item(&mut self, item: &Item) {
         match item {
-            Item::UsingNamespace { .. } | Item::Decl(_) => {}
+            Item::UsingNamespace { .. } | Item::Decl(_) | Item::TypeAlias { .. } => {}
             Item::Function(f) => self.check_function(f, None),
             Item::Class(c) => {
                 self.check_class(c);
@@ -22,7 +21,7 @@ impl Context {
             match m {
                 Member::Function(f) => self.check_function(f, Some(&c.name.name)),
                 Member::Class(nested) => self.check_class(nested),
-                Member::Access(_) | Member::Field(_) => {}
+                Member::Access(_) | Member::Field(_) | Member::TypeAlias { .. } => {}
             }
         }
         self.current_class = prev;
@@ -46,7 +45,10 @@ impl Context {
                     ty,
                     kind: SymbolKind::Var,
                 }) {
-                    self.err(name.span, format!("redefinition of parameter `{}`", name.name));
+                    self.err(
+                        name.span,
+                        format!("redefinition of parameter `{}`", name.name),
+                    );
                 }
             }
         }
@@ -216,10 +218,7 @@ impl Context {
             if let Some(init) = &decl.init {
                 let it = self.check_expr(init);
                 if !self.assignable(&ty, &it) && it != Ty::Error && it != Ty::Unknown {
-                    self.err(
-                        decl.span,
-                        format!("cannot initialize `{ty}` with `{it}`"),
-                    );
+                    self.err(decl.span, format!("cannot initialize `{ty}` with `{it}`"));
                 }
                 if needs_auto_deduce(&ty) {
                     ty = deduce_auto(&ty, &it);

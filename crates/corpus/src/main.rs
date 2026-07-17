@@ -26,17 +26,11 @@ fn main() -> ExitCode {
                 i += 2;
             }
             "--limit" => {
-                limit = args
-                    .get(i + 1)
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(50);
+                limit = args.get(i + 1).and_then(|s| s.parse().ok()).unwrap_or(50);
                 i += 2;
             }
             "--offset" => {
-                offset = args
-                    .get(i + 1)
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(0);
+                offset = args.get(i + 1).and_then(|s| s.parse().ok()).unwrap_or(0);
                 i += 2;
             }
             "--out" => {

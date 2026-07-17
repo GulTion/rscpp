@@ -17,6 +17,12 @@ pub enum Item {
         path: Path,
         span: Span,
     },
+    /// `using Alias = Type;`
+    TypeAlias {
+        name: Ident,
+        ty: Type,
+        span: Span,
+    },
     Decl(Decl),
 }
 
@@ -41,6 +47,12 @@ pub enum Member {
     Field(Decl),
     /// Nested `struct` / `class` (LeetCode helpers).
     Class(ClassDef),
+    /// `using Alias = Type;` inside a class.
+    TypeAlias {
+        name: Ident,
+        ty: Type,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,7 +67,17 @@ pub struct FunctionDef {
     pub return_type: Type,
     pub name: Ident,
     pub params: Vec<Param>,
+    /// Ctor member-initializer list: `: set_(n), rank_(n, 0)`.
+    pub member_inits: Vec<MemberInit>,
     pub body: Block,
+    pub span: Span,
+}
+
+/// One entry in a ctor initializer list (`name(args)` / `name{args}`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct MemberInit {
+    pub name: Ident,
+    pub args: Vec<Expr>,
     pub span: Span,
 }
 

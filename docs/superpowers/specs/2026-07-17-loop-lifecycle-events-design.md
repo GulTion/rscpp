@@ -29,7 +29,7 @@ without stamping `loop_id` on every heap/var event.
 
 ## Event shapes
 
-All include optional `call_id` (current activation) and `span` (keyword / loop header as appropriate).
+All include `span` (keyword / loop header as appropriate). **`call_id` is only on `FnEnter` / `FnExit`**, not on loop events.
 
 ### `LoopIter` (extended)
 
@@ -38,7 +38,6 @@ Emitted immediately before each body execution (existing behavior).
 ```json
 {
   "kind": "LoopIter",
-  "call_id": 0,
   "loop_id": 5,
   "span": { "start": 0, "end": 0 }
 }
@@ -52,7 +51,6 @@ Emitted immediately before each body execution (existing behavior).
 ```json
 {
   "kind": "Continue",
-  "call_id": 0,
   "loop_id": 5,
   "span": { "start": 0, "end": 0 }
 }
@@ -66,7 +64,6 @@ Emitted immediately before each body execution (existing behavior).
 ```json
 {
   "kind": "Break",
-  "call_id": 0,
   "loop_id": 5,
   "span": { "start": 0, "end": 0 }
 }
@@ -79,7 +76,6 @@ Emitted immediately before each body execution (existing behavior).
 ```json
 {
   "kind": "LoopEnd",
-  "call_id": 0,
   "loop_id": 5,
   "reason": "exhausted",
   "span": { "start": 0, "end": 0 }

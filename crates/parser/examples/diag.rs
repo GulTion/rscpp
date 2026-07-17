@@ -1,6 +1,6 @@
+use rscpp_parser::parse;
 use std::env;
 use std::fs;
-use rscpp_parser::parse;
 
 fn main() {
     let path = env::args().nth(1).expect("path");
@@ -14,9 +14,16 @@ fn main() {
             let col = start - src[..start].rfind('\n').map(|i| i + 1).unwrap_or(0) + 1;
             println!("{}:{}:{}: {}", path, line, col, e.message);
             let line_start = src[..start].rfind('\n').map(|i| i + 1).unwrap_or(0);
-            let line_end = src[start..].find('\n').map(|i| start + i).unwrap_or(src.len());
+            let line_end = src[start..]
+                .find('\n')
+                .map(|i| start + i)
+                .unwrap_or(src.len());
             println!("| {}", &src[line_start..line_end]);
-            println!("| {}{}", " ".repeat(start - line_start), "^".repeat((end - start).max(1)));
+            println!(
+                "| {}{}",
+                " ".repeat(start - line_start),
+                "^".repeat((end - start).max(1))
+            );
             // context ±2 lines
             let lines: Vec<_> = src.lines().collect();
             let lo = line.saturating_sub(2);

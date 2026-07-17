@@ -1,6 +1,6 @@
 use super::{Ctx, Result};
 use crate::error::RuntimeError;
-use crate::value::{Object, ObjId, Value};
+use crate::value::{ObjId, Object, Value};
 use rscpp_ast::Span;
 
 pub fn call(
@@ -15,6 +15,24 @@ pub fn call(
         "size" => Ok(ctx.size(id, base, span)),
         "empty" => Ok(ctx.empty(id, base, span)),
         "clear" => Ok(ctx.clear(id, base, "set::clear", span)),
+        // ponytail: iterator stubs — end==0; find returns 1 if present else 0 (supports find!=end only)
+        "begin" | "end" | "cbegin" | "cend" => Ok(Value::Int(0)),
+        "find" => {
+            let key_v = Ctx::require_arg(args, "find", span)?;
+            let key = ctx.value_to_key(&key_v)?;
+            let found = match ctx.heap.get(id) {
+                Some(Object::Set(s)) => s.contains(&key),
+                Some(Object::UnorderedSet(s)) => s.contains(&key),
+                _ => false,
+            };
+            Ok(ctx.query(
+                base,
+                "find",
+                Some(key_v),
+                Value::Int(if found { 1 } else { 0 }),
+                span,
+            ))
+        }
         "count" => {
             let key_v = Ctx::require_arg(args, "count", span)?;
             let key = ctx.value_to_key(&key_v)?;

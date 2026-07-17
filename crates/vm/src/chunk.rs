@@ -29,14 +29,22 @@ pub enum Op {
     JumpIfFalse(u16),
 
     /// Call user function by program index; argc on stack above args.
-    Call { func: u16, argc: u8 },
+    Call {
+        func: u16,
+        argc: u8,
+    },
     /// `obj` then `argc` args on stack; method name in constants pool as StringLit-ish... use name idx.
-    CallMethod { name: u16, argc: u8 },
+    CallMethod {
+        name: u16,
+        argc: u8,
+    },
     IndexGet,
     IndexSet,
 
     /// Push empty container by name constant ("vector", "map", …).
-    NewEmpty { type_name: u16 },
+    NewEmpty {
+        type_name: u16,
+    },
     /// pair(a,b) — two values on stack.
     MakePair,
 

@@ -4,13 +4,15 @@ use rscpp_ast::*;
 use rscpp_lexer::{Keyword, Punct, Token, TokenKind};
 
 impl Parser {
-
     pub(super) fn parse_type(&mut self) -> Result<Type, ParseError> {
         self.parse_type_ext(false)
     }
 
     /// When `allow_function_types`, accept `T(Args)` (needed inside `function<...>`).
-    pub(super) fn parse_type_ext(&mut self, allow_function_types: bool) -> Result<Type, ParseError> {
+    pub(super) fn parse_type_ext(
+        &mut self,
+        allow_function_types: bool,
+    ) -> Result<Type, ParseError> {
         let start = self.peek_span().start;
         let mut is_const = false;
         if self.at_keyword(Keyword::Const) {

@@ -1,6 +1,6 @@
 use super::{Ctx, Result};
 use crate::error::RuntimeError;
-use crate::value::{Object, ObjId, Value};
+use crate::value::{ObjId, Object, Value};
 use rscpp_ast::Span;
 
 pub fn call(

@@ -14,7 +14,10 @@ pub enum MapKey {
 }
 
 impl MapKey {
-    pub fn from_value(v: &Value, string_of: impl FnOnce(u64) -> Option<String>) -> Result<Self, String> {
+    pub fn from_value(
+        v: &Value,
+        string_of: impl FnOnce(u64) -> Option<String>,
+    ) -> Result<Self, String> {
         match v {
             Value::Int(i) => Ok(MapKey::Int(*i)),
             Value::Bool(b) => Ok(MapKey::Bool(*b)),
@@ -72,6 +75,12 @@ pub enum Object {
         name: String,
         fields: HashMap<String, Value>,
     },
+    /// Lambda / closure: params + body + captured locals.
+    Closure {
+        params: Vec<String>,
+        body: rscpp_ast::Block,
+        captures: HashMap<String, Value>,
+    },
 }
 
 impl Object {
@@ -88,6 +97,7 @@ impl Object {
             Object::Queue(_) => "queue",
             Object::PriorityQueue(_) => "priority_queue",
             Object::Class { .. } => "class",
+            Object::Closure { .. } => "closure",
         }
     }
 
@@ -121,7 +131,7 @@ impl Object {
             Object::UnorderedSet(s) => s.len(),
             Object::PriorityQueue(h) => h.len(),
             Object::Pair { .. } => 2,
-            Object::Class { .. } => 0,
+            Object::Class { .. } | Object::Closure { .. } => 0,
         }
     }
 
@@ -139,7 +149,7 @@ impl Object {
             Object::Set(s) => s.clear(),
             Object::UnorderedSet(s) => s.clear(),
             Object::PriorityQueue(h) => h.clear(),
-            Object::Pair { .. } | Object::Class { .. } => {}
+            Object::Pair { .. } | Object::Class { .. } | Object::Closure { .. } => {}
         }
     }
 
@@ -150,9 +160,7 @@ impl Object {
         match self {
             Object::Vector(e) | Object::Stack(e) => (e.len(), e.clone(), vec![]),
             Object::Queue(q) => (q.len(), q.iter().cloned().collect(), vec![]),
-            Object::Pair { first, second } => {
-                (2, vec![first.clone(), second.clone()], vec![])
-            }
+            Object::Pair { first, second } => (2, vec![first.clone(), second.clone()], vec![]),
             Object::String(s) => (s.len(), s.chars().map(Value::Char).collect(), vec![]),
             Object::Map(m) => (
                 m.len(),
@@ -201,6 +209,7 @@ impl Object {
             Object::Class { fields, .. } => {
                 (fields.len(), fields.values().cloned().collect(), vec![])
             }
+            Object::Closure { .. } => (0, vec![], vec![]),
         }
     }
 }

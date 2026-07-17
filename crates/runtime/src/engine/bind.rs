@@ -1,14 +1,13 @@
 use super::{Engine, Flow, Frame, LValue, Result};
+use crate::builtins;
 use crate::error::RuntimeError;
 use crate::event::{Event, Slot};
 use crate::stl;
-use crate::builtins;
-use crate::value::{Address, Heap, MapKey, Object, ObjId, Value};
+use crate::value::{Address, Heap, MapKey, ObjId, Object, Value};
 use rscpp_ast::*;
 use std::collections::{HashMap, HashSet};
 
 impl Engine {
-
     pub(super) fn type_is_ref(ty: &Type) -> bool {
         match ty {
             Type::Reference { .. } => true,
@@ -66,7 +65,6 @@ impl Engine {
             };
             if let Some(slot) = Self::address_to_slot(&addr) {
                 self.emit(Event::RefBind {
-                    call_id: self.current_call_id(),
                     name: name.to_string(),
                     target: slot,
                     span,
@@ -96,11 +94,7 @@ impl Engine {
             // `pair<K,V> p = {a, b};`
             if let Expr::InitList { elems, span } = init {
                 if let Type::Named { path, .. } = &ty {
-                    let tname = path
-                        .segments
-                        .last()
-                        .map(|s| s.name.as_str())
-                        .unwrap_or("");
+                    let tname = path.segments.last().map(|s| s.name.as_str()).unwrap_or("");
                     if tname == "pair" && elems.len() == 2 {
                         let first = self.eval_expr(&elems[0])?;
                         let second = self.eval_expr(&elems[1])?;
@@ -179,12 +173,11 @@ impl Engine {
             }
             // `vector<T> v(n);` / `vector<T> v(n, fill)` / set from iterators
             if let Expr::Call { args, span, .. } = init {
-                if let Type::Named { path, args: targs, .. } = &ty {
-                    let tname = path
-                        .segments
-                        .last()
-                        .map(|s| s.name.as_str())
-                        .unwrap_or("");
+                if let Type::Named {
+                    path, args: targs, ..
+                } = &ty
+                {
+                    let tname = path.segments.last().map(|s| s.name.as_str()).unwrap_or("");
                     if tname == "vector" && (args.len() == 1 || args.len() == 2) {
                         // Prefer size ctor when first arg is an integer expression, not begin/end.
                         let first_is_range = matches!(
@@ -201,7 +194,11 @@ impl Engine {
                             )
                         );
                         if !first_is_range {
-                            let n = self.eval_expr(&args[0])?.as_int().map_err(RuntimeError::new)? as usize;
+                            let n = self
+                                .eval_expr(&args[0])?
+                                .as_int()
+                                .map_err(RuntimeError::new)?
+                                as usize;
                             let fill = if args.len() == 2 {
                                 self.eval_expr(&args[1])?
                             } else if let Some(et) = targs.first() {
@@ -221,7 +218,10 @@ impl Engine {
                         let elems = match self.heap.get(vid) {
                             Some(Object::Vector(e)) => e.clone(),
                             _ => {
-                                return Err(RuntimeError::at(*span, "set range ctor needs a vector"))
+                                return Err(RuntimeError::at(
+                                    *span,
+                                    "set range ctor needs a vector",
+                                ))
                             }
                         };
                         let id = self.alloc_empty_named(tname, *span)?;
@@ -264,13 +264,21 @@ impl Engine {
         self.default_value_for_type(&ty)
     }
 
-    pub(super) fn dealloc_owned_locals(&mut self, locals: &HashMap<String, Value>, keep: Option<&Value>) {
+    pub(super) fn dealloc_owned_locals(
+        &mut self,
+        locals: &HashMap<String, Value>,
+        keep: Option<&Value>,
+    ) {
         let keep_id = match keep {
             Some(Value::Object(id)) => Some(*id),
             Some(Value::Ref(Address::Heap(id)) | Value::Ptr(Address::Heap(id))) => Some(*id),
             _ => None,
         };
-        for (_name, v) in locals {
+        for (name, v) in locals {
+            // Caller owns `this` (especially after ctors).
+            if name == "this" {
+                continue;
+            }
             if let Value::Object(id) = v {
                 if Some(*id) == keep_id {
                     continue;
@@ -281,7 +289,6 @@ impl Engine {
                 }
                 if self.heap.free(*id).is_some() {
                     self.emit(Event::Dealloc {
-                        call_id: self.current_call_id(),
                         id: *id,
                         span: Span::new(0, 0),
                     });
@@ -291,14 +298,16 @@ impl Engine {
     }
 
     pub(super) fn value_mentions_obj(&self, id: ObjId) -> bool {
-        let check = |v: &Value| matches!(v, Value::Object(x) if *x == id)
-            || matches!(v, Value::Ptr(Address::Heap(x) | Address::Index { obj: x, .. } | Address::Field { obj: x, .. } | Address::MapEntry { obj: x, .. }) if *x == id)
-            || matches!(v, Value::Ref(Address::Heap(x) | Address::Index { obj: x, .. } | Address::Field { obj: x, .. } | Address::MapEntry { obj: x, .. }) if *x == id);
+        let check = |v: &Value| {
+            matches!(v, Value::Object(x) if *x == id)
+                || matches!(v, Value::Ptr(Address::Heap(x) | Address::Index { obj: x, .. } | Address::Field { obj: x, .. } | Address::MapEntry { obj: x, .. }) if *x == id)
+                || matches!(v, Value::Ref(Address::Heap(x) | Address::Index { obj: x, .. } | Address::Field { obj: x, .. } | Address::MapEntry { obj: x, .. }) if *x == id)
+        };
         for f in &self.stack {
             if f.locals.values().any(check) {
                 return true;
             }
         }
         self.globals.values().any(check)
-}
+    }
 }

@@ -5,9 +5,24 @@ fn run_main_returns() {
     let mut eng = Engine::from_source("int main() { return 42; }").unwrap();
     let v = eng.run_main().unwrap();
     assert_eq!(v, Value::Int(42));
-    assert!(eng.events().iter().any(|e| matches!(e, Event::FnEnter { .. })));
-    assert!(eng.events().iter().any(|e| matches!(e, Event::FnExit { .. })));
+    assert!(eng
+        .events()
+        .iter()
+        .any(|e| matches!(e, Event::FnEnter { .. })));
+    assert!(eng
+        .events()
+        .iter()
+        .any(|e| matches!(e, Event::FnExit { .. })));
     assert!(eng.events().iter().any(|e| matches!(e, Event::Step { .. })));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::FnEnter {
+            name,
+            call_id: 0,
+            parent_id: None,
+            ..
+        } if name == "main"
+    )));
 }
 
 #[test]
@@ -61,13 +76,131 @@ int main() {
     )
     .unwrap();
     assert_eq!(eng.run_main().unwrap(), Value::Int(10));
-    assert!(
-        eng.events()
-            .iter()
-            .filter(|e| matches!(e, Event::LoopIter { .. }))
-            .count()
-            >= 5
+    let iters: Vec<_> = eng
+        .events()
+        .iter()
+        .filter_map(|e| match e {
+            Event::LoopIter { loop_id, .. } => Some(*loop_id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(iters.len(), 5);
+    assert!(iters.iter().all(|&id| id == iters[0]));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::LoopEnd {
+            reason,
+            loop_id,
+            ..
+        } if reason == "exhausted" && *loop_id == iters[0]
+    )));
+}
+
+#[test]
+fn loop_break_continue_return_events() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  int s = 0;
+  for (int i = 0; i < 10; ++i) {
+    if (i == 2) { continue; }
+    if (i == 5) { break; }
+    s = s + i;
+  }
+  return s;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(0 + 1 + 3 + 4));
+    let ev = eng.events();
+    assert!(ev.iter().any(|e| matches!(e, Event::Continue { .. })));
+    assert!(ev.iter().any(|e| matches!(e, Event::Break { .. })));
+    assert!(ev.iter().any(|e| matches!(
+        e,
+        Event::LoopEnd { reason, .. } if reason == "break"
+    )));
+}
+
+#[test]
+fn nested_loops_get_distinct_loop_ids_and_reentry() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  int s = 0;
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      s = s + 1;
+    }
+  }
+  return s;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(4));
+    let mut outer = None;
+    let mut inner_ids = vec![];
+    for e in eng.events() {
+        match e {
+            Event::LoopIter { loop_id, .. } => {
+                if outer.is_none() {
+                    outer = Some(*loop_id);
+                } else if Some(*loop_id) != outer {
+                    if !inner_ids.contains(loop_id) {
+                        inner_ids.push(*loop_id);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(
+        inner_ids.len(),
+        2,
+        "each outer iter should mint a new inner loop_id"
     );
+}
+
+#[test]
+fn empty_loop_emits_no_loop_events() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  for (int i = 0; i < 0; ++i) { }
+  return 1;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(1));
+    assert!(!eng.events().iter().any(|e| matches!(
+        e,
+        Event::LoopIter { .. }
+            | Event::LoopEnd { .. }
+            | Event::Break { .. }
+            | Event::Continue { .. }
+    )));
+}
+
+#[test]
+fn return_from_loop_emits_loop_end_return() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  for (int i = 0; i < 5; ++i) {
+    if (i == 2) { return 42; }
+  }
+  return 0;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(42));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::LoopEnd { reason, .. } if reason == "return"
+    )));
 }
 
 #[test]
@@ -245,10 +378,13 @@ public:
         .unwrap();
     let idxs = eng.vector_as_ints(&ret).unwrap();
     assert_eq!(idxs, vec![1]);
-    assert!(eng
-        .events()
-        .iter()
-        .any(|e| matches!(e, Event::Branch { then_taken: true, .. })));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::Branch {
+            then_taken: true,
+            ..
+        }
+    )));
 }
 
 #[test]
@@ -297,10 +433,13 @@ int main() {
     )
     .unwrap();
     assert_eq!(eng.run_main().unwrap(), Value::Int(2));
-    assert!(eng
-        .events()
-        .iter()
-        .any(|e| matches!(e, Event::Branch { then_taken: false, .. })));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::Branch {
+            then_taken: false,
+            ..
+        }
+    )));
 }
 
 #[test]
@@ -334,13 +473,7 @@ int main() {
     // three rows + outer adj
     assert_eq!(vector_allocs.len(), 4);
     assert!(vector_allocs.iter().take(3).all(|(_, size, elems)| {
-        *size == 3
-            && elems
-                == &[
-                    Value::Int(0),
-                    Value::Int(0),
-                    Value::Int(0),
-                ]
+        *size == 3 && elems == &[Value::Int(0), Value::Int(0), Value::Int(0)]
     }));
     let (outer_id, outer_size, outer_elems) = &vector_allocs[3];
     assert_eq!(*outer_size, 3);
@@ -377,6 +510,14 @@ int main() {
     )
     .unwrap();
     assert_eq!(eng.run_main().unwrap(), Value::Int(11));
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::ContainerMod {
+            kind,
+            elems,
+            ..
+        } if kind == "sort" && elems == &[Value::Int(1), Value::Int(2)]
+    )));
 }
 
 #[test]
@@ -516,4 +657,124 @@ int main() {
 "#;
     let mut eng = Engine::from_source(src).unwrap();
     let _ = eng.run_main().unwrap();
+    assert!(eng.events().iter().any(|e| matches!(
+        e,
+        Event::ContainerMod {
+            kind,
+            elems,
+            ..
+        } if kind == "reverse"
+            && elems == &[Value::Int(2), Value::Int(8), Value::Int(2), Value::Int(5)]
+    )));
+}
+
+#[test]
+fn algo_comparators_descending() {
+    let src = r#"
+int main() {
+  vector<int> v = {1, 5, 3, 9};
+  auto gt = [](int a, int b) { return a > b; };
+  sort(v.begin(), v.end(), gt);
+  // descending: 9,5,3,1
+  int lo = lower_bound(v.begin(), v.end(), 5, gt);
+  int hi = upper_bound(v.begin(), v.end(), 5, gt);
+  bool has3 = binary_search(v.begin(), v.end(), 3, gt);
+  bool miss = binary_search(v.begin(), v.end(), 4, gt);
+  int mn = *min_element(v.begin(), v.end(), gt); // "min" under > → largest
+  int mx = *max_element(v.begin(), v.end(), gt); // "max" under > → smallest
+  return lo * 1000 + hi * 100 + (has3 ? 10 : 0) + (miss ? 0 : 1) + mn + mx;
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    // lo=1 (5), hi=2 (first <5 under > i.e. 3), has3, !miss, mn=9, mx=1
+    // 1*1000 + 2*100 + 10 + 1 + 9 + 1 = 1221
+    assert_eq!(eng.run_main().unwrap(), Value::Int(1221));
+}
+
+#[test]
+fn lambda_call_and_accumulate_op() {
+    let src = r#"
+class Solution {
+public:
+    int minOperations(int k) {
+        const auto& ceil_divide = [](const auto& a, const auto& b) {
+            return (a + b - 1) / b;
+        };
+        const int x = 2;
+        return (x - 1) + (ceil_divide(k, x) - 1);
+    }
+    bool isArmstrong(int N) {
+        const auto& n_str = to_string(N);
+        return accumulate(n_str.cbegin(), n_str.cend(), 0,
+                          [&](const auto& x, const auto& y) {
+                              return x + pow(y - '0', n_str.length());
+                          }) == N;
+    }
+};
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    assert_eq!(
+        eng.call("Solution::minOperations", &[Value::Int(10)])
+            .unwrap(),
+        Value::Int(5)
+    );
+    assert_eq!(
+        eng.call("Solution::isArmstrong", &[Value::Int(153)])
+            .unwrap(),
+        Value::Bool(true)
+    );
+}
+
+#[test]
+fn nested_union_find_with_iota_and_using() {
+    let src = r#"
+class Solution {
+public:
+    int probe(int x) {
+        UnionFind uf(5);
+        uf.union_set(0, 1);
+        return uf.find_set(x);
+    }
+private:
+class UnionFind {
+public:
+    UnionFind(const int n) : set_(n) {
+        iota(set_.begin(), set_.end(), 0);
+    }
+    int find_set(const int x) {
+        if (set_[x] != x) {
+            set_[x] = find_set(set_[x]);
+        }
+        return set_[x];
+    }
+    void union_set(const int x, const int y) {
+        int x_root = find_set(x), y_root = find_set(y);
+        if (x_root != y_root) {
+            set_[min(x_root, y_root)] = max(x_root, y_root);
+        }
+    }
+private:
+    using Parent = vector<int>;
+    Parent set_;
+};
+};
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    assert_eq!(
+        eng.call("Solution::probe", &[Value::Int(0)]).unwrap(),
+        Value::Int(1)
+    );
+}
+
+#[test]
+fn tie_assign_from_pair() {
+    let src = r#"
+int main() {
+  int a = 0, b = 0;
+  tie(a, b) = make_pair(3, 4);
+  return a * 10 + b;
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(34));
 }

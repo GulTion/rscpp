@@ -4,7 +4,6 @@ use rscpp_ast::*;
 use rscpp_lexer::{Keyword, Punct, Token, TokenKind};
 
 impl Parser {
-
     pub(super) fn parse_item(&mut self) -> Result<Item, ParseError> {
         if self.at_keyword(Keyword::Template) {
             self.skip_template_decl()?;
@@ -24,7 +23,7 @@ impl Parser {
             return Ok(Item::Class(self.parse_class()?));
         }
         if self.at_keyword(Keyword::Using) {
-            return self.parse_using_namespace();
+            return self.parse_using();
         }
         // Function or declaration
         let start = self.peek_span().start;
@@ -43,15 +42,31 @@ impl Parser {
         Ok(Item::Decl(decl))
     }
 
-    pub(super) fn parse_using_namespace(&mut self) -> Result<Item, ParseError> {
+    pub(super) fn parse_using(&mut self) -> Result<Item, ParseError> {
         let start = self.expect_keyword(Keyword::Using)?.span.start;
-        self.expect_keyword(Keyword::Namespace)?;
-        let path = self.parse_path()?;
+        if self.at_keyword(Keyword::Namespace) {
+            self.bump();
+            let path = self.parse_path()?;
+            let end = self.expect_punct(Punct::Semi)?.span.end;
+            return Ok(Item::UsingNamespace {
+                path,
+                span: Span::new(start, end),
+            });
+        }
+        // Soft: `using Alias = Type;` — keep as type alias for runtime construct.
+        let name = self.parse_ident()?;
+        self.expect_punct(Punct::Eq)?;
+        let ty = self.parse_type()?;
         let end = self.expect_punct(Punct::Semi)?.span.end;
-        Ok(Item::UsingNamespace {
-            path,
+        Ok(Item::TypeAlias {
+            name,
+            ty,
             span: Span::new(start, end),
         })
+    }
+
+    pub(super) fn parse_using_namespace(&mut self) -> Result<Item, ParseError> {
+        self.parse_using()
     }
 
     pub(super) fn parse_class(&mut self) -> Result<ClassDef, ParseError> {
@@ -97,6 +112,25 @@ impl Parser {
         }
         if self.at_keyword(Keyword::Class) || self.at_keyword(Keyword::Struct) {
             return Ok(Member::Class(self.parse_class()?));
+        }
+        if self.at_keyword(Keyword::Using) {
+            // `using Alias = Type;` inside class.
+            let start = self.bump().span.start;
+            if self.at_keyword(Keyword::Namespace) {
+                self.bump();
+                let _ = self.parse_path()?;
+                let _ = self.expect_punct(Punct::Semi)?;
+                return Ok(Member::Access(AccessSpec::Public));
+            }
+            let name = self.parse_ident()?;
+            self.expect_punct(Punct::Eq)?;
+            let ty = self.parse_type()?;
+            let end = self.expect_punct(Punct::Semi)?.span.end;
+            return Ok(Member::TypeAlias {
+                name,
+                ty,
+                span: Span::new(start, end),
+            });
         }
         if self.at_keyword(Keyword::Template) {
             self.bump(); // template
@@ -179,9 +213,7 @@ impl Parser {
                 name: "operator".into(),
                 span: op_start,
             };
-            return Ok(Member::Function(
-                self.parse_function_rest(start, ty, name)?,
-            ));
+            return Ok(Member::Function(self.parse_function_rest(start, ty, name)?));
         }
         // Constructor: `AllOne()` / `AllOne() { ... }` — type name is the ctor name.
         if self.at_punct(Punct::LParen) {
@@ -232,10 +264,7 @@ impl Parser {
             return Ok(());
         }
         // function / using / alias — skip to `;` or `{…}`
-        while !self.at_eof()
-            && !self.at_punct(Punct::Semi)
-            && !self.at_punct(Punct::LBrace)
-        {
+        while !self.at_eof() && !self.at_punct(Punct::Semi) && !self.at_punct(Punct::LBrace) {
             self.bump();
         }
         if self.at_punct(Punct::LBrace) {

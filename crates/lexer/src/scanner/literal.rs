@@ -5,7 +5,6 @@ use crate::span::Span;
 use crate::token::{FloatSuffix, IntBase, IntSuffix, Keyword, Punct, Token, TokenKind};
 
 impl<'a> Scanner<'a> {
-
     pub(super) fn lex_char(&mut self, start: usize) -> Result<Token, LexError> {
         self.bump(); // '
         let ch = match self.peek() {
@@ -87,8 +86,7 @@ impl<'a> Scanner<'a> {
                 if count == 0 {
                     return Err(self.err_at(start, "hex escape has no digits"));
                 }
-                char::from_u32(val)
-                    .ok_or_else(|| self.err_at(start, "invalid hex escape value"))
+                char::from_u32(val).ok_or_else(|| self.err_at(start, "invalid hex escape value"))
             }
             Some(d @ b'1'..=b'7') => {
                 let mut val = (d - b'0') as u32;
@@ -100,8 +98,7 @@ impl<'a> Scanner<'a> {
                         break;
                     }
                 }
-                char::from_u32(val)
-                    .ok_or_else(|| self.err_at(start, "invalid octal escape"))
+                char::from_u32(val).ok_or_else(|| self.err_at(start, "invalid octal escape"))
             }
             Some(_) => Err(self.err_at(start, "unknown escape sequence")),
             None => Err(self.err_at(start, "unterminated escape sequence")),

@@ -175,11 +175,7 @@ int main() { return 7; }
         let r = run_result_with_fuel("int main() { while (1) {} return 0; }", 50);
         assert!(!r.ok);
         assert!(
-            r.error
-                .as_ref()
-                .unwrap()
-                .message
-                .contains("step limit"),
+            r.error.as_ref().unwrap().message.contains("step limit"),
             "{:?}",
             r.error
         );
@@ -235,10 +231,7 @@ public:
     #[test]
     fn run_method_count_components() {
         let src = include_str!("../../../examples/dfs.cpp");
-        let args = serde_json::json!([
-            6,
-            [[1], [0, 2], [1], [4], [3], []]
-        ]);
+        let args = serde_json::json!([6, [[1], [0, 2], [1], [4], [3], []]]);
         let r = run_method_result(src, "Solution::countComponents", &args);
         assert!(r.ok, "{:?}", r.error);
         assert_eq!(r.value, Some(Value::Int(3)));
@@ -247,7 +240,6 @@ public:
     #[test]
     fn events_serialize_with_kind_tag() {
         let e = Event::Step {
-            call_id: None,
             span: Span::new(0, 1),
         };
         let s = serde_json::to_string(&e).unwrap();

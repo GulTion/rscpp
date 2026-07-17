@@ -12,4 +12,4 @@ pub use engine::{Engine, DEFAULT_FUEL};
 pub use error::RuntimeError;
 pub use event::{AllocEntry, Event, Slot};
 pub use json_args::{args_from_json, value_from_json};
-pub use value::{Address, Heap, MapKey, Object, ObjId, Value};
+pub use value::{Address, Heap, MapKey, ObjId, Object, Value};

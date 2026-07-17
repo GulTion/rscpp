@@ -1,10 +1,10 @@
 //! Tree-walking interpreter.
 
+use crate::builtins;
 use crate::error::RuntimeError;
 use crate::event::{Event, Slot};
 use crate::stl;
-use crate::builtins;
-use crate::value::{Address, Heap, MapKey, Object, ObjId, Value};
+use crate::value::{Address, Heap, MapKey, ObjId, Object, Value};
 use rscpp_ast::*;
 use rscpp_parser::parse;
 use rscpp_sema::analyze;
@@ -21,6 +21,8 @@ struct Frame {
     #[allow(dead_code)]
     parent_id: Option<u64>,
     locals: HashMap<String, Value>,
+    /// Open loop instances for this activation (innermost last).
+    loop_stack: Vec<u64>,
 }
 
 #[derive(Debug)]
@@ -43,6 +45,8 @@ enum LValue {
 pub struct Engine {
     functions: HashMap<String, FunctionDef>,
     classes: HashMap<String, ClassDef>,
+    /// `using Alias = Type;` (file- or class-scope).
+    type_aliases: HashMap<String, Type>,
     globals: HashMap<String, Value>,
     heap: Heap,
     /// Mapped-type for `map`/`unordered_map` `operator[]` default-insert (`map<K,V>` → `V`).
@@ -50,6 +54,8 @@ pub struct Engine {
     stack: Vec<Frame>,
     /// Next `call_id` to assign on `FnEnter`.
     next_call_id: u64,
+    /// Next `loop_id` to mint on first `LoopIter` of an instance.
+    next_loop_id: u64,
     events: Vec<Event>,
     /// Decremented on each statement / loop iter; 0 → error (browser safety).
     fuel: u64,
@@ -74,37 +80,33 @@ impl Engine {
 
         let mut functions = HashMap::new();
         let mut classes = HashMap::new();
+        let mut type_aliases = HashMap::new();
 
-        for item in tu.items {
+        for item in &tu.items {
             match item {
                 Item::Function(f) => {
-                    functions.insert(f.name.name.clone(), f);
+                    functions.insert(f.name.name.clone(), f.clone());
                 }
                 Item::Class(c) => {
-                    let cname = c.name.name.clone();
-                    for m in &c.members {
-                        if let Member::Function(f) = m {
-                            let q = format!("{cname}::{}", f.name.name);
-                            functions.insert(q, f.clone());
-                        }
-                    }
-                    classes.insert(cname, c);
+                    Self::register_class(&mut functions, &mut classes, &mut type_aliases, c);
                 }
-                Item::Decl(d) => {
-                    let _ = d;
+                Item::TypeAlias { name, ty, .. } => {
+                    type_aliases.insert(name.name.clone(), ty.clone());
                 }
-                Item::UsingNamespace { .. } => {}
+                Item::Decl(_) | Item::UsingNamespace { .. } => {}
             }
         }
 
         let mut engine = Self {
             functions,
             classes,
+            type_aliases,
             globals: HashMap::new(),
             heap: Heap::default(),
             map_value_tys: HashMap::new(),
             stack: Vec::new(),
             next_call_id: 0,
+            next_loop_id: 0,
             events: Vec::new(),
             fuel,
         };
@@ -187,22 +189,56 @@ impl Engine {
         }
     }
 
+    fn register_class(
+        functions: &mut HashMap<String, FunctionDef>,
+        classes: &mut HashMap<String, ClassDef>,
+        type_aliases: &mut HashMap<String, Type>,
+        c: &ClassDef,
+    ) {
+        let cname = c.name.name.clone();
+        for m in &c.members {
+            match m {
+                Member::Function(f) => {
+                    let q = format!("{cname}::{}", f.name.name);
+                    functions.insert(q, f.clone());
+                }
+                Member::Class(nested) => {
+                    // Nested helpers (`UnionFind`, `Trie`) register under their own name.
+                    Self::register_class(functions, classes, type_aliases, nested);
+                }
+                Member::TypeAlias { name, ty, .. } => {
+                    type_aliases.insert(name.name.clone(), ty.clone());
+                }
+                Member::Access(_) | Member::Field(_) => {}
+            }
+        }
+        classes.insert(cname, c.clone());
+    }
+
     fn emit(&mut self, e: Event) {
         self.events.push(e);
     }
 
+    /// Sequence `elems` snapshot (same shape as `Alloc.elems`) for bulk `ContainerMod`.
+    fn sequence_elems(&self, id: ObjId) -> Vec<Value> {
+        self.heap
+            .get(id)
+            .map(|o| o.alloc_snapshot().1)
+            .unwrap_or_default()
+    }
+
+    #[allow(dead_code)]
     fn current_call_id(&self) -> Option<u64> {
         self.stack.last().map(|f| f.call_id)
     }
 
     fn emit_alloc(&mut self, id: ObjId, kind: impl Into<String>, span: Span) {
-        let (size, elems, entries) = self
-            .heap
-            .get(id)
-            .map(|o| o.alloc_snapshot())
-            .unwrap_or((0, vec![], vec![]));
+        let (size, elems, entries) =
+            self.heap
+                .get(id)
+                .map(|o| o.alloc_snapshot())
+                .unwrap_or((0, vec![], vec![]));
         self.emit(Event::Alloc {
-            call_id: self.current_call_id(),
             id,
             kind: kind.into(),
             size,
@@ -221,22 +257,20 @@ impl Engine {
         result: Value,
         span: Span,
     ) -> Value {
-        let call_id = self.current_call_id();
         stl::Ctx {
             heap: &mut self.heap,
             events: &mut self.events,
-            call_id,
         }
         .query(container, op, key, result, span)
     }
 }
 
-mod global;
+mod addr;
+mod algo;
+mod bind;
 mod call;
 mod exec;
-mod vars;
-mod addr;
-mod bind;
-mod algo;
 mod expr;
+mod global;
 mod types;
+mod vars;

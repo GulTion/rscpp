@@ -1,6 +1,6 @@
 use super::{Ctx, Result};
 use crate::error::RuntimeError;
-use crate::value::{Object, ObjId, Value};
+use crate::value::{ObjId, Object, Value};
 use rscpp_ast::Span;
 
 pub fn call(
@@ -76,7 +76,6 @@ pub fn call(
             let nid = ctx.heap.alloc(Object::String(slice.clone()));
             let (size, elems, entries) = Object::String(slice).alloc_snapshot();
             ctx.emit(crate::event::Event::Alloc {
-                call_id: ctx.call_id,
                 id: nid,
                 kind: "string".into(),
                 size,
@@ -93,7 +92,13 @@ pub fn call(
             };
             let pos = s.find(&needle).map(|i| i as i64).unwrap_or(-1);
             // C++ npos is usually size_t(-1); we use -1 as int.
-            Ok(ctx.query(base, "find", Some(Value::Str(needle)), Value::Int(pos), span))
+            Ok(ctx.query(
+                base,
+                "find",
+                Some(Value::Str(needle)),
+                Value::Int(pos),
+                span,
+            ))
         }
         _ => Err(RuntimeError::at(
             span,
@@ -110,7 +115,10 @@ fn arg_as_char(args: &[Value], method: &str, span: Span) -> Result<char> {
             span,
             format!("string::{method} expects char, got {v}"),
         )),
-        None => Err(RuntimeError::at(span, format!("{method} needs an argument"))),
+        None => Err(RuntimeError::at(
+            span,
+            format!("{method} needs an argument"),
+        )),
     }
 }
 
@@ -123,7 +131,10 @@ fn stringish_arg(ctx: &Ctx<'_>, args: &[Value], span: Span) -> Result<String> {
         Some(Value::Str(s)) => Ok(s.clone()),
         Some(Value::Char(c)) => Ok(c.to_string()),
         Some(Value::Int(n)) => Ok(n.to_string()),
-        Some(v) => Err(RuntimeError::at(span, format!("expected string-ish, got {v}"))),
+        Some(v) => Err(RuntimeError::at(
+            span,
+            format!("expected string-ish, got {v}"),
+        )),
         None => Err(RuntimeError::at(span, "needs an argument")),
     }
 }

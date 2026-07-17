@@ -5,7 +5,6 @@ use rscpp_ast::Span;
 use rscpp_runtime::{Event, Heap, MapKey, Object, Slot, Value};
 
 impl Vm {
-
     pub(super) fn run_loop(&mut self) -> Result<Value> {
         loop {
             let frame_i = self.frames.len() - 1;
@@ -21,7 +20,7 @@ impl Vm {
 
             match op {
                 Op::Step => {
-                    self.emit(Event::Step { call_id: self.current_call_id(), span });
+                    self.emit(Event::Step { span });
                 }
                 Op::LoadConst(i) => {
                     let v = self.program.functions[func].constants[i as usize].clone();
@@ -41,14 +40,12 @@ impl Vm {
                     let old = self.frames[frame_i].locals[i as usize].clone();
                     self.frames[frame_i].locals[i as usize] = v.clone();
                     self.emit(Event::VarAssign {
-                        call_id: self.current_call_id(),
                         name: name.clone(),
                         old: Some(old.clone()),
                         value: v.clone(),
                         span,
                     });
                     self.emit(Event::Write {
-                        call_id: self.current_call_id(),
                         slot: Slot::Local { name },
                         old: Some(old),
                         value: v,
@@ -113,7 +110,6 @@ impl Vm {
                         _ => unreachable!(),
                     };
                     self.emit(Event::Compare {
-                        call_id: self.current_call_id(),
                         op: format!("{op:?}"),
                         left: a,
                         right: b,
@@ -131,7 +127,10 @@ impl Vm {
                         self.frames[frame_i].ip = t as usize;
                     }
                 }
-                Op::Call { func: name_idx, argc } => {
+                Op::Call {
+                    func: name_idx,
+                    argc,
+                } => {
                     let name = self.program.functions[func].string_pool[name_idx as usize].clone();
                     let mut args = Vec::new();
                     for _ in 0..argc {

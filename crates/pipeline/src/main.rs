@@ -17,18 +17,13 @@ use std::process::ExitCode;
 fn main() -> ExitCode {
     let mut args: Vec<String> = env::args().skip(1).collect();
     if args.is_empty() || args.iter().any(|a| a == "-h" || a == "--help") {
-        eprintln!(
-            "Usage: rscpp-pipeline <file.cpp> [--phase all|lex|parse|sema|run|vm|events]"
-        );
+        eprintln!("Usage: rscpp-pipeline <file.cpp> [--phase all|lex|parse|sema|run|vm|events]");
         return ExitCode::from(2);
     }
 
     let mut phase = "all".to_string();
     if let Some(i) = args.iter().position(|a| a == "--phase") {
-        phase = args
-            .get(i + 1)
-            .cloned()
-            .unwrap_or_else(|| "all".into());
+        phase = args.get(i + 1).cloned().unwrap_or_else(|| "all".into());
         args.drain(i..=(i + 1).min(args.len() - 1));
     }
 
@@ -188,11 +183,7 @@ fn summarize_item(item: &Item) -> String {
             f.name.name,
             f.body.stmts.len()
         ),
-        Item::Class(c) => format!(
-            "Class {} members={}",
-            c.name.name,
-            c.members.len()
-        ),
+        Item::Class(c) => format!("Class {} members={}", c.name.name, c.members.len()),
         Item::UsingNamespace { path, .. } => format!(
             "using namespace {}",
             path.segments
@@ -201,6 +192,7 @@ fn summarize_item(item: &Item) -> String {
                 .collect::<Vec<_>>()
                 .join("::")
         ),
+        Item::TypeAlias { name, .. } => format!("using {} = …", name.name),
         Item::Decl(d) => format!(
             "Decl {} name(s)={}",
             type_hint(&d.ty),
@@ -214,10 +206,7 @@ fn summarize_item(item: &Item) -> String {
 }
 
 fn type_hint(ty: &rscpp_ast::Type) -> String {
-    format!("{ty:?}")
-        .chars()
-        .take(40)
-        .collect::<String>()
+    format!("{ty:?}").chars().take(40).collect::<String>()
 }
 
 fn print_events(events: &[Event], limit: usize) {
@@ -235,7 +224,9 @@ fn format_event(e: &Event) -> String {
         Event::ScopeEnter { span, .. } => format!("ScopeEnter @ {}..{}", span.start, span.end),
         Event::ScopeExit { span, .. } => format!("ScopeExit @ {}..{}", span.start, span.end),
         Event::VarCreate { name, value, .. } => format!("VarCreate {name} = {value}"),
-        Event::VarAssign { name, old, value, .. } => {
+        Event::VarAssign {
+            name, old, value, ..
+        } => {
             format!("VarAssign {name}: {old:?} → {value}")
         }
         Event::VarDestroy { name, value, .. } => format!("VarDestroy {name} (was {value})"),
@@ -261,7 +252,12 @@ fn format_event(e: &Event) -> String {
             ..
         } => format!("FnExit {name}#{call_id} parent={parent_id:?} → {ret}"),
         Event::Branch { then_taken, .. } => format!("Branch then={then_taken}"),
-        Event::LoopIter { .. } => "LoopIter".into(),
+        Event::LoopIter { loop_id, .. } => format!("LoopIter #{loop_id}"),
+        Event::Continue { loop_id, .. } => format!("Continue #{loop_id}"),
+        Event::Break { loop_id, .. } => format!("Break #{loop_id}"),
+        Event::LoopEnd {
+            loop_id, reason, ..
+        } => format!("LoopEnd #{loop_id} ({reason})"),
         Event::Compare {
             op,
             left,
@@ -284,8 +280,9 @@ fn format_event(e: &Event) -> String {
             index,
             key,
             value,
+            elems,
             ..
-        } => format!("ContainerMod {kind} idx={index:?} key={key:?} val={value:?}"),
+        } => format!("ContainerMod {kind} idx={index:?} key={key:?} val={value:?} elems={elems:?}"),
         Event::ContainerLookup {
             kind,
             key,

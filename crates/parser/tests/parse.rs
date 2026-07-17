@@ -22,7 +22,13 @@ fn simple_function() {
     match &tu.items[0] {
         Item::Function(f) => {
             assert_eq!(f.name.name, "main");
-            assert!(matches!(f.return_type, Type::Builtin { kind: BuiltinType::Int, .. }));
+            assert!(matches!(
+                f.return_type,
+                Type::Builtin {
+                    kind: BuiltinType::Int,
+                    ..
+                }
+            ));
             assert_eq!(f.body.stmts.len(), 1);
         }
         _ => panic!("expected function"),
@@ -36,11 +42,12 @@ fn expr_precedence() {
         panic!();
     };
     let Stmt::Return {
-        value: Some(Expr::Binary {
-            op: BinaryOp::Add,
-            right,
-            ..
-        }),
+        value:
+            Some(Expr::Binary {
+                op: BinaryOp::Add,
+                right,
+                ..
+            }),
         ..
     } = &f.body.stmts[0]
     else {

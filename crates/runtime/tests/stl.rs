@@ -43,10 +43,7 @@ int main() {
         .iter()
         .filter_map(|e| match e {
             Event::ContainerLookup {
-                kind,
-                key,
-                result,
-                ..
+                kind, key, result, ..
             } if kind == "count" => Some((key.clone(), result.clone())),
             _ => None,
         })
@@ -126,6 +123,23 @@ int main() {
 }
 
 #[test]
+fn unordered_map_find_vs_end() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  unordered_map<int, int> m;
+  m[1] = 10;
+  int hit = m.find(1) != m.end() ? 1 : 0;
+  int miss = m.find(2) == m.end() ? 1 : 0;
+  return hit + miss;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(2));
+}
+
+#[test]
 fn set_insert_count() {
     let mut eng = Engine::from_source(
         r#"
@@ -200,13 +214,10 @@ int main() {
             ..
         } if kind == "map_assign"
     )));
-    assert!(eng.events().iter().any(|e| matches!(
-        e,
-        Event::Write {
-            call_id: Some(_),
-            ..
-        }
-    )));
+    assert!(eng
+        .events()
+        .iter()
+        .any(|e| matches!(e, Event::Write { .. })));
 }
 
 #[test]
@@ -235,4 +246,58 @@ int main() {
     )
     .unwrap();
     assert_eq!(eng.run_main().unwrap(), Value::Int(239));
+}
+
+#[test]
+fn map_range_for_kvp_emits_pair_alloc_before_varcreate() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  unordered_map<int, int> count;
+  count[1] = 2;
+  int s = 0;
+  for (const auto& kvp : count) {
+    s = s + kvp.first + kvp.second;
+  }
+  return s;
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(3));
+
+    let ev = eng.events();
+    let mut saw_pair_alloc = false;
+    for e in ev {
+        match e {
+            Event::Alloc { id, kind, .. } if kind == "pair" => {
+                saw_pair_alloc = true;
+                // Next VarCreate for kvp must reference this id.
+                let pos = ev.iter().position(|x| matches!(x, Event::Alloc { id: i, kind: k, .. } if *i == *id && k == "pair")).unwrap();
+                assert!(ev[pos + 1..].iter().any(|x| matches!(
+                    x,
+                    Event::VarCreate {
+                        name,
+                        value: Value::Object(oid),
+                        ..
+                    } if name == "kvp" && *oid == *id
+                )));
+            }
+            Event::VarCreate {
+                name,
+                value: Value::Object(oid),
+                ..
+            } if name == "kvp" => {
+                assert!(
+                    saw_pair_alloc || ev.iter().any(|x| matches!(x, Event::Alloc { id, kind, .. } if *id == *oid && kind == "pair")),
+                    "VarCreate kvp → Object({oid}) without prior Alloc pair"
+                );
+            }
+            _ => {}
+        }
+    }
+    assert!(
+        saw_pair_alloc,
+        "expected Alloc kind=pair for map range-for kvp"
+    );
 }

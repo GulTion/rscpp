@@ -5,7 +5,6 @@ use crate::error::VmError;
 use rscpp_ast::Span;
 use rscpp_runtime::{Event, Heap, MapKey, Object, Slot, Value};
 
-
 type Result<T> = std::result::Result<T, VmError>;
 
 struct Frame {
@@ -114,14 +113,12 @@ impl Vm {
     }
 
     fn emit_alloc(&mut self, id: rscpp_runtime::ObjId, kind: impl Into<String>, span: Span) {
-        let (size, elems, entries) = self
-            .heap
-            .get(id)
-            .map(|o| o.alloc_snapshot())
-            .unwrap_or((0, vec![], vec![]));
-        let call_id = self.current_call_id();
+        let (size, elems, entries) =
+            self.heap
+                .get(id)
+                .map(|o| o.alloc_snapshot())
+                .unwrap_or((0, vec![], vec![]));
         self.emit(Event::Alloc {
-            call_id,
             id,
             kind: kind.into(),
             size,
@@ -132,8 +129,8 @@ impl Vm {
     }
 }
 
-mod run;
 mod ops;
+mod run;
 
 fn map_key(v: &Value) -> Result<MapKey> {
     match v {

@@ -1,19 +1,17 @@
 use super::{Engine, Flow, Frame, LValue, Result};
+use crate::builtins;
 use crate::error::RuntimeError;
 use crate::event::{Event, Slot};
 use crate::stl;
-use crate::builtins;
-use crate::value::{Address, Heap, MapKey, Object, ObjId, Value};
+use crate::value::{Address, Heap, MapKey, ObjId, Object, Value};
 use rscpp_ast::*;
 use std::collections::{HashMap, HashSet};
 
 impl Engine {
-
     pub(super) fn define_local(&mut self, name: &str, val: Value, span: Span) -> Result<()> {
         if let Value::Ref(addr) = &val {
             if let Some(slot) = Self::address_to_slot(addr) {
                 self.emit(Event::RefBind {
-                    call_id: self.current_call_id(),
                     name: name.to_string(),
                     target: slot,
                     span,
@@ -22,7 +20,6 @@ impl Engine {
         }
         if let Value::Ptr(addr) = &val {
             self.emit(Event::PtrMove {
-                call_id: self.current_call_id(),
                 name: name.to_string(),
                 to: Value::Ptr(addr.clone()),
                 span,
@@ -34,7 +31,6 @@ impl Engine {
             self.globals.insert(name.to_string(), val.clone());
         }
         self.emit(Event::VarCreate {
-            call_id: self.current_call_id(),
             name: name.to_string(),
             value: val,
             span,
@@ -74,7 +70,6 @@ impl Engine {
                 let old = self.stack[i].locals.get(name).cloned();
                 if matches!(val, Value::Ptr(_)) {
                     self.emit(Event::PtrMove {
-                        call_id: self.current_call_id(),
                         name: name.to_string(),
                         to: val.clone(),
                         span,
@@ -82,14 +77,12 @@ impl Engine {
                 }
                 self.stack[i].locals.insert(name.to_string(), val.clone());
                 self.emit(Event::VarAssign {
-                    call_id: self.current_call_id(),
                     name: name.to_string(),
                     old: old.clone(),
                     value: val.clone(),
                     span,
                 });
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::Local {
                         name: name.to_string(),
                     },
@@ -104,7 +97,6 @@ impl Engine {
             let old = self.globals.get(name).cloned();
             if matches!(val, Value::Ptr(_)) {
                 self.emit(Event::PtrMove {
-                    call_id: self.current_call_id(),
                     name: name.to_string(),
                     to: val.clone(),
                     span,
@@ -112,14 +104,12 @@ impl Engine {
             }
             self.globals.insert(name.to_string(), val.clone());
             self.emit(Event::VarAssign {
-                call_id: self.current_call_id(),
                 name: name.to_string(),
                 old: old.clone(),
                 value: val.clone(),
                 span,
             });
             self.emit(Event::Write {
-                call_id: self.current_call_id(),
                 slot: Slot::Global {
                     name: name.to_string(),
                 },
@@ -148,7 +138,6 @@ impl Engine {
                 let old = elems[*index].clone();
                 elems[*index] = val.clone();
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::Index {
                         obj: *obj,
                         index: *index,
@@ -158,13 +147,13 @@ impl Engine {
                     span,
                 });
                 self.emit(Event::ContainerMod {
-                    call_id: self.current_call_id(),
                     container: Value::Object(*obj),
                     kind: "index_assign".into(),
                     index: Some(*index),
                     key: Some(Value::Int(*index as i64)),
                     old: Some(old),
                     value: Some(val),
+                    elems: vec![],
                     span,
                 });
                 Ok(())
@@ -186,7 +175,6 @@ impl Engine {
                     _ => return Err(RuntimeError::at(span, "map entry assign on non-map")),
                 }
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::MapEntry {
                         obj: *obj,
                         key: key_s,
@@ -196,13 +184,13 @@ impl Engine {
                     span,
                 });
                 self.emit(Event::ContainerMod {
-                    call_id: self.current_call_id(),
                     container: Value::Object(*obj),
                     kind: "map_assign".into(),
                     index: None,
                     key: Some(key.to_value()),
                     old,
                     value: Some(val),
+                    elems: vec![],
                     span,
                 });
                 Ok(())
@@ -234,7 +222,6 @@ impl Engine {
                     _ => return Err(RuntimeError::at(span, "field assign on bad object")),
                 }
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::Field {
                         obj: *obj,
                         field: field.clone(),
@@ -244,7 +231,6 @@ impl Engine {
                     span,
                 });
                 self.emit(Event::VarAssign {
-                    call_id: self.current_call_id(),
                     name: field.clone(),
                     old,
                     value: val,

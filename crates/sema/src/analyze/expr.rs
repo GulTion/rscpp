@@ -5,7 +5,6 @@ use crate::ty::Ty;
 use rscpp_ast::*;
 
 impl Context {
-
     pub(super) fn check_expr(&mut self, expr: &Expr) -> Ty {
         match expr {
             Expr::IntLit { .. } => Ty::Int,
@@ -122,7 +121,9 @@ impl Context {
                     match bt.strip_cv_ref() {
                         Ty::Pointer(inner) => bt = *inner.clone(),
                         Ty::Named { name, args }
-                            if name == "shared_ptr" || name == "unique_ptr" || name == "optional" =>
+                            if name == "shared_ptr"
+                                || name == "unique_ptr"
+                                || name == "optional" =>
                         {
                             bt = args.first().cloned().unwrap_or(Ty::Unknown);
                         }

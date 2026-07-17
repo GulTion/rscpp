@@ -146,8 +146,7 @@ Node* f(Node* a) {
 
 #[test]
 fn rejects_unknown_node_field() {
-    let tu = parse(r#"int f(Node* a) { return a->notARealField; }"#)
-        .unwrap();
+    let tu = parse(r#"int f(Node* a) { return a->notARealField; }"#).unwrap();
     let r = analyze(&tu);
     assert!(!r.ok());
     assert!(r.errors.iter().any(|e| e.message.contains("no member")));

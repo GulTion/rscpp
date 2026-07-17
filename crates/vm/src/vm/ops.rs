@@ -5,7 +5,6 @@ use rscpp_ast::Span;
 use rscpp_runtime::{Event, Heap, MapKey, Object, Slot, Value};
 
 impl Vm {
-
     pub(super) fn pop(&mut self) -> Result<Value> {
         self.stack
             .pop()
@@ -19,9 +18,7 @@ impl Vm {
         let v = match self.heap.get(id) {
             Some(Object::Vector(e)) => {
                 let i = idx.as_int().map_err(VmError::new)? as usize;
-                e.get(i)
-                    .cloned()
-                    .ok_or_else(|| VmError::at(span, "oob"))?
+                e.get(i).cloned().ok_or_else(|| VmError::at(span, "oob"))?
             }
             Some(Object::Map(m)) => {
                 let k = super::map_key(&idx)?;
@@ -33,16 +30,20 @@ impl Vm {
             }
             _ => return Err(VmError::at(span, "not indexable")),
         };
-        let call_id = self.current_call_id();
         Ok(rscpp_runtime::stl::Ctx {
             heap: &mut self.heap,
             events: &mut self.events,
-            call_id,
         }
         .query(base, "index", Some(idx), v, span))
     }
 
-    pub(super) fn index_set(&mut self, base: Value, idx: Value, val: Value, span: Span) -> Result<()> {
+    pub(super) fn index_set(
+        &mut self,
+        base: Value,
+        idx: Value,
+        val: Value,
+        span: Span,
+    ) -> Result<()> {
         let Value::Object(id) = base else {
             return Err(VmError::at(span, "index set on non-object"));
         };
@@ -55,7 +56,6 @@ impl Vm {
                 let old = e[i].clone();
                 e[i] = val.clone();
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::Index { obj: id, index: i },
                     old: Some(old),
                     value: val,
@@ -66,7 +66,6 @@ impl Vm {
                 let k = super::map_key(&idx)?;
                 let old = m.insert(k.clone(), val.clone());
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::MapEntry {
                         obj: id,
                         key: k.to_string(),
@@ -80,7 +79,6 @@ impl Vm {
                 let k = super::map_key(&idx)?;
                 let old = m.insert(k.clone(), val.clone());
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::MapEntry {
                         obj: id,
                         key: k.to_string(),
@@ -111,11 +109,9 @@ impl Vm {
             .map(|o| o.kind_name())
             .ok_or_else(|| VmError::at(span, "dangling object"))?;
 
-        let call_id = self.current_call_id();
         let mut ctx = rscpp_runtime::stl::Ctx {
             heap: &mut self.heap,
             events: &mut self.events,
-            call_id,
         };
         rscpp_runtime::stl::call_method(&mut ctx, id, base, kind, method, args, span)
             .map_err(VmError::from)
@@ -131,10 +127,7 @@ impl Vm {
             return Err(VmError::new("expected vector"));
         };
         match self.heap.get(*id) {
-            Some(Object::Vector(e)) => e
-                .iter()
-                .map(|x| x.as_int().map_err(VmError::new))
-                .collect(),
+            Some(Object::Vector(e)) => e.iter().map(|x| x.as_int().map_err(VmError::new)).collect(),
             _ => Err(VmError::new("expected vector")),
         }
     }

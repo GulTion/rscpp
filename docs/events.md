@@ -108,28 +108,36 @@ Every event has `"kind": "<Name>"` plus fields. Common: `span`.
 
 | kind | fields | notes |
 |------|--------|--------|
-| `Step` | `call_id?`, `span` | about to run a statement |
-| `ScopeEnter` / `ScopeExit` | `call_id?`, `span` | `{` / `}` |
-| `Branch` | `call_id?`, `then_taken`, `span` | `if` path |
-| `LoopIter` | `call_id?`, `span` | start of a loop body iteration |
-| `Compare` | `call_id?`, `op`, `left`, `right`, `result`, `span` | |
-| `FnEnter` | `name`, **`call_id`**, **`parent_id?`**, `args[]`, `span` | activation edge for call trees |
+| `Step` | `span` | about to run a statement |
+| `ScopeEnter` / `ScopeExit` | `span` | `{` / `}` |
+| `Branch` | `then_taken`, `span` | `if` path |
+| `LoopIter` | **`loop_id`**, `span` | start of a loop body iteration (mints `loop_id` on first iter of an instance) |
+| `Continue` | **`loop_id`**, `span` | `continue;` — instance stays open |
+| `Break` | **`loop_id`**, `span` | `break;` — followed by `LoopEnd` with `reason: "break"` |
+| `LoopEnd` | **`loop_id`**, **`reason`**, `span` | instance finished; `reason`: `exhausted` \| `break` \| `return` |
+
+`loop_id` is a **runtime instance** id (like `call_id`): nested loops differ; re-entering the same source loop later gets a new id. Zero-iteration loops emit **no** loop events. Only these loop events carry `loop_id` — group body events by the open-instance stack (see design spec).
+
+Design: `docs/superpowers/specs/2026-07-17-loop-lifecycle-events-design.md`.
+
+| `Compare` | `op`, `left`, `right`, `result`, `span` | |
+| `FnEnter` | `name`, **`call_id`**, **`parent_id?`**, `args[]`, `span` | activation edge; **root/`main` has `call_id: 0`**, `parent_id: null` |
 | `FnExit` | `name`, **`call_id`**, **`parent_id?`**, `ret`, `span` | same ids as matching enter |
 
-`call_id` on non-Fn events is the **current** activation (which frame is running). Use it with `FnEnter`/`FnExit` to attribute heap/var ops to a recursion frame.
+**`call_id` / `parent_id` appear only on `FnEnter` / `FnExit`.** Other events do not carry `call_id`. Attribute work to a frame by the open call stack between enter and exit.
 
 ### Variables
 
 | kind | fields |
 |------|--------|
-| `VarCreate` | `call_id?`, `name`, `value`, `span` |
-| `VarDestroy` | `call_id?`, `name`, `value`, `span` |
-| `VarAssign` | `call_id?`, `name`, `old?`, `value`, `span` |
-| `Write` | `call_id?`, `slot`, `old?`, `value`, `span` |
-| `Swap` | `call_id?`, `a`, `b`, `value_a`, `value_b`, `span` |
-| `RefBind` | `call_id?`, `name`, `target` (slot), `span` |
-| `PtrMove` | `call_id?`, `name`, `to`, `span` |
-| `BuiltinSelect` | `call_id?`, `name`, `args[]`, `chosen`, `value`, `span` | chooser builtins (`min` / `max`), span points to selected argument |
+| `VarCreate` | `name`, `value`, `span` |
+| `VarDestroy` | `name`, `value`, `span` |
+| `VarAssign` | `name`, `old?`, `value`, `span` |
+| `Write` | `slot`, `old?`, `value`, `span` |
+| `Swap` | `a`, `b`, `value_a`, `value_b`, `span` |
+| `RefBind` | `name`, `target` (slot), `span` |
+| `PtrMove` | `name`, `to`, `span` |
+| `BuiltinSelect` | `name`, `args[]`, `chosen`, `value`, `span` | chooser builtins (`min` / `max`), span points to selected argument |
 
 ### Heap & containers
 
@@ -157,7 +165,6 @@ Every event has `"kind": "<Name>"` plus fields. Common: `span`.
 | **`size`** | Logical length at allocation (vector len, string chars, map entry count, …) |
 | **`elems`** | Snapshot of elements **at allocation** for sequences |
 | **`entries`** | Map/set snapshot: `[{ "key": MapKey, "value": Value? }, …]` (`value` omitted for sets) |
-| `call_id?` | Current activation |
 | `span` | Source range of the allocating expression / decl |
 
 **`elems` rules**
@@ -185,13 +192,17 @@ Missing key **default-inserts** a value of the mapped type (`map<K,V>` → defau
 
 Events on first `m[k]` miss: `Write` (MapEntry) + `ContainerMod` with `op` / `kind` `"map_default_insert"`, plus any nested `Alloc` for the default value.
 
+Range-for over a map with a **single** loop variable (`for (const auto& kvp : m)`) allocates a temporary `pair` each iteration: you get **`Alloc` (`kind: "pair"`)** then **`VarCreate`** pointing at that object id. Structured binding (`for (auto& [k, v] : m)`) binds key/value as scalars — no pair `Alloc`.
+
 #### Other container events
 
 | kind | fields | notes |
 |------|--------|--------|
-| `ContainerMod` | `call_id?`, `container`, **`op`**, `index?`, **`key?`**, `old?`, `value?`, `span` | mutations; **`key` set for map/set** |
-| `ContainerLookup` | `call_id?`, `container`, **`op`**, `key?`, `result`, `span` | reads: `count`, `size`, `empty`, `top`, `index`, … |
-| `Dealloc` | `call_id?`, `id`, `span` | object freed |
+| `ContainerMod` | `container`, **`op`**, `index?`, **`key?`**, `old?`, `value?`, **`elems?`**, `span` | mutations; **`key` set for map/set**; **`elems` = after-state for bulk ops only** |
+
+Bulk ops (`sort`, `reverse`, `iota`, `partial_sum`) set **`elems`** to the full after-state sequence (same encoding as `Alloc.elems`: scalars inline, nested containers as `{ "kind": "Object", "value": id }`). Incremental ops omit `elems` (empty / skipped in JSON).
+| `ContainerLookup` | `container`, **`op`**, `key?`, `result`, `span` | reads: `count`, `size`, `empty`, `top`, `index`, … |
+| `Dealloc` | `id`, `span` | object freed |
 
 Pure assignment `nums[i] = x` does **not** emit a LHS `ContainerLookup` (only `Write` / `ContainerMod`). Compound assigns (`+=`) still look up the old value.
 
@@ -218,7 +229,7 @@ Note: pure assignment `nums[i] = x` does **not** emit a pre-store `ContainerLook
 | `stack::push` / `stack::emplace` | stack | same semantics; `emplace` is an alias of `push` |
 | `stack::pop` | stack | |
 | `set::insert` / `set::emplace` | set / unordered_set | same semantics |
-| `partial_sum` | vector (via begin/end) | in-place prefix sums |
+| `sort` / `reverse` / `iota` / `partial_sum` | vector (via begin/end) | bulk rewrite; includes **`elems`** (after state, same shape as `Alloc.elems`) |
 | `numeric_limits::min` / `max` / `lowest` | — | treated as `int` limits (`INT_MIN`/`INT_MAX`) |
 
 Demos: `examples/two_sum.cpp` (`Solution::twoSum`), `examples/valid_parentheses.cpp` (`Solution::isValid` — stack events), `examples/dfs.cpp` (`Solution::countComponents`). Local `testing/` smoke: `cargo test -p rscpp-runtime --test corpus_run`.
@@ -237,7 +248,8 @@ on Alloc:
 
 on Write Index:     heap[obj].elems[index] = value
 on Write MapEntry:  upsert heap[obj].entries by key
-on ContainerMod:    apply op (push_back → append elems; map_assign → upsert entry; …)
+on ContainerMod:    if elems present (bulk op): replace heap[id].elems
+                    else apply op (push_back → append; map_assign → upsert; …)
 on Dealloc:         delete heap[id]
 on VarCreate/Assign / Write Local: env[name] = value   // if Object, name → id
 ```

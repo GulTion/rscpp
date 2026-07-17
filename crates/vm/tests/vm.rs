@@ -1,5 +1,5 @@
-use rscpp_runtime::{Event, Value};
 use rscpp_parser::parse;
+use rscpp_runtime::{Event, Value};
 use rscpp_vm::{compile, run_main, Vm};
 #[test]
 fn vm_main_return_arith() {
@@ -91,8 +91,6 @@ public:
     let program = compile(&tu).unwrap();
     let mut vm = Vm::new(program);
     let nums = vm.make_vector(vec![Value::Int(2), Value::Int(7), Value::Int(11)]);
-    let ret = vm
-        .call("Solution::twoSum", &[nums, Value::Int(7)])
-        .unwrap();
+    let ret = vm.call("Solution::twoSum", &[nums, Value::Int(7)]).unwrap();
     assert_eq!(vm.vector_as_ints(&ret).unwrap(), vec![1]);
 }

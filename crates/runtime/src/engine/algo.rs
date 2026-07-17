@@ -1,14 +1,13 @@
 use super::{Engine, Flow, Frame, LValue, Result};
+use crate::builtins;
 use crate::error::RuntimeError;
 use crate::event::{Event, Slot};
 use crate::stl;
-use crate::builtins;
-use crate::value::{Address, Heap, MapKey, Object, ObjId, Value};
+use crate::value::{Address, Heap, MapKey, ObjId, Object, Value};
 use rscpp_ast::*;
 use std::collections::{HashMap, HashSet};
 
 impl Engine {
-
     pub(super) fn builtin_swap(&mut self, a: &Expr, b: &Expr, span: Span) -> Result<Value> {
         let (va, la) = self.eval_expr_lv(a)?;
         let (vb, lb) = self.eval_expr_lv(b)?;
@@ -21,7 +20,6 @@ impl Engine {
         self.write_lvalue(&la, vb.clone(), span)?;
         self.write_lvalue(&lb, va.clone(), span)?;
         self.emit(Event::Swap {
-            call_id: self.current_call_id(),
             a: Self::slot_of(&la),
             b: Self::slot_of(&lb),
             value_a: va,
@@ -31,15 +29,25 @@ impl Engine {
         Ok(Value::Void)
     }
 
-    /// `sort(v.begin(), v.end())` — only this pattern; sorts the vector in place.
-    pub(super) fn builtin_sort(&mut self, begin: &Expr, end: &Expr, span: Span) -> Result<Value> {
+    /// `sort(v.begin(), v.end())` / optional comparator lambda.
+    pub(super) fn builtin_sort(
+        &mut self,
+        begin: &Expr,
+        end: &Expr,
+        cmp: Option<&Value>,
+        span: Span,
+    ) -> Result<Value> {
         let id = match (begin, end) {
             (
                 Expr::Call {
-                    callee: bcal, args: ba, ..
+                    callee: bcal,
+                    args: ba,
+                    ..
                 },
                 Expr::Call {
-                    callee: ecal, args: ea, ..
+                    callee: ecal,
+                    args: ea,
+                    ..
                 },
             ) if ba.is_empty() && ea.is_empty() => {
                 let (bname, bbase) = match bcal.as_ref() {
@@ -64,7 +72,10 @@ impl Engine {
                 let bbase_v = self.eval_expr(bbase)?;
                 let ebase_v = self.eval_expr(ebase)?;
                 if bbase_v != ebase_v {
-                    return Err(RuntimeError::at(span, "sort: begin/end from different objects"));
+                    return Err(RuntimeError::at(
+                        span,
+                        "sort: begin/end from different objects",
+                    ));
                 }
                 let Value::Object(id) = bbase_v else {
                     return Err(RuntimeError::at(span, "sort: not a vector"));
@@ -72,13 +83,48 @@ impl Engine {
                 id
             }
             _ => {
-                return Err(RuntimeError::at(
-                    span,
-                    "sort only supports sort(v.begin(), v.end())",
-                ))
+                // Also `sort(begin(v), end(v))`
+                match self.resolve_vector_range(begin, end, span) {
+                    Ok(id) => id,
+                    Err(_) => {
+                        return Err(RuntimeError::at(
+                            span,
+                            "sort only supports sort(v.begin(), v.end())",
+                        ))
+                    }
+                }
             }
         };
-        if let Some(Object::Vector(elems)) = self.heap.get_mut(id) {
+        if let Some(Value::Object(opid)) = cmp {
+            if matches!(self.heap.get(*opid), Some(Object::Closure { .. })) {
+                let mut elems = match self.heap.get(id) {
+                    Some(Object::Vector(e)) => e.clone(),
+                    _ => return Err(RuntimeError::at(span, "sort: not a vector")),
+                };
+                // Simple insertion sort with comparator (avoids FnMut borrow issues).
+                for i in 1..elems.len() {
+                    let mut j = i;
+                    while j > 0 {
+                        let less = self.call_closure(
+                            *opid,
+                            &[elems[j].clone(), elems[j - 1].clone()],
+                            span,
+                        )?;
+                        if less.as_bool().map_err(RuntimeError::new)? {
+                            elems.swap(j, j - 1);
+                            j -= 1;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                if let Some(Object::Vector(dst)) = self.heap.get_mut(id) {
+                    *dst = elems;
+                }
+            } else {
+                return Err(RuntimeError::at(span, "sort comparator must be a lambda"));
+            }
+        } else if let Some(Object::Vector(elems)) = self.heap.get_mut(id) {
             elems.sort_by(|a, b| {
                 let ai = a.as_int().unwrap_or(0);
                 let bi = b.as_int().unwrap_or(0);
@@ -87,20 +133,26 @@ impl Engine {
         } else {
             return Err(RuntimeError::at(span, "sort: not a vector"));
         }
+        let elems = self.sequence_elems(id);
         self.emit(Event::ContainerMod {
-            call_id: self.current_call_id(),
             container: Value::Object(id),
             kind: "sort".into(),
             index: None,
             key: None,
             old: None,
             value: None,
+            elems,
             span,
         });
         Ok(Value::Void)
     }
 
-    pub(super) fn resolve_vector_range(&mut self, begin: &Expr, end: &Expr, span: Span) -> Result<ObjId> {
+    pub(super) fn resolve_vector_range(
+        &mut self,
+        begin: &Expr,
+        end: &Expr,
+        span: Span,
+    ) -> Result<ObjId> {
         /// `v.begin()` / `begin(v)` / `cbegin(v)` → container expr
         fn range_base<'a>(call: &'a Expr) -> Option<&'a Expr> {
             let Expr::Call { callee, args, .. } = call else {
@@ -150,7 +202,12 @@ impl Engine {
         }
     }
 
-    pub(super) fn builtin_reverse(&mut self, begin: &Expr, end: &Expr, span: Span) -> Result<Value> {
+    pub(super) fn builtin_reverse(
+        &mut self,
+        begin: &Expr,
+        end: &Expr,
+        span: Span,
+    ) -> Result<Value> {
         let id = self.resolve_vector_range(begin, end, span)?;
         match self.heap.get_mut(id) {
             Some(Object::Vector(elems)) => elems.reverse(),
@@ -160,14 +217,15 @@ impl Engine {
             }
             _ => {}
         }
+        let elems = self.sequence_elems(id);
         self.emit(Event::ContainerMod {
-            call_id: self.current_call_id(),
             container: Value::Object(id),
             kind: "reverse".into(),
             index: None,
             key: None,
             old: None,
             value: None,
+            elems,
             span,
         });
         Ok(Value::Void)
@@ -178,17 +236,22 @@ impl Engine {
         begin: &Expr,
         end: &Expr,
         target: &Value,
+        cmp: Option<&Value>,
         span: Span,
     ) -> Result<Value> {
         let id = self.resolve_vector_range(begin, end, span)?;
-        let t = target.as_int().map_err(RuntimeError::new)?;
-        let found = match self.heap.get(id) {
-            Some(Object::Vector(elems)) => elems
-                .iter()
-                .any(|v| v.as_int().map(|n| n == t).unwrap_or(false)),
-            _ => false,
+        let elems: Vec<Value> = match self.heap.get(id) {
+            Some(Object::Vector(e)) => e.clone(),
+            _ => return Ok(Value::Bool(false)),
         };
-        Ok(Value::Bool(found))
+        for v in &elems {
+            let less_vx = self.cmp_less(cmp, v, target, span)?;
+            let less_xv = self.cmp_less(cmp, target, v, span)?;
+            if !less_vx && !less_xv {
+                return Ok(Value::Bool(true));
+            }
+        }
+        Ok(Value::Bool(false))
     }
 
     pub(super) fn builtin_bound(
@@ -197,25 +260,41 @@ impl Engine {
         end: &Expr,
         target: &Value,
         upper: bool,
+        cmp: Option<&Value>,
         span: Span,
     ) -> Result<Value> {
         let id = self.resolve_vector_range(begin, end, span)?;
-        let t = target.as_int().map_err(RuntimeError::new)?;
-        let idx = match self.heap.get(id) {
-            Some(Object::Vector(elems)) => {
-                let mut i = 0usize;
-                while i < elems.len() {
-                    let n = elems[i].as_int().map_err(RuntimeError::new)?;
-                    if (upper && n > t) || (!upper && n >= t) {
-                        break;
-                    }
-                    i += 1;
-                }
-                i as i64
-            }
-            _ => 0,
+        let elems: Vec<Value> = match self.heap.get(id) {
+            Some(Object::Vector(e)) => e.clone(),
+            _ => return Ok(Value::Int(0)),
         };
-        Ok(Value::Int(idx))
+        let mut i = 0usize;
+        while i < elems.len() {
+            let hit = if upper {
+                self.cmp_less(cmp, target, &elems[i], span)?
+            } else {
+                !self.cmp_less(cmp, &elems[i], target, span)?
+            };
+            if hit {
+                break;
+            }
+            i += 1;
+        }
+        Ok(Value::Int(i as i64))
+    }
+
+    /// `cmp(a,b)` if closure; else int `a < b`.
+    fn cmp_less(&mut self, cmp: Option<&Value>, a: &Value, b: &Value, span: Span) -> Result<bool> {
+        if let Some(Value::Object(opid)) = cmp {
+            if matches!(self.heap.get(*opid), Some(Object::Closure { .. })) {
+                let v = self.call_closure(*opid, &[a.clone(), b.clone()], span)?;
+                return v.as_bool().map_err(RuntimeError::new);
+            }
+            return Err(RuntimeError::at(span, "comparator must be a lambda"));
+        }
+        let ai = a.as_int().map_err(RuntimeError::new)?;
+        let bi = b.as_int().map_err(RuntimeError::new)?;
+        Ok(ai < bi)
     }
 
     pub(super) fn builtin_accumulate(
@@ -223,27 +302,59 @@ impl Engine {
         begin: &Expr,
         end: &Expr,
         init: Option<&Value>,
+        op: Option<&Value>,
         span: Span,
     ) -> Result<Value> {
         let id = self.resolve_vector_range(begin, end, span)?;
-        let mut sum = init
-            .map(|v| v.as_int().map_err(RuntimeError::new))
-            .transpose()?
-            .unwrap_or(0);
-        match self.heap.get(id) {
-            Some(Object::Vector(elems)) => {
+        let mut acc = init.cloned().unwrap_or(Value::Int(0));
+        let elems: Vec<Value> = match self.heap.get(id) {
+            Some(Object::Vector(e)) => e.clone(),
+            Some(Object::String(s)) => s.chars().map(Value::Char).collect(),
+            _ => vec![],
+        };
+        if let Some(Value::Object(opid)) = op {
+            if matches!(self.heap.get(*opid), Some(Object::Closure { .. })) {
                 for v in elems {
-                    sum += v.as_int().map_err(RuntimeError::new)?;
+                    acc = self.call_closure(*opid, &[acc, v], span)?;
                 }
+                return Ok(acc);
             }
-            Some(Object::String(s)) => {
-                for c in s.chars() {
-                    sum += c as i64;
-                }
-            }
-            _ => {}
+        }
+        // Default: sum as ints
+        let mut sum = acc.as_int().map_err(RuntimeError::new)?;
+        for v in elems {
+            sum += v.as_int().map_err(RuntimeError::new)?;
         }
         Ok(Value::Int(sum))
+    }
+
+    pub(super) fn builtin_iota(
+        &mut self,
+        begin: &Expr,
+        end: &Expr,
+        start: &Value,
+        span: Span,
+    ) -> Result<Value> {
+        let id = self.resolve_vector_range(begin, end, span)?;
+        let mut n = start.as_int().map_err(RuntimeError::new)?;
+        if let Some(Object::Vector(elems)) = self.heap.get_mut(id) {
+            for e in elems.iter_mut() {
+                *e = Value::Int(n);
+                n += 1;
+            }
+        }
+        let elems = self.sequence_elems(id);
+        self.emit(Event::ContainerMod {
+            container: Value::Object(id),
+            kind: "iota".into(),
+            index: None,
+            key: None,
+            old: None,
+            value: None,
+            elems,
+            span,
+        });
+        Ok(Value::Void)
     }
 
     /// `partial_sum(begin, end, begin)` — in-place prefix sums (LeetCode runningSum style).
@@ -262,14 +373,15 @@ impl Engine {
                 *e = Value::Int(acc);
             }
         }
+        let elems = self.sequence_elems(id);
         self.emit(Event::ContainerMod {
-            call_id: self.current_call_id(),
             container: Value::Object(id),
             kind: "partial_sum".into(),
             index: None,
             key: None,
             old: None,
             value: None,
+            elems,
             span,
         });
         Ok(Value::Void)
@@ -280,24 +392,33 @@ impl Engine {
         begin: &Expr,
         end: &Expr,
         want_max: bool,
+        cmp: Option<&Value>,
         span: Span,
     ) -> Result<Value> {
         let id = self.resolve_vector_range(begin, end, span)?;
-        let (idx, _val) = match self.heap.get(id) {
-            Some(Object::Vector(elems)) if !elems.is_empty() => {
-                let mut best_i = 0usize;
-                let mut best_v = elems[0].as_int().map_err(RuntimeError::new)?;
-                for (i, v) in elems.iter().enumerate().skip(1) {
-                    let n = v.as_int().map_err(RuntimeError::new)?;
-                    if (want_max && n > best_v) || (!want_max && n < best_v) {
-                        best_v = n;
-                        best_i = i;
-                    }
-                }
-                (best_i, best_v)
+        let elems: Vec<Value> = match self.heap.get(id) {
+            Some(Object::Vector(e)) if !e.is_empty() => e.clone(),
+            _ => {
+                return Err(RuntimeError::at(
+                    span,
+                    "min/max_element on empty/non-vector",
+                ))
             }
-            _ => return Err(RuntimeError::at(span, "min/max_element on empty/non-vector")),
         };
-        Ok(Value::Ptr(Address::Index { obj: id, index: idx }))
-}
+        let mut best_i = 0usize;
+        for i in 1..elems.len() {
+            let take = if want_max {
+                self.cmp_less(cmp, &elems[best_i], &elems[i], span)?
+            } else {
+                self.cmp_less(cmp, &elems[i], &elems[best_i], span)?
+            };
+            if take {
+                best_i = i;
+            }
+        }
+        Ok(Value::Ptr(Address::Index {
+            obj: id,
+            index: best_i,
+        }))
+    }
 }

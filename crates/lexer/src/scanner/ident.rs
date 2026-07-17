@@ -4,7 +4,6 @@ use crate::span::Span;
 use crate::token::{FloatSuffix, IntBase, IntSuffix, Keyword, Punct, Token, TokenKind};
 
 impl<'a> Scanner<'a> {
-
     pub(super) fn lex_ident_or_keyword(&mut self, start: usize) -> Result<Token, LexError> {
         while self
             .peek()

@@ -4,7 +4,6 @@ use rscpp_ast::*;
 use rscpp_lexer::{Keyword, Punct, Token, TokenKind};
 
 impl Parser {
-
     pub(super) fn parse_ident(&mut self) -> Result<Ident, ParseError> {
         match self.peek_kind() {
             TokenKind::Ident(_) => {
@@ -183,6 +182,95 @@ impl Parser {
         Ok(lhs)
     }
 
+    pub(super) fn parse_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
+        self.expect_punct(Punct::LParen)?;
+        let mut args = Vec::new();
+        if !self.at_punct(Punct::RParen) {
+            loop {
+                // assignment-expr: stop before comma so `f(a, b)` stays two args
+                args.push(self.parse_expr_bp(2)?);
+                if self.at_punct(Punct::Comma) {
+                    self.bump();
+                    continue;
+                }
+                break;
+            }
+        }
+        let end = self.expect_punct(Punct::RParen)?.span.end;
+        let span = Span::new(callee.span().start, end);
+        Ok(Expr::Call {
+            callee: Box::new(callee),
+            args,
+            span,
+        })
+    }
+
+    pub(super) fn parse_index(&mut self, base: Expr) -> Result<Expr, ParseError> {
+        self.expect_punct(Punct::LBracket)?;
+        let index = self.parse_expr_bp(2)?;
+        let end = self.expect_punct(Punct::RBracket)?.span.end;
+        let span = Span::new(base.span().start, end);
+        Ok(Expr::Index {
+            base: Box::new(base),
+            index: Box::new(index),
+            span,
+        })
+    }
+
+    pub(super) fn parse_member_expr(&mut self, base: Expr) -> Result<Expr, ParseError> {
+        let arrow = self.at_punct(Punct::Arrow);
+        self.bump();
+        let field = self.parse_ident()?;
+        let span = Span::new(base.span().start, field.span.end);
+        Ok(Expr::Member {
+            base: Box::new(base),
+            field,
+            arrow,
+            span,
+        })
+    }
+
+    pub(super) fn infix_bp(&self) -> Option<(TokenKind, u8, u8)> {
+        let kind = self.peek_kind().clone();
+        let (l, r) = match &kind {
+            TokenKind::Punct(Punct::Eq)
+            | TokenKind::Punct(Punct::PlusEq)
+            | TokenKind::Punct(Punct::MinusEq)
+            | TokenKind::Punct(Punct::StarEq)
+            | TokenKind::Punct(Punct::SlashEq)
+            | TokenKind::Punct(Punct::PercentEq)
+            | TokenKind::Punct(Punct::AmpEq)
+            | TokenKind::Punct(Punct::PipeEq)
+            | TokenKind::Punct(Punct::CaretEq)
+            | TokenKind::Punct(Punct::LtLtEq)
+            | TokenKind::Punct(Punct::GtGtEq) => (2u8, 1u8), // right-assoc
+            TokenKind::Punct(Punct::PipePipe) => (3, 4),
+            TokenKind::Punct(Punct::AmpAmp) => (5, 6),
+            TokenKind::Punct(Punct::Pipe) => (7, 8),
+            TokenKind::Punct(Punct::Caret) => (9, 10),
+            TokenKind::Punct(Punct::Amp) => (11, 12),
+            TokenKind::Punct(Punct::EqEq) | TokenKind::Punct(Punct::NotEq) => (13, 14),
+            TokenKind::Punct(Punct::Lt)
+            | TokenKind::Punct(Punct::Gt)
+            | TokenKind::Punct(Punct::LtEq)
+            | TokenKind::Punct(Punct::GtEq) => (15, 16),
+            TokenKind::Punct(Punct::LtLt) | TokenKind::Punct(Punct::GtGt) => (17, 18),
+            TokenKind::Punct(Punct::Plus) | TokenKind::Punct(Punct::Minus) => (19, 20),
+            TokenKind::Punct(Punct::Star)
+            | TokenKind::Punct(Punct::Slash)
+            | TokenKind::Punct(Punct::Percent) => (21, 22),
+            // Lowest; l_bp=0 so assign RHS (min_bp=1) stops before comma: `a=b, c` → `(a=b), c`
+            TokenKind::Punct(Punct::Comma) => (0, 1),
+            _ => return None,
+        };
+        Some((kind, l, r))
+    }
+
+    /// `name<Type, ...>` vs `a < b` comparison.
+    ///
+    /// In expressions, only treat as template args when the `>` is followed by
+    /// `::`, `(`, or `{` — so `result < numeric_limits<int>::min()` stays a comparison.
+
     pub(super) fn parse_prefix(&mut self) -> Result<Expr, ParseError> {
         if self.at_punct(Punct::LBrace) {
             return self.parse_init_list();
@@ -317,17 +405,17 @@ impl Parser {
             TokenKind::Keyword(Keyword::Sizeof) => self.parse_sizeof(),
             TokenKind::Keyword(
                 Keyword::Void
-                    | Keyword::Bool
-                    | Keyword::Char
-                    | Keyword::Short
-                    | Keyword::Int
-                    | Keyword::Long
-                    | Keyword::Float
-                    | Keyword::Double
-                    | Keyword::Unsigned
-                    | Keyword::Signed
-                    | Keyword::Auto
-                    | Keyword::WcharT,
+                | Keyword::Bool
+                | Keyword::Char
+                | Keyword::Short
+                | Keyword::Int
+                | Keyword::Long
+                | Keyword::Float
+                | Keyword::Double
+                | Keyword::Unsigned
+                | Keyword::Signed
+                | Keyword::Auto
+                | Keyword::WcharT,
             ) if self.looks_like_functional_cast() => self.parse_functional_cast(),
             TokenKind::Ident(_) => Ok(Expr::Name(self.parse_path()?)),
             TokenKind::Keyword(Keyword::StaticCast | Keyword::ReinterpretCast) => {
@@ -344,10 +432,7 @@ impl Parser {
                     span: Span::new(start, end),
                 })
             }
-            _ => Err(self.err(format!(
-                "expected expression, found {:?}",
-                self.peek_kind()
-            ))),
+            _ => Err(self.err(format!("expected expression, found {:?}", self.peek_kind()))),
         }
     }
 
@@ -389,7 +474,9 @@ impl Parser {
                             }
                             i += 1;
                         }
-                        TokenKind::Punct(Punct::Star | Punct::Amp | Punct::Scope | Punct::Comma)
+                        TokenKind::Punct(
+                            Punct::Star | Punct::Amp | Punct::Scope | Punct::Comma,
+                        )
                         | TokenKind::Ident(_)
                         | TokenKind::Keyword(_) => i += 1,
                         TokenKind::Punct(Punct::RParen) => {
@@ -422,54 +509,6 @@ impl Parser {
             }
             _ => false,
         }
-    }
-
-    pub(super) fn parse_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
-        self.expect_punct(Punct::LParen)?;
-        let mut args = Vec::new();
-        if !self.at_punct(Punct::RParen) {
-            loop {
-                // assignment-expr: stop before comma so `f(a, b)` stays two args
-                args.push(self.parse_expr_bp(2)?);
-                if self.at_punct(Punct::Comma) {
-                    self.bump();
-                    continue;
-                }
-                break;
-            }
-        }
-        let end = self.expect_punct(Punct::RParen)?.span.end;
-        let span = Span::new(callee.span().start, end);
-        Ok(Expr::Call {
-            callee: Box::new(callee),
-            args,
-            span,
-        })
-    }
-
-    pub(super) fn parse_index(&mut self, base: Expr) -> Result<Expr, ParseError> {
-        self.expect_punct(Punct::LBracket)?;
-        let index = self.parse_expr_bp(2)?;
-        let end = self.expect_punct(Punct::RBracket)?.span.end;
-        let span = Span::new(base.span().start, end);
-        Ok(Expr::Index {
-            base: Box::new(base),
-            index: Box::new(index),
-            span,
-        })
-    }
-
-    pub(super) fn parse_member_expr(&mut self, base: Expr) -> Result<Expr, ParseError> {
-        let arrow = self.at_punct(Punct::Arrow);
-        self.bump();
-        let field = self.parse_ident()?;
-        let span = Span::new(base.span().start, field.span.end);
-        Ok(Expr::Member {
-            base: Box::new(base),
-            field,
-            arrow,
-            span,
-        })
     }
 
     pub(super) fn parse_init_list(&mut self) -> Result<Expr, ParseError> {
@@ -528,17 +567,17 @@ impl Parser {
             match self.tokens.get(i).map(|t| &t.kind) {
                 Some(TokenKind::Keyword(
                     Keyword::Void
-                        | Keyword::Bool
-                        | Keyword::Char
-                        | Keyword::Short
-                        | Keyword::Int
-                        | Keyword::Long
-                        | Keyword::Float
-                        | Keyword::Double
-                        | Keyword::Unsigned
-                        | Keyword::Signed
-                        | Keyword::Auto
-                        | Keyword::WcharT,
+                    | Keyword::Bool
+                    | Keyword::Char
+                    | Keyword::Short
+                    | Keyword::Int
+                    | Keyword::Long
+                    | Keyword::Float
+                    | Keyword::Double
+                    | Keyword::Unsigned
+                    | Keyword::Signed
+                    | Keyword::Auto
+                    | Keyword::WcharT,
                 )) => i += 1,
                 Some(TokenKind::Punct(Punct::LParen)) if i > start => return true,
                 _ => return false,
@@ -566,18 +605,18 @@ impl Parser {
             let is_type = match self.peek_kind() {
                 TokenKind::Keyword(
                     Keyword::Void
-                        | Keyword::Bool
-                        | Keyword::Char
-                        | Keyword::Short
-                        | Keyword::Int
-                        | Keyword::Long
-                        | Keyword::Float
-                        | Keyword::Double
-                        | Keyword::Unsigned
-                        | Keyword::Signed
-                        | Keyword::Const
-                        | Keyword::Auto
-                        | Keyword::WcharT,
+                    | Keyword::Bool
+                    | Keyword::Char
+                    | Keyword::Short
+                    | Keyword::Int
+                    | Keyword::Long
+                    | Keyword::Float
+                    | Keyword::Double
+                    | Keyword::Unsigned
+                    | Keyword::Signed
+                    | Keyword::Const
+                    | Keyword::Auto
+                    | Keyword::WcharT,
                 ) => true,
                 TokenKind::Ident(_) => matches!(
                     self.tokens.get(self.pos + 1).map(|t| &t.kind),
@@ -631,46 +670,6 @@ impl Parser {
         })
     }
 
-    pub(super) fn infix_bp(&self) -> Option<(TokenKind, u8, u8)> {
-        let kind = self.peek_kind().clone();
-        let (l, r) = match &kind {
-            TokenKind::Punct(Punct::Eq)
-            | TokenKind::Punct(Punct::PlusEq)
-            | TokenKind::Punct(Punct::MinusEq)
-            | TokenKind::Punct(Punct::StarEq)
-            | TokenKind::Punct(Punct::SlashEq)
-            | TokenKind::Punct(Punct::PercentEq)
-            | TokenKind::Punct(Punct::AmpEq)
-            | TokenKind::Punct(Punct::PipeEq)
-            | TokenKind::Punct(Punct::CaretEq)
-            | TokenKind::Punct(Punct::LtLtEq)
-            | TokenKind::Punct(Punct::GtGtEq) => (2u8, 1u8), // right-assoc
-            TokenKind::Punct(Punct::PipePipe) => (3, 4),
-            TokenKind::Punct(Punct::AmpAmp) => (5, 6),
-            TokenKind::Punct(Punct::Pipe) => (7, 8),
-            TokenKind::Punct(Punct::Caret) => (9, 10),
-            TokenKind::Punct(Punct::Amp) => (11, 12),
-            TokenKind::Punct(Punct::EqEq) | TokenKind::Punct(Punct::NotEq) => (13, 14),
-            TokenKind::Punct(Punct::Lt)
-            | TokenKind::Punct(Punct::Gt)
-            | TokenKind::Punct(Punct::LtEq)
-            | TokenKind::Punct(Punct::GtEq) => (15, 16),
-            TokenKind::Punct(Punct::LtLt) | TokenKind::Punct(Punct::GtGt) => (17, 18),
-            TokenKind::Punct(Punct::Plus) | TokenKind::Punct(Punct::Minus) => (19, 20),
-            TokenKind::Punct(Punct::Star)
-            | TokenKind::Punct(Punct::Slash)
-            | TokenKind::Punct(Punct::Percent) => (21, 22),
-            // Lowest; l_bp=0 so assign RHS (min_bp=1) stops before comma: `a=b, c` → `(a=b), c`
-            TokenKind::Punct(Punct::Comma) => (0, 1),
-            _ => return None,
-        };
-        Some((kind, l, r))
-    }
-
-    /// `name<Type, ...>` vs `a < b` comparison.
-    ///
-    /// In expressions, only treat as template args when the `>` is followed by
-    /// `::`, `(`, or `{` — so `result < numeric_limits<int>::min()` stays a comparison.
     pub(super) fn looks_like_template_args(&self) -> bool {
         let lt_pos = self.pos;
         if !self.looks_like_template_args_at(lt_pos) {
@@ -681,7 +680,9 @@ impl Parser {
         };
         matches!(
             self.tokens.get(after).map(|t| &t.kind),
-            Some(TokenKind::Punct(Punct::Scope | Punct::LParen | Punct::LBrace))
+            Some(TokenKind::Punct(
+                Punct::Scope | Punct::LParen | Punct::LBrace
+            ))
         )
     }
 

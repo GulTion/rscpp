@@ -212,6 +212,34 @@ fn testing_folder_run_method_smoke() {
             check: |v| *v == Value::Bool(true),
             label: "true",
         },
+        Case {
+            file: "armstrong-number.cpp",
+            method: "Solution::isArmstrong",
+            args: json!([153]),
+            check: |v| *v == Value::Bool(true),
+            label: "true",
+        },
+        Case {
+            file: "apply-operations-to-make-sum-of-array-greater-than-or-equal-to-k.cpp",
+            method: "Solution::minOperations",
+            args: json!([10]),
+            check: |v| *v == Value::Int(5),
+            label: "5",
+        },
+        Case {
+            file: "most-stones-removed-with-same-row-or-column.cpp",
+            method: "Solution::removeStones",
+            args: json!([[[0, 0], [0, 1], [1, 0], [1, 2], [2, 1], [2, 2]]]),
+            check: |v| *v == Value::Int(5),
+            label: "5",
+        },
+        Case {
+            file: "4-keys-keyboard.cpp",
+            method: "Solution::maxA",
+            args: json!([7]),
+            check: |v| *v == Value::Int(9),
+            label: "9",
+        },
     ];
 
     let mut failed = Vec::new();

@@ -1,11 +1,12 @@
-use super::digits::{parse_binary_digits, parse_decimal_digits, parse_hex_digits, parse_octal_digits};
+use super::digits::{
+    parse_binary_digits, parse_decimal_digits, parse_hex_digits, parse_octal_digits,
+};
 use super::Scanner;
 use crate::error::LexError;
 use crate::span::Span;
 use crate::token::{FloatSuffix, IntBase, IntSuffix, Keyword, Punct, Token, TokenKind};
 
 impl<'a> Scanner<'a> {
-
     pub(super) fn lex_number(&mut self, start: usize) -> Result<Token, LexError> {
         // Float starting with '.'
         if self.peek() == Some(b'.') {
@@ -48,7 +49,10 @@ impl<'a> Scanner<'a> {
         }
 
         // Decimal integer or float
-        while self.peek().is_some_and(|c| c.is_ascii_digit() || c == b'\'') {
+        while self
+            .peek()
+            .is_some_and(|c| c.is_ascii_digit() || c == b'\'')
+        {
             if self.peek() == Some(b'\'') {
                 self.bump();
                 if !self.peek().is_some_and(|c| c.is_ascii_digit()) {
@@ -87,7 +91,9 @@ impl<'a> Scanner<'a> {
             if self.peek() == Some(b'\'') {
                 self.bump();
                 if !self.peek().is_some_and(|c| c.is_ascii_hexdigit()) {
-                    return Err(self.err_at(start, "digit separator must be followed by a hex digit"));
+                    return Err(
+                        self.err_at(start, "digit separator must be followed by a hex digit")
+                    );
                 }
             } else {
                 self.bump();
@@ -111,11 +117,16 @@ impl<'a> Scanner<'a> {
 
     fn lex_binary(&mut self, start: usize) -> Result<Token, LexError> {
         let digits_start = self.pos;
-        while self.peek().is_some_and(|c| c == b'0' || c == b'1' || c == b'\'') {
+        while self
+            .peek()
+            .is_some_and(|c| c == b'0' || c == b'1' || c == b'\'')
+        {
             if self.peek() == Some(b'\'') {
                 self.bump();
                 if !matches!(self.peek(), Some(b'0' | b'1')) {
-                    return Err(self.err_at(start, "digit separator must be followed by a binary digit"));
+                    return Err(
+                        self.err_at(start, "digit separator must be followed by a binary digit")
+                    );
                 }
             } else {
                 self.bump();
@@ -139,11 +150,16 @@ impl<'a> Scanner<'a> {
 
     fn lex_octal(&mut self, start: usize) -> Result<Token, LexError> {
         // Leading 0 already consumed; continue octal digits
-        while self.peek().is_some_and(|c| (b'0'..=b'7').contains(&c) || c == b'\'') {
+        while self
+            .peek()
+            .is_some_and(|c| (b'0'..=b'7').contains(&c) || c == b'\'')
+        {
             if self.peek() == Some(b'\'') {
                 self.bump();
                 if !self.peek().is_some_and(|c| (b'0'..=b'7').contains(&c)) {
-                    return Err(self.err_at(start, "digit separator must be followed by an octal digit"));
+                    return Err(
+                        self.err_at(start, "digit separator must be followed by an octal digit")
+                    );
                 }
             } else {
                 self.bump();
@@ -172,12 +188,19 @@ impl<'a> Scanner<'a> {
         ))
     }
 
-    fn lex_float_after_dot(&mut self, start: usize, _had_digits_before: bool) -> Result<Token, LexError> {
+    fn lex_float_after_dot(
+        &mut self,
+        start: usize,
+        _had_digits_before: bool,
+    ) -> Result<Token, LexError> {
         self.bump(); // '.'
         if !self.peek().is_some_and(|c| c.is_ascii_digit()) {
             return Err(self.err_at(start, "expected digit after '.' in floating literal"));
         }
-        while self.peek().is_some_and(|c| c.is_ascii_digit() || c == b'\'') {
+        while self
+            .peek()
+            .is_some_and(|c| c.is_ascii_digit() || c == b'\'')
+        {
             if self.peek() == Some(b'\'') {
                 self.bump();
                 if !self.peek().is_some_and(|c| c.is_ascii_digit()) {
@@ -201,11 +224,16 @@ impl<'a> Scanner<'a> {
     fn lex_float_continue(&mut self, start: usize) -> Result<Token, LexError> {
         if self.peek() == Some(b'.') {
             self.bump();
-            while self.peek().is_some_and(|c| c.is_ascii_digit() || c == b'\'') {
+            while self
+                .peek()
+                .is_some_and(|c| c.is_ascii_digit() || c == b'\'')
+            {
                 if self.peek() == Some(b'\'') {
                     self.bump();
                     if !self.peek().is_some_and(|c| c.is_ascii_digit()) {
-                        return Err(self.err_at(start, "digit separator must be followed by a digit"));
+                        return Err(
+                            self.err_at(start, "digit separator must be followed by a digit")
+                        );
                     }
                 } else {
                     self.bump();
@@ -231,7 +259,10 @@ impl<'a> Scanner<'a> {
         if !self.peek().is_some_and(|c| c.is_ascii_digit()) {
             return Err(self.err_at(start, "exponent has no digits"));
         }
-        while self.peek().is_some_and(|c| c.is_ascii_digit() || c == b'\'') {
+        while self
+            .peek()
+            .is_some_and(|c| c.is_ascii_digit() || c == b'\'')
+        {
             if self.peek() == Some(b'\'') {
                 self.bump();
                 if !self.peek().is_some_and(|c| c.is_ascii_digit()) {

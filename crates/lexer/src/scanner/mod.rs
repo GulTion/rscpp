@@ -2,9 +2,7 @@
 
 use crate::error::LexError;
 use crate::span::Span;
-use crate::token::{
-    FloatSuffix, IntBase, IntSuffix, Keyword, Punct, Token, TokenKind,
-};
+use crate::token::{FloatSuffix, IntBase, IntSuffix, Keyword, Punct, Token, TokenKind};
 
 /// Tokenize `source` into a vector ending with [`TokenKind::Eof`].
 pub fn tokenize(source: &str) -> Result<Vec<Token>, LexError> {
@@ -74,9 +72,7 @@ impl<'a> Scanner<'a> {
         match c {
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.lex_ident_or_keyword(start),
             b'0'..=b'9' => self.lex_number(start),
-            b'.' if self.peek_at(1).is_some_and(|d| d.is_ascii_digit()) => {
-                self.lex_number(start)
-            }
+            b'.' if self.peek_at(1).is_some_and(|d| d.is_ascii_digit()) => self.lex_number(start),
             b'\'' => self.lex_char(start),
             b'"' => self.lex_string(start),
             _ => self.lex_punct(start),
@@ -123,26 +119,31 @@ impl<'a> Scanner<'a> {
     }
 
     /// Returns `Ok(Some(err))` if an unsupported literal prefix is present.
-    fn check_unsupported_string_prefix(
-        &self,
-        start: usize,
-    ) -> Result<Option<LexError>, LexError> {
+    fn check_unsupported_string_prefix(&self, start: usize) -> Result<Option<LexError>, LexError> {
         let rest = &self.src[self.pos..];
         let unsupported = |msg: &str| -> Option<LexError> {
             Some(LexError::new(Span::new(start, start + 1), msg))
         };
 
         if rest.starts_with(b"u8\"") || rest.starts_with(b"u8\'") {
-            return Ok(unsupported("UTF-8 character/string literals (u8) are not supported yet"));
+            return Ok(unsupported(
+                "UTF-8 character/string literals (u8) are not supported yet",
+            ));
         }
         if rest.starts_with(b"u\"") || rest.starts_with(b"u\'") {
-            return Ok(unsupported("UTF-16 character/string literals (u) are not supported yet"));
+            return Ok(unsupported(
+                "UTF-16 character/string literals (u) are not supported yet",
+            ));
         }
         if rest.starts_with(b"U\"") || rest.starts_with(b"U\'") {
-            return Ok(unsupported("UTF-32 character/string literals (U) are not supported yet"));
+            return Ok(unsupported(
+                "UTF-32 character/string literals (U) are not supported yet",
+            ));
         }
         if rest.starts_with(b"L\"") || rest.starts_with(b"L\'") {
-            return Ok(unsupported("wide character/string literals (L) are not supported yet"));
+            return Ok(unsupported(
+                "wide character/string literals (L) are not supported yet",
+            ));
         }
         // Raw string: R", LR", u8R", uR", UR"
         if rest.starts_with(b"R\"")
@@ -157,8 +158,8 @@ impl<'a> Scanner<'a> {
     }
 }
 
-mod ident;
-mod number;
-mod literal;
-mod punct;
 mod digits;
+mod ident;
+mod literal;
+mod number;
+mod punct;

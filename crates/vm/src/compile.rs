@@ -132,9 +132,10 @@ fn compile_stmt(c: &mut Compiler, stmt: &Stmt) -> Result<()> {
             c.emit(Op::Return, span);
             Ok(())
         }
-        Stmt::Break { .. } | Stmt::Continue { .. } => {
-            Err(VmError::at(span, "break/continue in VM not implemented yet"))
-        }
+        Stmt::Break { .. } | Stmt::Continue { .. } => Err(VmError::at(
+            span,
+            "break/continue in VM not implemented yet",
+        )),
         Stmt::If {
             cond,
             then_branch,
@@ -207,12 +208,11 @@ fn compile_stmt(c: &mut Compiler, stmt: &Stmt) -> Result<()> {
             }
             Ok(())
         }
-        Stmt::ForRange { span, .. } => {
-            Err(VmError::at(*span, "range-for not supported in VM yet"))
-        }
-        Stmt::Destructure { span, .. } => {
-            Err(VmError::at(*span, "structured bindings not supported in VM yet"))
-        }
+        Stmt::ForRange { span, .. } => Err(VmError::at(*span, "range-for not supported in VM yet")),
+        Stmt::Destructure { span, .. } => Err(VmError::at(
+            *span,
+            "structured bindings not supported in VM yet",
+        )),
         Stmt::TypeAlias { .. } => Ok(()),
     }
 }
@@ -240,7 +240,10 @@ fn emit_default_for_type(c: &mut Compiler, ty: &Type, span: Span) -> Result<()> 
             let s = c.chunk.add_string(name);
             c.emit(Op::NewEmpty { type_name: s }, span);
         }
-        Type::Builtin { kind: BuiltinType::Bool, .. } => {
+        Type::Builtin {
+            kind: BuiltinType::Bool,
+            ..
+        } => {
             let i = c.chunk.add_const(Value::Bool(false));
             c.emit(Op::LoadConst(i), span);
         }
@@ -335,9 +338,7 @@ fn compile_expr(c: &mut Compiler, expr: &Expr) -> Result<()> {
                 BinaryOp::Ge => Op::CmpGe,
                 BinaryOp::Eq => Op::CmpEq,
                 BinaryOp::Ne => Op::CmpNe,
-                BinaryOp::And => {
-                    return Err(VmError::at(*span, "&& short-circuit in VM later"))
-                }
+                BinaryOp::And => return Err(VmError::at(*span, "&& short-circuit in VM later")),
                 BinaryOp::Or => return Err(VmError::at(*span, "|| short-circuit in VM later")),
                 _ => return Err(VmError::at(*span, "binary op not supported in VM yet")),
             };
@@ -356,9 +357,10 @@ fn compile_expr(c: &mut Compiler, expr: &Expr) -> Result<()> {
                 Expr::Name(path) if path.segments.len() == 1 => {
                     compile_expr(c, right)?;
                     c.emit(Op::Dup, *span);
-                    let slot = *c.locals.get(&path.segments[0].name).ok_or_else(|| {
-                        VmError::at(*span, "assign to undefined local")
-                    })?;
+                    let slot = *c
+                        .locals
+                        .get(&path.segments[0].name)
+                        .ok_or_else(|| VmError::at(*span, "assign to undefined local"))?;
                     c.emit(Op::StoreLocal(slot), *span);
                 }
                 Expr::Index { base, index, .. } => {
@@ -372,10 +374,7 @@ fn compile_expr(c: &mut Compiler, expr: &Expr) -> Result<()> {
         }
         Expr::Call { callee, args, span } => {
             if let Expr::Member {
-                base,
-                field,
-                arrow,
-                ..
+                base, field, arrow, ..
             } = callee.as_ref()
             {
                 if *arrow {

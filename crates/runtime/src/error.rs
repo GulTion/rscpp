@@ -26,11 +26,7 @@ impl RuntimeError {
 impl fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(span) = self.span {
-            write!(
-                f,
-                "{} at bytes {}..{}",
-                self.message, span.start, span.end
-            )
+            write!(f, "{} at bytes {}..{}", self.message, span.start, span.end)
         } else {
             write!(f, "{}", self.message)
         }

@@ -1,14 +1,13 @@
 use super::{Engine, Flow, Frame, LValue, Result};
+use crate::builtins;
 use crate::error::RuntimeError;
 use crate::event::{Event, Slot};
 use crate::stl;
-use crate::builtins;
-use crate::value::{Address, Heap, MapKey, Object, ObjId, Value};
+use crate::value::{Address, Heap, MapKey, ObjId, Object, Value};
 use rscpp_ast::*;
 use std::collections::{HashMap, HashSet};
 
 impl Engine {
-
     pub(super) fn slot_of(lv: &LValue) -> Slot {
         match lv {
             LValue::Name(n) => Slot::Local { name: n.clone() },
@@ -30,9 +29,7 @@ impl Engine {
     pub(super) fn address_to_slot(addr: &Address) -> Option<Slot> {
         Some(match addr {
             Address::Null => return None,
-            Address::Stack { name, .. } => Slot::Local {
-                name: name.clone(),
-            },
+            Address::Stack { name, .. } => Slot::Local { name: name.clone() },
             Address::Heap(id) => Slot::Object { obj: *id },
             Address::Index { obj, index } => Slot::Index {
                 obj: *obj,
@@ -72,9 +69,7 @@ impl Engine {
                         name: n.clone(),
                     });
                 }
-                return Err(RuntimeError::new(format!(
-                    "cannot take address of `{n}`"
-                )));
+                return Err(RuntimeError::new(format!("cannot take address of `{n}`")));
             }
             LValue::Index { obj, index } => Address::Index {
                 obj: *obj,
@@ -93,7 +88,9 @@ impl Engine {
 
     pub(super) fn address_to_lvalue(&self, addr: &Address) -> Option<LValue> {
         match addr {
-            Address::Stack { name, frame } if *frame == usize::MAX || self.stack.get(*frame).is_some() => {
+            Address::Stack { name, frame }
+                if *frame == usize::MAX || self.stack.get(*frame).is_some() =>
+            {
                 Some(LValue::Name(name.clone()))
             }
             Address::Index { obj, index } => Some(LValue::Index {
@@ -145,10 +142,9 @@ impl Engine {
                 _ => Err(RuntimeError::new("bad index address")),
             },
             Address::Field { obj, field } => match self.heap.get(*obj) {
-                Some(Object::Class { fields, .. }) => Ok(fields
-                    .get(field)
-                    .cloned()
-                    .unwrap_or(Value::Int(0))),
+                Some(Object::Class { fields, .. }) => {
+                    Ok(fields.get(field).cloned().unwrap_or(Value::Int(0)))
+                }
                 Some(Object::Pair { first, second }) => match field.as_str() {
                     "first" => Ok(first.clone()),
                     "second" => Ok(second.clone()),
@@ -183,7 +179,6 @@ impl Engine {
             Address::Stack { frame, name } if *frame == usize::MAX => {
                 self.globals.insert(name.clone(), val.clone());
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::Global { name: name.clone() },
                     old: None,
                     value: val,
@@ -198,7 +193,6 @@ impl Engine {
                     .ok_or_else(|| RuntimeError::at(span, "dangling stack address"))?;
                 let old = frame.locals.insert(name.clone(), val.clone());
                 self.emit(Event::Write {
-                    call_id: self.current_call_id(),
                     slot: Slot::Local { name: name.clone() },
                     old,
                     value: val,
@@ -206,7 +200,10 @@ impl Engine {
                 });
                 Ok(())
             }
-            Address::Heap(_) => Err(RuntimeError::at(span, "cannot store through object address")),
+            Address::Heap(_) => Err(RuntimeError::at(
+                span,
+                "cannot store through object address",
+            )),
             other => {
                 let Some(lv) = self.address_to_lvalue(other) else {
                     return Err(RuntimeError::at(span, "cannot store to address"));
@@ -214,5 +211,5 @@ impl Engine {
                 self.write_lvalue(&lv, val, span)
             }
         }
-}
+    }
 }

@@ -4,7 +4,6 @@ use rscpp_ast::*;
 use rscpp_lexer::{Keyword, Punct, Token, TokenKind};
 
 impl Parser {
-
     pub(super) fn parse_function_rest(
         &mut self,
         start: usize,
@@ -55,24 +54,49 @@ impl Parser {
             break;
         }
         // Optional ctor-initializer: `: a(x), b{y} { body }`
+        let mut member_inits = Vec::new();
         if self.at_punct(Punct::Colon) {
             self.bump();
             loop {
                 if self.at_eof() || self.at_punct(Punct::Semi) || self.at_punct(Punct::LBrace) {
                     break;
                 }
-                // member name
-                while matches!(self.peek_kind(), TokenKind::Ident(_))
-                    || self.at_punct(Punct::Scope)
-                    || self.at_punct(Punct::Tilde)
-                {
+                if !matches!(self.peek_kind(), TokenKind::Ident(_)) {
+                    break;
+                }
+                let name = self.parse_ident()?;
+                let init_start = name.span.start;
+                let (args, end) = if self.at_punct(Punct::LParen) {
                     self.bump();
-                }
-                if self.at_punct(Punct::LParen) {
-                    self.skip_balanced(Punct::LParen, Punct::RParen);
+                    let mut args = Vec::new();
+                    if !self.at_punct(Punct::RParen) {
+                        loop {
+                            args.push(self.parse_expr_bp(2)?);
+                            if self.at_punct(Punct::Comma) {
+                                self.bump();
+                                continue;
+                            }
+                            break;
+                        }
+                    }
+                    let end = self.expect_punct(Punct::RParen)?.span.end;
+                    (args, end)
                 } else if self.at_punct(Punct::LBrace) {
-                    self.skip_balanced(Punct::LBrace, Punct::RBrace);
-                }
+                    let list = self.parse_init_list()?;
+                    let end = list.span().end;
+                    let args = match list {
+                        Expr::InitList { elems, .. } => elems,
+                        other => vec![other],
+                    };
+                    (args, end)
+                } else {
+                    return Err(self.err("expected ( or { after member initializer"));
+                };
+                member_inits.push(MemberInit {
+                    name,
+                    args,
+                    span: Span::new(init_start, end),
+                });
                 if self.at_punct(Punct::Comma) {
                     self.bump();
                     continue;
@@ -105,6 +129,7 @@ impl Parser {
             return_type,
             name,
             params,
+            member_inits,
             body,
             span: Span::new(start, end),
         })
@@ -207,10 +232,7 @@ impl Parser {
         } else {
             None
         };
-        let end = init
-            .as_ref()
-            .map(|e| e.span().end)
-            .unwrap_or(name.span.end);
+        let end = init.as_ref().map(|e| e.span().end).unwrap_or(name.span.end);
         Ok(InitDeclarator {
             name,
             ptrs: Vec::new(),

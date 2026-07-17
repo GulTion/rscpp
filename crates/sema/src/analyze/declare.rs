@@ -5,7 +5,6 @@ use crate::ty::Ty;
 use rscpp_ast::*;
 
 impl Context {
-
     pub(super) fn analyze_tu(&mut self, tu: &TranslationUnit) {
         // Pass 1: declare classes and functions (signatures).
         for item in &tu.items {
@@ -20,6 +19,9 @@ impl Context {
     pub(super) fn declare_item(&mut self, item: &Item) {
         match item {
             Item::UsingNamespace { .. } => {}
+            Item::TypeAlias { name, ty, .. } => {
+                self.type_aliases.insert(name.name.clone(), ty.clone());
+            }
             Item::Class(c) => {
                 let name = c.name.name.clone();
                 if let Err(prev) = self.symbols.define(Symbol {
@@ -37,7 +39,11 @@ impl Context {
             }
             Item::Function(f) => {
                 let ret = self.resolve_ast_type(&f.return_type);
-                let params: Vec<Ty> = f.params.iter().map(|p| self.resolve_ast_type(&p.ty)).collect();
+                let params: Vec<Ty> = f
+                    .params
+                    .iter()
+                    .map(|p| self.resolve_ast_type(&p.ty))
+                    .collect();
                 let ty = Ty::Function {
                     ret: Box::new(ret),
                     params,
@@ -79,9 +85,15 @@ impl Context {
     // stored in symbols as "Class::name" for ponytail simplicity
     pub(super) fn register_class_members(&mut self, c: &ClassDef) {
         let class = &c.name.name;
+        // Pass 1: type aliases so fields can resolve `Parent` / `TrieNode`.
+        for m in &c.members {
+            if let Member::TypeAlias { name, ty, .. } = m {
+                self.type_aliases.insert(name.name.clone(), ty.clone());
+            }
+        }
         for m in &c.members {
             match m {
-                Member::Access(_) => {}
+                Member::Access(_) | Member::TypeAlias { .. } => {}
                 Member::Field(d) => {
                     let ty = self.resolve_ast_type(&d.ty);
                     for decl in &d.declarators {
@@ -95,8 +107,11 @@ impl Context {
                 }
                 Member::Function(f) => {
                     let ret = self.resolve_ast_type(&f.return_type);
-                    let params: Vec<Ty> =
-                        f.params.iter().map(|p| self.resolve_ast_type(&p.ty)).collect();
+                    let params: Vec<Ty> = f
+                        .params
+                        .iter()
+                        .map(|p| self.resolve_ast_type(&p.ty))
+                        .collect();
                     let qname = format!("{class}::{}", f.name.name);
                     self.symbols.redefine(Symbol {
                         name: qname,

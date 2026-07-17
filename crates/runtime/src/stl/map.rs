@@ -1,6 +1,6 @@
 use super::{Ctx, Result};
 use crate::error::RuntimeError;
-use crate::value::{MapKey, Object, ObjId, Value};
+use crate::value::{MapKey, ObjId, Object, Value};
 use rscpp_ast::Span;
 
 pub fn call(
@@ -16,6 +16,24 @@ pub fn call(
         "size" => Ok(ctx.size(id, base, span)),
         "empty" => Ok(ctx.empty(id, base, span)),
         "clear" => Ok(ctx.clear(id, base, format!("{kind}::clear"), span)),
+        // ponytail: iterator stubs — end==0; find returns 1 if present else 0 (supports find!=end only)
+        "begin" | "end" | "cbegin" | "cend" => Ok(Value::Int(0)),
+        "find" => {
+            let key_v = Ctx::require_arg(args, "find", span)?;
+            let key = ctx.value_to_key(&key_v)?;
+            let found = match ctx.heap.get(id) {
+                Some(Object::Map(m)) => m.contains_key(&key),
+                Some(Object::UnorderedMap(m)) => m.contains_key(&key),
+                _ => false,
+            };
+            Ok(ctx.query(
+                base,
+                "find",
+                Some(key_v),
+                Value::Int(if found { 1 } else { 0 }),
+                span,
+            ))
+        }
         "count" => {
             let key_v = Ctx::require_arg(args, "count", span)?;
             let key = ctx.value_to_key(&key_v)?;
@@ -80,9 +98,7 @@ fn pair_or_args_as_kv(ctx: &Ctx<'_>, args: &[Value], span: Span) -> Result<(MapK
             return Err(RuntimeError::at(span, "insert expects pair or (key,value)"));
         };
         match ctx.heap.get(*pid) {
-            Some(Object::Pair { first, second }) => {
-                Ok((ctx.value_to_key(first)?, second.clone()))
-            }
+            Some(Object::Pair { first, second }) => Ok((ctx.value_to_key(first)?, second.clone())),
             _ => Err(RuntimeError::at(span, "insert expects a pair")),
         }
     } else if args.len() >= 2 {

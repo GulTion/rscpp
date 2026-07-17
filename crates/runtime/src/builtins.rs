@@ -77,7 +77,11 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
             let b = args[1].as_int().map_err(RuntimeError::new)?;
             let is_max = matches!(name, "max" | "std::max");
             let (out, chosen) = if is_max {
-                if a >= b { (a, 0usize) } else { (b, 1usize) }
+                if a >= b {
+                    (a, 0usize)
+                } else {
+                    (b, 1usize)
+                }
             } else if a <= b {
                 (a, 0usize)
             } else {
@@ -103,7 +107,10 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
         }
         "pow" | "std::pow" => {
             if args.len() != 2 {
-                return Err(RuntimeError::at(span, format!("`{name}` expects 2 arguments")));
+                return Err(RuntimeError::at(
+                    span,
+                    format!("`{name}` expects 2 arguments"),
+                ));
             }
             let a = args[0].as_int().map_err(RuntimeError::new)? as f64;
             let b = args[1].as_int().map_err(RuntimeError::new)? as f64;
@@ -114,7 +121,10 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
         }
         "sqrt" | "std::sqrt" => {
             if args.len() != 1 {
-                return Err(RuntimeError::at(span, format!("`{name}` expects 1 argument")));
+                return Err(RuntimeError::at(
+                    span,
+                    format!("`{name}` expects 1 argument"),
+                ));
             }
             let a = args[0].as_int().map_err(RuntimeError::new)? as f64;
             Ok(BuiltinOutcome {
@@ -124,7 +134,10 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
         }
         "ceil" | "std::ceil" => {
             if args.len() != 1 {
-                return Err(RuntimeError::at(span, format!("`{name}` expects 1 argument")));
+                return Err(RuntimeError::at(
+                    span,
+                    format!("`{name}` expects 1 argument"),
+                ));
             }
             let a = args[0].as_int().map_err(RuntimeError::new)? as f64;
             Ok(BuiltinOutcome {
@@ -134,7 +147,10 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
         }
         "floor" | "std::floor" => {
             if args.len() != 1 {
-                return Err(RuntimeError::at(span, format!("`{name}` expects 1 argument")));
+                return Err(RuntimeError::at(
+                    span,
+                    format!("`{name}` expects 1 argument"),
+                ));
             }
             let a = args[0].as_int().map_err(RuntimeError::new)? as f64;
             Ok(BuiltinOutcome {
@@ -144,7 +160,10 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
         }
         "__builtin_popcount" | "__builtin_popcountll" => {
             if args.len() != 1 {
-                return Err(RuntimeError::at(span, format!("`{name}` expects 1 argument")));
+                return Err(RuntimeError::at(
+                    span,
+                    format!("`{name}` expects 1 argument"),
+                ));
             }
             let a = args[0].as_int().map_err(RuntimeError::new)? as u64;
             Ok(BuiltinOutcome {
@@ -155,7 +174,10 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
         "isdigit" | "std::isdigit" | "isalpha" | "std::isalpha" | "isalnum" | "std::isalnum"
         | "islower" | "std::islower" | "isupper" | "std::isupper" | "isspace" | "std::isspace" => {
             if args.len() != 1 {
-                return Err(RuntimeError::at(span, format!("`{name}` expects 1 argument")));
+                return Err(RuntimeError::at(
+                    span,
+                    format!("`{name}` expects 1 argument"),
+                ));
             }
             let c = char_arg(&args[0])?;
             let ok = match name {
@@ -173,7 +195,10 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
         }
         "tolower" | "std::tolower" | "toupper" | "std::toupper" => {
             if args.len() != 1 {
-                return Err(RuntimeError::at(span, format!("`{name}` expects 1 argument")));
+                return Err(RuntimeError::at(
+                    span,
+                    format!("`{name}` expects 1 argument"),
+                ));
             }
             let c = char_arg(&args[0])?;
             let out = if matches!(name, "tolower" | "std::tolower") {

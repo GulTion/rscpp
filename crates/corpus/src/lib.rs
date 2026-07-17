@@ -112,7 +112,11 @@ pub fn run_corpus(dir: &Path, offset: usize, limit: usize) -> Result<CorpusRepor
             }
         })
         .collect();
-    groups.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.message.cmp(&b.message)));
+    groups.sort_by(|a, b| {
+        b.count
+            .cmp(&a.count)
+            .then_with(|| a.message.cmp(&b.message))
+    });
 
     Ok(CorpusReport {
         dir: dir.display().to_string(),

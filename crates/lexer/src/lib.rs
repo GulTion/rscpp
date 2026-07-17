@@ -8,6 +8,4 @@ mod token;
 pub use error::LexError;
 pub use scanner::tokenize;
 pub use span::Span;
-pub use token::{
-    FloatSuffix, IntBase, IntSuffix, Keyword, Punct, Token, TokenKind,
-};
+pub use token::{FloatSuffix, IntBase, IntSuffix, Keyword, Punct, Token, TokenKind};

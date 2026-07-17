@@ -4,7 +4,6 @@ use rscpp_ast::*;
 use rscpp_lexer::{Keyword, Punct, Token, TokenKind};
 
 impl Parser {
-
     pub(super) fn parse_block(&mut self) -> Result<Block, ParseError> {
         let start = self.expect_punct(Punct::LBrace)?.span.start;
         let mut stmts = Vec::new();
@@ -189,17 +188,17 @@ impl Parser {
         match &t.kind {
             TokenKind::Keyword(
                 Keyword::Void
-                    | Keyword::Bool
-                    | Keyword::Char
-                    | Keyword::Int
-                    | Keyword::Long
-                    | Keyword::Short
-                    | Keyword::Float
-                    | Keyword::Double
-                    | Keyword::Unsigned
-                    | Keyword::Signed
-                    | Keyword::Const
-                    | Keyword::Auto,
+                | Keyword::Bool
+                | Keyword::Char
+                | Keyword::Int
+                | Keyword::Long
+                | Keyword::Short
+                | Keyword::Float
+                | Keyword::Double
+                | Keyword::Unsigned
+                | Keyword::Signed
+                | Keyword::Const
+                | Keyword::Auto,
             ) => true,
             // Non-type template args: `bitset<32>`, `array<int, 4>`
             TokenKind::IntLit { .. } => matches!(

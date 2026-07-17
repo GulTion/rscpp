@@ -15,11 +15,10 @@ use rscpp_ast::Span;
 
 type Result<T> = std::result::Result<T, RuntimeError>;
 
-/// Shared access for STL methods: heap + event log + current activation.
+/// Shared access for STL methods: heap + event log.
 pub struct Ctx<'a> {
     pub heap: &'a mut Heap,
     pub events: &'a mut Vec<Event>,
-    pub call_id: Option<u64>,
 }
 
 impl Ctx<'_> {
@@ -41,7 +40,6 @@ impl Ctx<'_> {
         span: Span,
     ) -> Value {
         self.emit(Event::ContainerLookup {
-            call_id: self.call_id,
             container,
             kind: op.into(),
             key,
@@ -63,13 +61,13 @@ impl Ctx<'_> {
         span: Span,
     ) {
         self.emit(Event::ContainerMod {
-            call_id: self.call_id,
             container,
             kind: op.into(),
             index,
             key,
             old,
             value,
+            elems: vec![],
             span,
         });
     }

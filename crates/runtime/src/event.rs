@@ -13,27 +13,12 @@ use serde::Serialize;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind")]
 pub enum Slot {
-    Local {
-        name: String,
-    },
-    Global {
-        name: String,
-    },
-    Object {
-        obj: ObjId,
-    },
-    Index {
-        obj: ObjId,
-        index: usize,
-    },
-    MapEntry {
-        obj: ObjId,
-        key: String,
-    },
-    Field {
-        obj: ObjId,
-        field: String,
-    },
+    Local { name: String },
+    Global { name: String },
+    Object { obj: ObjId },
+    Index { obj: ObjId, index: usize },
+    MapEntry { obj: ObjId, key: String },
+    Field { obj: ObjId, field: String },
 }
 
 /// One map/set entry at `Alloc` time (keys as `MapKey`, values optional for sets).
@@ -47,36 +32,33 @@ pub struct AllocEntry {
 /// Runtime events for visualizers / debuggers. No UI coupling.
 ///
 /// Serialized as `{ "kind": "<Variant>", ... }`. Full field guide: `docs/events.md`.
+///
+/// **`call_id` / `parent_id` appear only on `FnEnter` / `FnExit`.** The root activation
+/// (`main` or top-level `run_method`) uses `call_id: 0` and `parent_id: null`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "kind")]
 pub enum Event {
     /// About to execute a statement (primary stepping hook).
     Step {
-        call_id: Option<u64>,
         span: Span,
     },
     ScopeEnter {
-        call_id: Option<u64>,
         span: Span,
     },
     ScopeExit {
-        call_id: Option<u64>,
         span: Span,
     },
     VarCreate {
-        call_id: Option<u64>,
         name: String,
         value: Value,
         span: Span,
     },
     VarDestroy {
-        call_id: Option<u64>,
         name: String,
         value: Value,
         span: Span,
     },
     VarAssign {
-        call_id: Option<u64>,
         name: String,
         old: Option<Value>,
         value: Value,
@@ -84,7 +66,6 @@ pub enum Event {
     },
     /// Structured lvalue write (locals, indices, fields).
     Write {
-        call_id: Option<u64>,
         slot: Slot,
         old: Option<Value>,
         value: Value,
@@ -92,7 +73,7 @@ pub enum Event {
     },
     FnEnter {
         name: String,
-        /// Unique id for this activation (monotonic).
+        /// Unique id for this activation (monotonic). Root / `main` is `0`.
         call_id: u64,
         /// Caller's `call_id`; `None` for top-level entry (e.g. `main`).
         parent_id: Option<u64>,
@@ -108,17 +89,31 @@ pub enum Event {
     },
     /// Which branch of an `if` was taken (`then` = true).
     Branch {
-        call_id: Option<u64>,
         then_taken: bool,
         span: Span,
     },
-    /// Start of a loop-body iteration.
+    /// Start of a loop-body iteration (`loop_id` = runtime instance).
     LoopIter {
-        call_id: Option<u64>,
+        loop_id: u64,
+        span: Span,
+    },
+    /// `continue;` targeting the innermost open loop instance.
+    Continue {
+        loop_id: u64,
+        span: Span,
+    },
+    /// `break;` targeting the innermost open loop instance.
+    Break {
+        loop_id: u64,
+        span: Span,
+    },
+    /// Loop instance finished (`reason`: `exhausted` | `break` | `return`).
+    LoopEnd {
+        loop_id: u64,
+        reason: String,
         span: Span,
     },
     Compare {
-        call_id: Option<u64>,
         op: String,
         left: Value,
         right: Value,
@@ -127,7 +122,6 @@ pub enum Event {
     },
     /// Builtin chooser (`min` / `max`) selected one input argument.
     BuiltinSelect {
-        call_id: Option<u64>,
         name: String,
         args: Vec<Value>,
         chosen: usize,
@@ -137,7 +131,6 @@ pub enum Event {
     },
     /// Exchange of two slots (explicit `swap` or detected).
     Swap {
-        call_id: Option<u64>,
         a: Slot,
         b: Slot,
         value_a: Value,
@@ -145,8 +138,9 @@ pub enum Event {
         span: Span,
     },
     /// Coarse container mutation (push/pop/clear). Prefer `Write` for index stores.
+    /// Bulk ops (`sort`, `reverse`, `iota`, `partial_sum`) include post-state `elems`
+    /// (same shape as `Alloc.elems`). Incremental ops leave `elems` empty.
     ContainerMod {
-        call_id: Option<u64>,
         container: Value,
         #[serde(rename = "op")]
         kind: String,
@@ -155,11 +149,13 @@ pub enum Event {
         key: Option<Value>,
         old: Option<Value>,
         value: Option<Value>,
+        /// After-state sequence snapshot for bulk mutations; empty otherwise.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        elems: Vec<Value>,
         span: Span,
     },
     /// Read-only container query (`count`, `size`, `empty`, `top`, `index`, …).
     ContainerLookup {
-        call_id: Option<u64>,
         container: Value,
         #[serde(rename = "op")]
         kind: String,
@@ -169,7 +165,6 @@ pub enum Event {
         span: Span,
     },
     Alloc {
-        call_id: Option<u64>,
         id: u64,
         #[serde(rename = "type_name")]
         kind: String,
@@ -183,20 +178,17 @@ pub enum Event {
         span: Span,
     },
     Dealloc {
-        call_id: Option<u64>,
         id: u64,
         span: Span,
     },
     /// Reference bound to a slot (when refs become real).
     RefBind {
-        call_id: Option<u64>,
         name: String,
         target: Slot,
         span: Span,
     },
     /// Pointer updated to a new address / object.
     PtrMove {
-        call_id: Option<u64>,
         name: String,
         to: Value,
         span: Span,

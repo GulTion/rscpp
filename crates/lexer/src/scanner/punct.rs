@@ -4,7 +4,6 @@ use crate::span::Span;
 use crate::token::{FloatSuffix, IntBase, IntSuffix, Keyword, Punct, Token, TokenKind};
 
 impl<'a> Scanner<'a> {
-
     pub(super) fn lex_punct(&mut self, start: usize) -> Result<Token, LexError> {
         let c = self.bump().unwrap();
         let kind = match c {
@@ -172,10 +171,7 @@ impl<'a> Scanner<'a> {
                 }
             }
             _ => {
-                return Err(self.err_at(
-                    start,
-                    format!("unexpected character `{}`", c as char),
-                ));
+                return Err(self.err_at(start, format!("unexpected character `{}`", c as char)));
             }
         };
         Ok(Token::new(TokenKind::Punct(kind), self.span_from(start)))

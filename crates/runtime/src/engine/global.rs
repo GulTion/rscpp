@@ -1,14 +1,13 @@
 use super::{Engine, Flow, Frame, LValue, Result};
+use crate::builtins;
 use crate::error::RuntimeError;
 use crate::event::{Event, Slot};
 use crate::stl;
-use crate::builtins;
-use crate::value::{Address, Heap, MapKey, Object, ObjId, Value};
+use crate::value::{Address, Heap, MapKey, ObjId, Object, Value};
 use rscpp_ast::*;
 use std::collections::{HashMap, HashSet};
 
 impl Engine {
-
     pub(super) fn exec_global_decl(&mut self, d: &Decl) -> Result<()> {
         for decl in &d.declarators {
             let val = if let Some(init) = &decl.init {
@@ -18,7 +17,6 @@ impl Engine {
             };
             self.globals.insert(decl.name.name.clone(), val.clone());
             self.emit(Event::VarCreate {
-                call_id: self.current_call_id(),
                 name: decl.name.name.clone(),
                 value: val,
                 span: decl.span,

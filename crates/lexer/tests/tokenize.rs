@@ -1,6 +1,4 @@
-use rscpp_lexer::{
-    tokenize, FloatSuffix, IntBase, IntSuffix, Keyword, LexError, Punct, TokenKind,
-};
+use rscpp_lexer::{tokenize, FloatSuffix, IntBase, IntSuffix, Keyword, LexError, Punct, TokenKind};
 
 fn kinds(src: &str) -> Result<Vec<TokenKind>, LexError> {
     Ok(tokenize(src)?.into_iter().map(|t| t.kind).collect())

@@ -137,39 +137,37 @@ impl Parser {
             | TokenKind::Keyword(Keyword::True | Keyword::False | Keyword::Nullptr) => true,
             TokenKind::Keyword(
                 Keyword::Void
-                    | Keyword::Bool
-                    | Keyword::Char
-                    | Keyword::Int
-                    | Keyword::Long
-                    | Keyword::Short
-                    | Keyword::Float
-                    | Keyword::Double
-                    | Keyword::Unsigned
-                    | Keyword::Signed
-                    | Keyword::Const
-                    | Keyword::Auto
-                    | Keyword::Class
-                    | Keyword::Struct
-                    | Keyword::Typename
-                    | Keyword::Enum,
+                | Keyword::Bool
+                | Keyword::Char
+                | Keyword::Int
+                | Keyword::Long
+                | Keyword::Short
+                | Keyword::Float
+                | Keyword::Double
+                | Keyword::Unsigned
+                | Keyword::Signed
+                | Keyword::Const
+                | Keyword::Auto
+                | Keyword::Class
+                | Keyword::Struct
+                | Keyword::Typename
+                | Keyword::Enum,
             ) => false,
             TokenKind::Ident(_) => match self.tokens.get(i + 1).map(|t| &t.kind) {
                 // `Foo x` / `Foo*` / `Foo&` / `const Foo` / `Foo<…>` — parameter
                 Some(TokenKind::Ident(_))
-                | Some(TokenKind::Punct(
-                    Punct::Star | Punct::Amp | Punct::AmpAmp | Punct::Lt,
-                ))
+                | Some(TokenKind::Punct(Punct::Star | Punct::Amp | Punct::AmpAmp | Punct::Lt))
                 | Some(TokenKind::Keyword(Keyword::Const)) => false,
                 // `foo)` / `foo,` / `foo(` / `foo+1` — expression ctor arg
                 Some(TokenKind::Punct(Punct::RParen | Punct::Comma | Punct::LParen)) => true,
                 Some(TokenKind::Punct(
                     Punct::Plus
-                        | Punct::Minus
-                        | Punct::Slash
-                        | Punct::Percent
-                        | Punct::EqEq
-                        | Punct::Dot
-                        | Punct::Arrow,
+                    | Punct::Minus
+                    | Punct::Slash
+                    | Punct::Percent
+                    | Punct::EqEq
+                    | Punct::Dot
+                    | Punct::Arrow,
                 )) => true,
                 _ => false,
             },
@@ -264,8 +262,8 @@ impl Parser {
     }
 }
 
-mod item;
-mod func;
-mod ty;
-mod stmt;
 mod expr;
+mod func;
+mod item;
+mod stmt;
+mod ty;

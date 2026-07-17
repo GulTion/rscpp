@@ -6,7 +6,6 @@ use crate::ty::Ty;
 use rscpp_ast::*;
 
 impl Context {
-
     pub(super) fn lookup_path(&mut self, path: &Path) -> Ty {
         if path.segments.is_empty() {
             return Ty::Error;
@@ -23,7 +22,10 @@ impl Context {
                     return sym.ty.clone();
                 }
             }
-            self.err(id.span, format!("use of undeclared identifier `{}`", id.name));
+            self.err(
+                id.span,
+                format!("use of undeclared identifier `{}`", id.name),
+            );
             return Ty::Error;
         }
         // std::vector / ranges::max — free names under a namespace alias
@@ -129,7 +131,8 @@ impl Context {
                 if let Some(sym) = self.symbols.lookup(name) {
                     if matches!(sym.kind, SymbolKind::Class) {
                         let aliased = sym.ty.clone();
-                        if !matches!(aliased.strip_cv_ref(), Ty::Named { name: n, .. } if n == name) {
+                        if !matches!(aliased.strip_cv_ref(), Ty::Named { name: n, .. } if n == name)
+                        {
                             return self.lookup_member(&aliased, field, span);
                         }
                     }
@@ -144,8 +147,11 @@ impl Context {
                 }
                 // LeetCode problem types are often only in comments — seed real fields.
                 match (name.as_str(), field) {
-                    ("TreeNode", "val") | ("ListNode", "val") | ("Node", "val")
-                    | ("PolyNode", "coefficient") | ("PolyNode", "power")
+                    ("TreeNode", "val")
+                    | ("ListNode", "val")
+                    | ("Node", "val")
+                    | ("PolyNode", "coefficient")
+                    | ("PolyNode", "power")
                     | ("UndirectedGraphNode", "label") => return Ty::Int,
                     ("TreeNode", "left") | ("TreeNode", "right") => {
                         return Ty::Pointer(Box::new(Ty::named("TreeNode", vec![])));
@@ -154,10 +160,16 @@ impl Context {
                         return Ty::Pointer(Box::new(Ty::named(name, vec![])));
                     }
                     // Doubly-linked / random / parent variants of Node
-                    ("Node", "prev") | ("Node", "child") | ("Node", "parent")
-                    | ("Node", "random") | ("Node", "left") | ("Node", "right")
-                    | ("Node", "topLeft") | ("Node", "topRight")
-                    | ("Node", "bottomLeft") | ("Node", "bottomRight") => {
+                    ("Node", "prev")
+                    | ("Node", "child")
+                    | ("Node", "parent")
+                    | ("Node", "random")
+                    | ("Node", "left")
+                    | ("Node", "right")
+                    | ("Node", "topLeft")
+                    | ("Node", "topRight")
+                    | ("Node", "bottomLeft")
+                    | ("Node", "bottomRight") => {
                         return Ty::Pointer(Box::new(Ty::named("Node", vec![])));
                     }
                     ("Node", "isLeaf") => return Ty::Bool,
@@ -200,7 +212,9 @@ impl Context {
     /// Element type for `a[i]` / `operator[]`. Sets are intentionally rejected.
     pub(super) fn elem_type(&mut self, base: &Ty, span: Span) -> Ty {
         match base.strip_cv_ref() {
-            Ty::Named { name, args } if name == "vector" || name == "string" || name == "deque" || name == "array" => {
+            Ty::Named { name, args }
+                if name == "vector" || name == "string" || name == "deque" || name == "array" =>
+            {
                 if name == "string" {
                     Ty::Char
                 } else if let Some(t) = args.first() {
@@ -223,10 +237,7 @@ impl Context {
                     || name == "multiset"
                     || name == "unordered_multiset" =>
             {
-                self.err(
-                    span,
-                    format!("type `{name}` does not provide operator[]"),
-                );
+                self.err(span, format!("type `{name}` does not provide operator[]"));
                 Ty::Error
             }
             Ty::Pointer(inner) => *inner.clone(),
@@ -242,7 +253,9 @@ impl Context {
     /// Element type for range-for `for (auto& x : c)`. Includes set/unordered_set.
     pub(super) fn range_elem_type(&mut self, base: &Ty, span: Span) -> Ty {
         match base.strip_cv_ref() {
-            Ty::Named { name, args } if name == "vector" || name == "deque" || name == "list" || name == "array" => {
+            Ty::Named { name, args }
+                if name == "vector" || name == "deque" || name == "list" || name == "array" =>
+            {
                 args.first().cloned().unwrap_or(Ty::Unknown)
             }
             Ty::Named { name, .. } if name == "string" => Ty::Char,
@@ -269,7 +282,11 @@ impl Context {
 
     pub(super) fn check_unary(&mut self, op: UnaryOp, t: &Ty, span: Span) -> Ty {
         match op {
-            UnaryOp::Plus | UnaryOp::Minus | UnaryOp::PreInc | UnaryOp::PreDec | UnaryOp::PostInc
+            UnaryOp::Plus
+            | UnaryOp::Minus
+            | UnaryOp::PreInc
+            | UnaryOp::PreDec
+            | UnaryOp::PostInc
             | UnaryOp::PostDec => {
                 if !t.is_numeric() && *t != Ty::Error && *t != Ty::Unknown {
                     self.err(span, format!("invalid unary op on `{t}`"));
@@ -354,11 +371,11 @@ impl Context {
                         }
                     }
                 }
-                if (!lt.is_numeric() || !rt.is_numeric())
-                    && *lt != Ty::Error
-                    && *rt != Ty::Error
-                {
-                    self.err(span, format!("invalid operands `{lt}` and `{rt}` to binary op"));
+                if (!lt.is_numeric() || !rt.is_numeric()) && *lt != Ty::Error && *rt != Ty::Error {
+                    self.err(
+                        span,
+                        format!("invalid operands `{lt}` and `{rt}` to binary op"),
+                    );
                 }
                 if matches!(ls, Ty::Float | Ty::Double) || matches!(rs, Ty::Float | Ty::Double) {
                     Ty::Double
@@ -373,7 +390,9 @@ impl Context {
     }
 
     pub(super) fn assignable(&self, dst: &Ty, src: &Ty) -> bool {
-        if matches!(dst, Ty::Unknown | Ty::Error | Ty::Auto) || matches!(src, Ty::Unknown | Ty::Error) {
+        if matches!(dst, Ty::Unknown | Ty::Error | Ty::Auto)
+            || matches!(src, Ty::Unknown | Ty::Error)
+        {
             return true;
         }
         // `auto*`, `const auto&`, nested auto — accept any side that still has auto
@@ -460,11 +479,7 @@ impl Context {
                 BuiltinType::Auto => Ty::Auto,
             },
             Type::Named { path, args, span } => {
-                let name = path
-                    .segments
-                    .last()
-                    .map(|s| s.name.as_str())
-                    .unwrap_or("?");
+                let name = path.segments.last().map(|s| s.name.as_str()).unwrap_or("?");
                 match name {
                     "int64_t" | "long long" => return Ty::LongLong,
                     "uint64_t" | "size_t" => return Ty::ULongLong,
@@ -472,8 +487,11 @@ impl Context {
                     "uint32_t" => return Ty::UInt,
                     _ => {}
                 }
-                // `using RET = pair<int,int>;` — expand when used as a type name.
+                // `using Parent = vector<int>;` — expand aliases.
                 if args.is_empty() {
+                    if let Some(aliased) = self.type_aliases.get(name).cloned() {
+                        return self.resolve_ast_type(&aliased);
+                    }
                     if let Some(sym) = self.symbols.lookup(name) {
                         if matches!(sym.kind, SymbolKind::Class) {
                             return sym.ty.clone();

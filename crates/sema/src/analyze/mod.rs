@@ -4,6 +4,7 @@ use crate::error::SemaError;
 use crate::symbols::{Symbol, SymbolKind, SymbolTable};
 use crate::ty::Ty;
 use rscpp_ast::*;
+use std::collections::HashMap;
 
 pub struct SemaResult {
     pub errors: Vec<SemaError>,
@@ -28,6 +29,8 @@ struct Context {
     errors: Vec<SemaError>,
     /// Currently enclosing class name, if any.
     current_class: Option<String>,
+    /// `using Alias = Type;`
+    type_aliases: HashMap<String, Type>,
 }
 
 impl Context {
@@ -36,6 +39,7 @@ impl Context {
             symbols: SymbolTable::new(),
             errors: Vec::new(),
             current_class: None,
+            type_aliases: HashMap::new(),
         }
     }
 
@@ -325,8 +329,8 @@ impl Context {
     }
 }
 
-mod declare;
 mod check;
+mod declare;
 mod expr;
-mod types;
 mod stl;
+mod types;
