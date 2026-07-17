@@ -1,7 +1,6 @@
 import {
   EditorView,
   Decoration,
-  WidgetType,
   ViewPlugin,
   keymap,
   lineNumbers,
@@ -9,10 +8,10 @@ import {
 import { EditorState } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { cpp } from "@codemirror/lang-cpp";
-import type { Timeline, ValueJson } from "@rscpp/timeline";
+import type { Timeline } from "@rscpp/timeline";
 import type { RunResult } from "@rscpp/runner";
 import { applyHighlights, highlightField } from "./decorations.js";
-import { formatChip } from "./chips.js";
+import { buildChipDecos } from "./chipDecos.js";
 import { buildByteIndexMap, jsToByte } from "./spans.js";
 
 export type MountHandle = {
@@ -38,51 +37,6 @@ export type EditorProps = {
   ) => Promise<RunResult>;
 };
 
-class ChipWidget extends WidgetType {
-  constructor(
-    readonly text: string,
-    readonly title: string,
-  ) {
-    super();
-  }
-  eq(other: ChipWidget) {
-    return this.text === other.text && this.title === other.title;
-  }
-  toDOM() {
-    const span = document.createElement("span");
-    span.textContent = this.text;
-    span.title = this.title;
-    span.style.cssText =
-      "font-size:0.75em;color:#0f766e;background:#ccfbf1;margin-left:2px;border-radius:3px;padding:0 2px;";
-    span.dataset.testid = "editor-chip";
-    return span;
-  }
-  ignoreEvent() {
-    return true;
-  }
-}
-
-function buildChipDecos(state: EditorState, locals: Map<string, ValueJson>) {
-  if (locals.size === 0) return Decoration.none;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ranges: any[] = [];
-  const text = state.doc.toString();
-  for (const [name, value] of locals) {
-    const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(text))) {
-      const from = m.index + m[0].length;
-      ranges.push(
-        Decoration.widget({
-          widget: new ChipWidget(formatChip(value), JSON.stringify(value)),
-          side: 1,
-        }).range(from),
-      );
-    }
-  }
-  return Decoration.set(ranges, true);
-}
-
 export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
   let timeline = props.timeline;
   let profile = props.profile;
@@ -97,7 +51,8 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
   el.innerHTML = "";
 
   const toolbar = document.createElement("div");
-  toolbar.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;align-items:center;";
+  toolbar.style.cssText =
+    "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;align-items:center;";
 
   const profileSel = document.createElement("select");
   profileSel.dataset.testid = "editor-profile";
@@ -135,7 +90,8 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
   ioStub.style.cssText = "width:100%;height:48px;display:none;margin-bottom:6px;";
 
   const cmHost = document.createElement("div");
-  cmHost.style.cssText = "height:calc(100% - 80px);min-height:200px;border:1px solid #e5e7eb;";
+  cmHost.style.cssText =
+    "height:calc(100% - 80px);min-height:200px;border:1px solid #e5e7eb;";
 
   toolbar.append(profileSel, methodInput, argsInput, runBtn);
   el.append(toolbar, ioStub, errorBox, cmHost);
@@ -155,9 +111,7 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
         this.rebuild(view);
       }
       rebuild(view: EditorView) {
-        const locals =
-          timeline.snapshot().frames.at(-1)?.locals ?? new Map<string, ValueJson>();
-        this.decorations = buildChipDecos(view.state, locals);
+        this.decorations = buildChipDecos(view.state, timeline);
       }
       update(u: { view: EditorView; docChanged: boolean }) {
         if (u.docChanged) this.rebuild(u.view);
@@ -213,21 +167,30 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
   });
 
   function paintHighlights(): void {
-    // Spans are UTF-8 bytes into the event source (= timeline.source).
-    applyHighlights(view, timeline.highlight(), timeline.source || view.state.doc.toString());
+    applyHighlights(
+      view,
+      timeline.highlight(),
+      timeline.source || view.state.doc.toString(),
+    );
+  }
+
+  function paintChips(): void {
+    const plugin = view.plugin(chipPlugin);
+    plugin?.rebuild(view);
+    view.dispatch({});
+  }
+
+  function onTimeline(): void {
+    paintHighlights();
+    paintChips();
   }
 
   let unsub = timeline.subscribe((ev) => {
     if (ev.type === "highlight" || ev.type === "tick" || ev.type === "seek") {
-      paintHighlights();
-    }
-    if (ev.type === "tick") {
-      const plugin = view.plugin(chipPlugin);
-      plugin?.rebuild(view);
-      view.dispatch({});
+      onTimeline();
     }
   });
-  paintHighlights();
+  onTimeline();
 
   profileSel.addEventListener("change", () => {
     profile = profileSel.value as EditorProfile;
@@ -262,9 +225,11 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
     if (!result.ok && result.error) {
       errorBox.textContent = result.error.message;
       if (result.error.span) {
-        applyHighlights(view, [
-          { start: result.error.span.start, end: result.error.span.end, kind: "error" },
-        ]);
+        applyHighlights(
+          view,
+          [{ start: result.error.span.start, end: result.error.span.end, kind: "error" }],
+          source,
+        );
       }
     }
     onRun?.(result);
@@ -277,18 +242,10 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
         timeline = next.timeline;
         unsub = timeline.subscribe((ev) => {
           if (ev.type === "highlight" || ev.type === "tick" || ev.type === "seek") {
-            applyHighlights(
-              view,
-              timeline.highlight(),
-              timeline.source || view.state.doc.toString(),
-            );
-          }
-          if (ev.type === "tick") {
-            const plugin = view.plugin(chipPlugin);
-            plugin?.rebuild(view);
-            view.dispatch({});
+            onTimeline();
           }
         });
+        onTimeline();
       }
       if (next.source !== undefined && next.source !== view.state.doc.toString()) {
         view.dispatch({
