@@ -4,6 +4,8 @@ export type LoopSegment = {
   loop_id: number;
   startIndex: number;
   endIndex: number | null;
+  /** Nesting depth among open loops (0 = outermost). */
+  depth: number;
 };
 
 export type CallSegment = {
@@ -18,24 +20,38 @@ export type CallSegment = {
 
 /** Pair LoopIter start with LoopEnd for each loop_id instance. */
 export function buildLoopSegments(events: EventJson[]): LoopSegment[] {
-  const open = new Map<number, number>();
+  type Open = { startIndex: number; depth: number };
+  const open = new Map<number, Open>();
   const segs: LoopSegment[] = [];
   events.forEach((ev, i) => {
     if (ev.kind === "LoopIter") {
       const id = ev.loop_id as number;
-      if (!open.has(id)) open.set(id, i);
+      if (!open.has(id)) {
+        open.set(id, { startIndex: i, depth: open.size });
+      }
     } else if (ev.kind === "LoopEnd") {
       const id = ev.loop_id as number;
-      const start = open.get(id);
-      if (start !== undefined) {
-        segs.push({ loop_id: id, startIndex: start, endIndex: i });
+      const o = open.get(id);
+      if (o !== undefined) {
+        segs.push({
+          loop_id: id,
+          startIndex: o.startIndex,
+          endIndex: i,
+          depth: o.depth,
+        });
         open.delete(id);
       }
     }
   });
-  for (const [loop_id, startIndex] of open) {
-    segs.push({ loop_id, startIndex, endIndex: null });
+  for (const [loop_id, o] of open) {
+    segs.push({
+      loop_id,
+      startIndex: o.startIndex,
+      endIndex: null,
+      depth: o.depth,
+    });
   }
+  segs.sort((a, b) => a.depth - b.depth || a.startIndex - b.startIndex);
   return segs;
 }
 
@@ -94,7 +110,6 @@ export function buildCallSegments(events: EventJson[]): CallSegment[] {
     });
   }
 
-  // Shallow first so deeper layers paint on top
   segs.sort((a, b) => a.depth - b.depth || a.startIndex - b.startIndex);
   return segs;
 }

@@ -26,18 +26,24 @@ describe("buildCallSegments", () => {
 });
 
 describe("buildLoopSegments", () => {
-  it("pairs loop segments", () => {
+  it("pairs loop segments with nesting depth", () => {
     const events = [
       { kind: "Step" },
       { kind: "LoopIter", loop_id: 1 },
+      { kind: "LoopIter", loop_id: 2 },
       { kind: "Step" },
+      { kind: "LoopEnd", loop_id: 2, reason: "exhausted" },
       { kind: "LoopEnd", loop_id: 1, reason: "exhausted" },
     ];
-    expect(buildLoopSegments(events)[0]).toMatchObject({
-      loop_id: 1,
-      startIndex: 1,
-      endIndex: 3,
-    });
+    const segs = buildLoopSegments(events);
+    const outer = segs.find((s) => s.loop_id === 1)!;
+    const inner = segs.find((s) => s.loop_id === 2)!;
+    expect(outer.depth).toBe(0);
+    expect(inner.depth).toBe(1);
+    expect(outer.startIndex).toBe(1);
+    expect(outer.endIndex).toBe(5);
+    expect(inner.startIndex).toBe(2);
+    expect(inner.endIndex).toBe(4);
   });
 });
 

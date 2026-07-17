@@ -25,8 +25,6 @@ const COLORS = [
   "#b07aa1",
 ];
 
-const LOOP_MARKER_COLOR = "#64748b";
-
 function shortFnName(name: string): string {
   const i = name.lastIndexOf("::");
   return i >= 0 ? name.slice(i + 2) : name;
@@ -252,9 +250,42 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
       markers.appendChild(tip);
     }
 
-    // Loop-start pins (keep; do not fill the bar — functions own the segments)
-    for (const seg of buildLoopSegments(timeline.events)) {
+    // Nested loop segments (same nesting + 1px inset model as functions).
+    // Inset starts at 1px so parent function color remains visible at the edges.
+    const loops = buildLoopSegments(timeline.events);
+    const seenLoops = new Map<number, string>();
+    for (const seg of loops) {
+      const end = seg.endIndex ?? timeline.length;
       const left = (seg.startIndex / len) * 100;
+      const width = Math.max(((end - seg.startIndex + 1) / len) * 100, 0.4);
+      const color = COLORS[seg.loop_id % COLORS.length];
+      seenLoops.set(seg.loop_id, color);
+      // +1 so even outermost loop leaves 1px of function color above/below
+      const inset = seg.depth + 1;
+      const segEl = document.createElement("div");
+      segEl.dataset.seg = `loop-${seg.loop_id}`;
+      segEl.dataset.loopId = String(seg.loop_id);
+      segEl.dataset.depth = String(seg.depth);
+      segEl.title = `loop #${seg.loop_id} · t=${seg.startIndex}…${end}`;
+      segEl.style.cssText = [
+        "position:absolute",
+        `left:${left}%`,
+        `width:${width}%`,
+        `top:${inset}px`,
+        `bottom:${inset}px`,
+        `background:${color}`,
+        "opacity:0.9",
+        `z-index:${20 + seg.depth}`,
+        "pointer-events:none",
+        "box-sizing:border-box",
+      ].join(";");
+      bar.insertBefore(segEl, progress);
+    }
+
+    // Loop-start pins
+    for (const seg of loops) {
+      const left = (seg.startIndex / len) * 100;
+      const color = COLORS[seg.loop_id % COLORS.length];
       const tip = document.createElement("button");
       tip.type = "button";
       tip.dataset.testid = `seeker-loop-start-${seg.loop_id}-${seg.startIndex}`;
@@ -263,28 +294,43 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
       tip.style.cssText = [
         "position:absolute",
         `left:${left}%`,
-        "top:2px",
+        "top:0",
         "transform:translateX(-50%)",
         "pointer-events:auto",
         "cursor:pointer",
         "border:none",
         "padding:0",
         "background:transparent",
-        "z-index:20",
+        "display:flex",
+        "flex-direction:column",
+        "align-items:center",
+        "gap:1px",
+        "z-index:40",
       ].join(";");
 
       const label = document.createElement("span");
-      label.textContent = "loop";
+      label.textContent = "loop start";
       label.style.cssText = [
         "font:8px/1 ui-sans-serif,system-ui,sans-serif",
         "font-weight:700",
-        "padding:1px 4px",
+        "padding:2px 5px",
         "border-radius:3px",
-        `background:${LOOP_MARKER_COLOR}`,
+        `background:${color}`,
         "color:#fff",
-        "opacity:0.9",
+        "box-shadow:0 1px 2px #0003",
+        "white-space:nowrap",
       ].join(";");
-      tip.append(label);
+
+      const tick = document.createElement("span");
+      tick.style.cssText = [
+        "width:0",
+        "height:0",
+        "border-left:4px solid transparent",
+        "border-right:4px solid transparent",
+        `border-top:5px solid ${color}`,
+      ].join(";");
+
+      tip.append(label, tick);
       tip.addEventListener("click", (e) => {
         e.stopPropagation();
         timeline.seek(seg.startIndex);
@@ -296,6 +342,12 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
         tooltip.style.left = `${rect.left + rect.width / 2 - wrapRect.left}px`;
         tooltip.style.display = "block";
         tooltip.textContent = `Loop started · id ${seg.loop_id} · t=${seg.startIndex}`;
+        const ev = timeline.events[seg.startIndex];
+        if (ev?.span) {
+          timeline.setHoverHighlight([
+            { start: ev.span.start, end: ev.span.end, kind: ev.kind },
+          ]);
+        }
       });
       tip.addEventListener("pointerleave", () => {
         if (!dragging) hideTooltip();
@@ -303,22 +355,40 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
       markers.appendChild(tip);
     }
 
-    // Legend: one swatch per function name
-    if (seenNames.size > 0) {
-      const title = document.createElement("span");
-      title.textContent = "Functions:";
-      title.style.color = "#64748b";
-      legend.appendChild(title);
-      for (const [name, color] of seenNames) {
-        const item = document.createElement("span");
-        item.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
-        const swatch = document.createElement("span");
-        swatch.style.cssText = `width:10px;height:10px;border-radius:2px;background:${color};display:inline-block;`;
-        const text = document.createElement("span");
-        text.textContent = shortFnName(name);
-        text.title = name;
-        item.append(swatch, text);
-        legend.appendChild(item);
+    // Legend: functions + loops
+    if (seenNames.size > 0 || seenLoops.size > 0) {
+      if (seenNames.size > 0) {
+        const title = document.createElement("span");
+        title.textContent = "Functions:";
+        title.style.color = "#64748b";
+        legend.appendChild(title);
+        for (const [name, color] of seenNames) {
+          const item = document.createElement("span");
+          item.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
+          const swatch = document.createElement("span");
+          swatch.style.cssText = `width:10px;height:10px;border-radius:2px;background:${color};display:inline-block;`;
+          const text = document.createElement("span");
+          text.textContent = shortFnName(name);
+          text.title = name;
+          item.append(swatch, text);
+          legend.appendChild(item);
+        }
+      }
+      if (seenLoops.size > 0) {
+        const title = document.createElement("span");
+        title.textContent = "Loops:";
+        title.style.cssText = "color:#64748b;margin-left:8px;";
+        legend.appendChild(title);
+        for (const [id, color] of seenLoops) {
+          const item = document.createElement("span");
+          item.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
+          const swatch = document.createElement("span");
+          swatch.style.cssText = `width:10px;height:10px;border-radius:2px;background:${color};display:inline-block;`;
+          const text = document.createElement("span");
+          text.textContent = `#${id}`;
+          item.append(swatch, text);
+          legend.appendChild(item);
+        }
       }
     }
   }
