@@ -212,9 +212,8 @@ editor = mountEditor(editorEl, {
   runMain: (src) => run(src),
   runMethod: (src, method, args) => runMethod(src, method, args),
   onRun: (result) => {
-    const doc = editorEl.querySelector(".cm-content")?.textContent ?? source;
     remountTimeline({
-      source: doc,
+      source: editor.getSource(),
       events: result.events,
       run: result,
     });

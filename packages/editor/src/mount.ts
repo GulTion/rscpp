@@ -16,6 +16,8 @@ import { buildByteIndexMap, jsToByte } from "./spans.js";
 
 export type MountHandle = {
   update(props: Partial<EditorProps>): void;
+  /** Current editor document (preserves newlines). */
+  getSource(): string;
   destroy(): void;
 };
 
@@ -270,6 +272,9 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
       if (next.runMain) runMain = next.runMain;
       if (next.runMethod) runMethod = next.runMethod;
       void expectedJson;
+    },
+    getSource() {
+      return view.state.doc.toString();
     },
     destroy() {
       unsub();
