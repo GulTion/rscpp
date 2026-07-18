@@ -9,6 +9,8 @@ import {
   DEFAULT_GRAPH_OPTS,
 } from "../graphOpts.js";
 import type { WalkHighlight } from "../walk.js";
+import type { AccessHighlight } from "../access.js";
+import { EMPTY_ACCESS } from "../access.js";
 
 const MAX_NODES = 200;
 const NS = "http://www.w3.org/2000/svg";
@@ -43,8 +45,12 @@ export function renderTree(
   host: HTMLElement,
   obj: ObjectState,
   _heap: HeapSnapshot,
+  access: AccessHighlight = EMPTY_ACCESS,
 ): void {
   host.innerHTML = "";
+  ensureWalkStyle();
+  const cur = new Set(access.current.map(String));
+  const trail = new Set(access.trail.map(String));
   const parents = (obj.elems ?? []).map((e) => (e.kind === "Int" ? e.value : -1));
   if (parents.length > MAX_NODES) {
     host.textContent = `tree too large (${parents.length} > ${MAX_NODES}); use table`;

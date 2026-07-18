@@ -63,7 +63,7 @@ function renderOne(
       renderMatrix(host, obj, snap, access);
       break;
     case "tree":
-      renderTree(host, obj, snap);
+      renderTree(host, obj, snap, access);
       break;
     case "adjacency-list":
     case "adjacency-matrix":
@@ -346,7 +346,8 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
       repr === "table" ||
       repr === "stack" ||
       repr === "queue" ||
-      repr === "matrix"
+      repr === "matrix" ||
+      repr === "tree"
         ? accessHighlight(timeline.events, timeline.index, id, snap)
         : undefined;
     renderOne(viewHost, obj, prevById.get(id), snap, repr, gOpts, walk, access);
