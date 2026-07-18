@@ -66,13 +66,13 @@ const fixtures: Record<string, FixtureMeta> = {
   dfs: {
     ...(dfs as FixtureMeta),
     preferObjId: 6,
-    preferRepr: "graph",
+    preferRepr: "adjacency-list",
   },
   dfs_main: {
     ...(dfsMain as FixtureMeta),
     profile: "codeforces",
     preferObjId: 6,
-    preferRepr: "graph",
+    preferRepr: "adjacency-list",
   },
   valid_parentheses: {
     ...(validParen as FixtureMeta),

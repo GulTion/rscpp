@@ -1,5 +1,6 @@
 import type { HeapSnapshot, ObjectState, ValueJson } from "@rscpp/timeline";
 import { formatVal } from "../diff.js";
+import type { GraphEncoding } from "../represent.js";
 
 export function renderRaw(host: HTMLElement, obj: ObjectState | undefined): void {
   host.innerHTML = "";
@@ -52,11 +53,12 @@ export function renderMatrix(
 export function edgesFromObject(
   obj: ObjectState,
   heap: HeapSnapshot,
+  encoding: GraphEncoding,
 ): { from: number; to: number }[] {
   const edges: { from: number; to: number }[] = [];
-  const elems = obj.elems ?? [];
-  // adjacency matrix of ints
-  if (elems.every((e) => e.kind === "Object")) {
+
+  if (encoding === "adjacency-matrix") {
+    const elems = obj.elems ?? [];
     elems.forEach((rowVal, i) => {
       if (rowVal.kind !== "Object") return;
       const row = heap.objects.get(rowVal.value);
@@ -66,28 +68,43 @@ export function edgesFromObject(
     });
     return edges;
   }
-  // edge list: vector of pair objects or vector<vector<int>> length-2
-  for (const e of elems) {
+
+  if (encoding === "adjacency-list") {
+    const elems = obj.elems ?? [];
+    elems.forEach((rowVal, i) => {
+      if (rowVal.kind !== "Object") return;
+      const row = heap.objects.get(rowVal.value);
+      for (const cell of row?.elems ?? []) {
+        if (cell.kind === "Int") edges.push({ from: i, to: cell.value });
+      }
+    });
+    for (const ent of obj.entries ?? []) {
+      const key = ent.key as ValueJson;
+      const from =
+        typeof key === "object" &&
+        key &&
+        "kind" in key &&
+        (key as ValueJson).kind === "Int"
+          ? ((key as { value: number }).value as number)
+          : Number(key);
+      const val = ent.value;
+      if (val?.kind === "Object") {
+        const neigh = heap.objects.get(val.value);
+        for (const n of neigh?.elems ?? []) {
+          if (n.kind === "Int") edges.push({ from, to: n.value });
+        }
+      }
+    }
+    return edges;
+  }
+
+  // edge-list
+  for (const e of obj.elems ?? []) {
     if (e.kind !== "Object") continue;
     const child = heap.objects.get(e.value);
     const ce = child?.elems ?? [];
     if (ce.length >= 2 && ce[0].kind === "Int" && ce[1].kind === "Int") {
       edges.push({ from: ce[0].value, to: ce[1].value });
-    }
-  }
-  // map adjacency
-  for (const ent of obj.entries ?? []) {
-    const key = ent.key as ValueJson;
-    const from =
-      typeof key === "object" && key && "kind" in key && (key as ValueJson).kind === "Int"
-        ? ((key as { value: number }).value as number)
-        : Number(key);
-    const val = ent.value;
-    if (val?.kind === "Object") {
-      const neigh = heap.objects.get(val.value);
-      for (const n of neigh?.elems ?? []) {
-        if (n.kind === "Int") edges.push({ from, to: n.value });
-      }
     }
   }
   return edges;

@@ -1,5 +1,12 @@
 import type { ObjectState, Timeline } from "@rscpp/timeline";
-import { proposeRepresentations, type Representation } from "./represent.js";
+import {
+  GRAPH_ENCODINGS,
+  isGraphEncoding,
+  normalizeRepresentation,
+  proposeRepresentations,
+  representationLabel,
+  type Representation,
+} from "./represent.js";
 import { renderLinear } from "./views/linear.js";
 import { renderMatrix, renderRaw } from "./views/misc.js";
 import { renderGraph, renderTree } from "./views/graph.js";
@@ -47,13 +54,44 @@ function renderOne(
     case "tree":
       renderTree(host, obj, snap);
       break;
-    case "graph":
+    case "adjacency-list":
+    case "adjacency-matrix":
     case "edge-list":
-    case "adjacency":
-      renderGraph(host, obj, snap);
+      renderGraph(host, obj, snap, repr);
       break;
     default:
       renderRaw(host, obj);
+  }
+}
+
+/** Fill a select with flat options + Graph optgroup for encodings. */
+function fillReprSelect(
+  selectEl: HTMLSelectElement,
+  options: Representation[],
+  selected: Representation,
+): void {
+  selectEl.innerHTML = "";
+  const graphs = options.filter(isGraphEncoding);
+  const other = options.filter((r) => !isGraphEncoding(r));
+  for (const r of other) {
+    const o = document.createElement("option");
+    o.value = r;
+    o.textContent = representationLabel(r);
+    if (r === selected) o.selected = true;
+    selectEl.appendChild(o);
+  }
+  if (graphs.length > 0) {
+    const group = document.createElement("optgroup");
+    group.label = "Graph";
+    for (const r of GRAPH_ENCODINGS) {
+      if (!graphs.includes(r)) continue;
+      const o = document.createElement("option");
+      o.value = r;
+      o.textContent = representationLabel(r);
+      if (r === selected) o.selected = true;
+      group.appendChild(o);
+    }
+    selectEl.appendChild(group);
   }
 }
 
@@ -62,7 +100,10 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
   let objId = props.objId;
   let mode: "all" | "single" = props.mode ?? "all";
   const pref = new Map<number, Representation>();
-  if (objId !== null && props.representation) pref.set(objId, props.representation);
+  if (objId !== null && props.representation) {
+    const n = normalizeRepresentation(props.representation);
+    if (n) pref.set(objId, n);
+  }
   let onRepresentationChange = props.onRepresentationChange;
   const prevById = new Map<number, ObjectState>();
   /** Sticky layout by Alloc id. */
@@ -118,7 +159,8 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
   function reprFor(id: number, obj: ObjectState): Representation {
     const proposed = proposeRepresentations(obj, timeline.snapshot());
     if (pref.has(id)) {
-      const p = pref.get(id)!;
+      const raw = pref.get(id)!;
+      const p = normalizeRepresentation(raw) ?? raw;
       if (proposed.includes(p)) return p;
     }
     return proposed[0] ?? "raw";
@@ -217,19 +259,15 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
 
     const localSel = document.createElement("select");
     localSel.dataset.testid = `ds-repr-${id}`;
-    localSel.style.cssText = "font:11px sans-serif;max-width:7rem;";
+    localSel.style.cssText = "font:11px sans-serif;max-width:9rem;";
     const options = proposeRepresentations(obj, snap);
     const repr = reprFor(id, obj);
-    for (const r of options) {
-      const o = document.createElement("option");
-      o.value = r;
-      o.textContent = r;
-      if (r === repr) o.selected = true;
-      localSel.appendChild(o);
-    }
+    fillReprSelect(localSel, options, repr);
     localSel.addEventListener("change", () => {
-      pref.set(id, localSel.value as Representation);
-      onRepresentationChange?.(localSel.value as Representation);
+      const next =
+        normalizeRepresentation(localSel.value) ?? (localSel.value as Representation);
+      pref.set(id, next);
+      onRepresentationChange?.(next);
       paint();
     });
 
@@ -293,13 +331,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     }
     const options = proposeRepresentations(obj, snap);
     const repr = reprFor(objId, obj);
-    for (const r of options) {
-      const o = document.createElement("option");
-      o.value = r;
-      o.textContent = r;
-      if (r === repr) o.selected = true;
-      select.appendChild(o);
-    }
+    fillReprSelect(select, options, repr);
     const bound = bindingsFromSnapshot(snap).find((b) => b.id === objId);
     paintPane(objId, bound?.title ?? String(objId), obj, snap, occupied);
     growCanvas();
@@ -311,7 +343,8 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
   });
 
   select.addEventListener("change", () => {
-    const r = select.value as Representation;
+    const r =
+      normalizeRepresentation(select.value) ?? (select.value as Representation);
     if (objId !== null) pref.set(objId, r);
     onRepresentationChange?.(r);
     paint();
@@ -343,7 +376,10 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
         mode = next.mode;
         modeSel.value = mode;
       }
-      if (next.representation && objId !== null) pref.set(objId, next.representation);
+      if (next.representation && objId !== null) {
+        const n = normalizeRepresentation(next.representation);
+        if (n) pref.set(objId, n);
+      }
       if (next.onRepresentationChange) onRepresentationChange = next.onRepresentationChange;
       paint();
     },

@@ -2,6 +2,7 @@ import type { HeapSnapshot, ObjectState } from "@rscpp/timeline";
 import { hierarchy, tree as d3tree } from "d3-hierarchy";
 import dagre from "dagre";
 import { edgesFromObject } from "./misc.js";
+import type { GraphEncoding } from "../represent.js";
 
 const MAX_NODES = 200;
 
@@ -90,18 +91,21 @@ export function renderGraph(
   host: HTMLElement,
   obj: ObjectState,
   heap: HeapSnapshot,
+  encoding: GraphEncoding,
 ): void {
   host.innerHTML = "";
-  const edges = edgesFromObject(obj, heap);
+  const edges = edgesFromObject(obj, heap, encoding);
   const ids = new Set<number>();
   edges.forEach((e) => {
     ids.add(e.from);
     ids.add(e.to);
   });
-  // Include isolated adjacency rows (e.g. component {5})
-  const elems = obj.elems ?? [];
-  if (elems.every((e) => e.kind === "Object")) {
-    elems.forEach((_, i) => ids.add(i));
+  // Include isolated adjacency-list rows (node with no edges)
+  if (encoding === "adjacency-list" || encoding === "adjacency-matrix") {
+    const elems = obj.elems ?? [];
+    if (elems.every((e) => e.kind === "Object")) {
+      elems.forEach((_, i) => ids.add(i));
+    }
   }
   if (ids.size === 0) {
     host.textContent = "no graph edges";
