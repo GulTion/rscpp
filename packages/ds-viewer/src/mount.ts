@@ -22,6 +22,7 @@ import {
   DEFAULT_GRAPH_OPTS,
   type GraphViewOpts,
 } from "./graphOpts.js";
+import { walkHighlight, type WalkHighlight } from "./walk.js";
 
 export type MountHandle = {
   update(props: Partial<DsViewerProps>): void;
@@ -45,6 +46,7 @@ function renderOne(
   snap: ReturnType<Timeline["snapshot"]>,
   repr: Representation,
   graphOpts: GraphViewOpts,
+  walk: WalkHighlight | undefined,
 ): void {
   switch (repr) {
     case "array":
@@ -62,7 +64,7 @@ function renderOne(
     case "adjacency-list":
     case "adjacency-matrix":
     case "edge-list":
-      renderGraph(host, obj, snap, repr, graphOpts);
+      renderGraph(host, obj, snap, repr, graphOpts, walk);
       break;
     default:
       renderRaw(host, obj);
@@ -332,7 +334,10 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     viewHost.style.cssText = "overflow:auto;max-width:100%;";
     pane.append(viewHost);
     canvas.appendChild(pane);
-    renderOne(viewHost, obj, prevById.get(id), snap, repr, gOpts);
+    const walk = isGraphEncoding(repr)
+      ? walkHighlight(timeline.events, timeline.index, id, snap, repr)
+      : undefined;
+    renderOne(viewHost, obj, prevById.get(id), snap, repr, gOpts, walk);
     prevById.set(id, structuredClone(obj));
 
     let pos = positions.get(id);

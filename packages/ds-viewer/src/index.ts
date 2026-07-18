@@ -13,3 +13,5 @@ export { bindingsFromSnapshot, objectIdOf } from "./bindings.js";
 export type { VarBinding } from "./bindings.js";
 export { normalizeEdges, DEFAULT_GRAPH_OPTS } from "./graphOpts.js";
 export type { GraphViewOpts, GraphDirection, DrawEdge } from "./graphOpts.js";
+export { walkHighlight } from "./walk.js";
+export type { WalkHighlight } from "./walk.js";

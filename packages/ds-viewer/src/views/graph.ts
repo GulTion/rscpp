@@ -8,9 +8,36 @@ import {
   type GraphViewOpts,
   DEFAULT_GRAPH_OPTS,
 } from "../graphOpts.js";
+import type { WalkHighlight } from "../walk.js";
 
 const MAX_NODES = 200;
 const NS = "http://www.w3.org/2000/svg";
+
+const EMPTY_WALK: WalkHighlight = {
+  currentNodes: [],
+  trailNodes: [],
+  currentEdges: [],
+  trailEdges: [],
+};
+
+function ensureWalkStyle(): void {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("ds-walk-style")) return;
+  const style = document.createElement("style");
+  style.id = "ds-walk-style";
+  style.textContent = `
+@keyframes ds-walk-pulse {
+  0% { fill: #fbbf24; }
+  50% { fill: #f59e0b; }
+  100% { fill: #fbbf24; }
+}
+.ds-node-current { animation: ds-walk-pulse 0.55s ease-in-out infinite; stroke: #b45309; stroke-width: 2.5px; }
+.ds-node-trail { fill: #fde68a; stroke: #d97706; opacity: 0.75; transition: opacity 0.25s, fill 0.25s; }
+.ds-edge-current { stroke: #d97706; stroke-width: 2.8px; opacity: 1; }
+.ds-edge-trail { stroke: #f59e0b; stroke-width: 2px; opacity: 0.45; }
+`;
+  document.head?.appendChild(style);
+}
 
 export function renderTree(
   host: HTMLElement,
@@ -130,10 +157,29 @@ export function renderGraph(
   heap: HeapSnapshot,
   encoding: GraphEncoding,
   opts: GraphViewOpts = DEFAULT_GRAPH_OPTS,
+  walk: WalkHighlight = EMPTY_WALK,
 ): void {
   host.innerHTML = "";
+  ensureWalkStyle();
   const raw = edgesFromObject(obj, heap, encoding);
   const drawEdges = normalizeEdges(raw, opts);
+  const currentNodes = new Set(walk.currentNodes.map(String));
+  const trailNodes = new Set(walk.trailNodes.map(String));
+  const currentEdgeKeys = new Set(
+    walk.currentEdges.map((e) => `${e.from}->${e.to}`),
+  );
+  const trailEdgeKeys = new Set(walk.trailEdges.map((e) => `${e.from}->${e.to}`));
+  // Undirected: also match reversed keys
+  if (opts.direction === "undirected") {
+    for (const e of walk.currentEdges) {
+      currentEdgeKeys.add(`${e.to}->${e.from}`);
+      currentEdgeKeys.add(`${Math.min(e.from, e.to)}->${Math.max(e.from, e.to)}`);
+    }
+    for (const e of walk.trailEdges) {
+      trailEdgeKeys.add(`${e.to}->${e.from}`);
+      trailEdgeKeys.add(`${Math.min(e.from, e.to)}->${Math.max(e.from, e.to)}`);
+    }
+  }
   const ids = new Set<number>();
   for (const e of drawEdges) {
     ids.add(e.from);
@@ -210,6 +256,9 @@ export function renderGraph(
     path.setAttribute("stroke", "#64748b");
     path.setAttribute("stroke-width", "1.5");
     path.dataset.testid = `ds-edge-${e.from}-${e.to}-${e.index}`;
+    const ek = `${e.from}->${e.to}`;
+    if (currentEdgeKeys.has(ek)) path.classList.add("ds-edge-current");
+    else if (trailEdgeKeys.has(ek)) path.classList.add("ds-edge-trail");
     if (opts.direction === "directed") {
       path.setAttribute("marker-end", `url(#${arrowId})`);
     }
@@ -225,6 +274,8 @@ export function renderGraph(
     c.setAttribute("fill", "#fce7f3");
     c.setAttribute("stroke", "#db2777");
     c.setAttribute("data-testid", `ds-node-${id}`);
+    if (currentNodes.has(id)) c.classList.add("ds-node-current");
+    else if (trailNodes.has(id)) c.classList.add("ds-node-trail");
     const t = document.createElementNS(NS, "text");
     t.setAttribute("x", String(n.x));
     t.setAttribute("y", String(n.y + 4));
