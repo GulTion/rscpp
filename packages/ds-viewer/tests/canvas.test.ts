@@ -18,6 +18,7 @@ HTMLElement.prototype.setPointerCapture = function () {};
 HTMLElement.prototype.releasePointerCapture = function () {};
 
 const events = [
+  { kind: "FnEnter", call_id: 1, name: "main", parent_id: null },
   {
     kind: "Alloc",
     id: 1,
@@ -25,10 +26,20 @@ const events = [
     elems: [{ kind: "Int", value: 1 }],
   },
   {
+    kind: "VarCreate",
+    name: "a",
+    value: { kind: "Object", value: 1 },
+  },
+  {
     kind: "Alloc",
     id: 2,
     type_name: "vector",
     elems: [{ kind: "Int", value: 2 }],
+  },
+  {
+    kind: "VarCreate",
+    name: "b",
+    value: { kind: "Object", value: 2 },
   },
   { kind: "Dealloc", id: 1 },
   {
@@ -36,6 +47,11 @@ const events = [
     id: 1,
     type_name: "vector",
     elems: [{ kind: "Int", value: 9 }],
+  },
+  {
+    kind: "VarCreate",
+    name: "a",
+    value: { kind: "Object", value: 1 },
   },
 ];
 
@@ -80,8 +96,12 @@ describe("ds canvas layout", () => {
 
   it("keeps position by id across dealloc and re-alloc", () => {
     const timeline = createTimeline({ events });
-    timeline.seek(2); // both live
+    timeline.seek(5); // a + b live
     mountDsViewer(root, { timeline, objId: null, mode: "all" });
+
+    expect(root.querySelector('[data-testid="ds-pane-title-1"]')?.textContent).toBe(
+      "a",
+    );
 
     const handle = root.querySelector(
       '[data-testid="ds-pane-handle-1"]',
@@ -96,10 +116,10 @@ describe("ds canvas layout", () => {
     const savedLeft = pane.style.left;
     const savedTop = pane.style.top;
 
-    timeline.seek(3); // id 1 gone
+    timeline.seek(6); // id 1 gone (dealloc); local may still point — object missing
     expect(root.querySelector('[data-testid="ds-pane-1"]')).toBeNull();
 
-    timeline.seek(4); // id 1 back
+    timeline.seek(8); // id 1 + VarCreate a back
     const again = root.querySelector('[data-testid="ds-pane-1"]') as HTMLElement;
     expect(again).toBeTruthy();
     expect(again.style.left).toBe(savedLeft);
@@ -108,7 +128,7 @@ describe("ds canvas layout", () => {
 
   it("Reset layout clears saved positions", () => {
     const timeline = createTimeline({ events });
-    timeline.seek(2);
+    timeline.seek(5);
     mountDsViewer(root, { timeline, objId: null, mode: "all" });
     const handle = root.querySelector(
       '[data-testid="ds-pane-handle-1"]',
@@ -125,7 +145,7 @@ describe("ds canvas layout", () => {
 
   it("auto-packs a second object below the first", () => {
     const timeline = createTimeline({ events });
-    timeline.seek(2);
+    timeline.seek(5);
     mountDsViewer(root, { timeline, objId: null, mode: "all" });
     const a = root.querySelector('[data-testid="ds-pane-1"]') as HTMLElement;
     const b = root.querySelector('[data-testid="ds-pane-2"]') as HTMLElement;

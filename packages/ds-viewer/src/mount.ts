@@ -10,6 +10,7 @@ import {
   type Pos,
   type Rect,
 } from "./layout.js";
+import { bindingsFromSnapshot } from "./bindings.js";
 
 export type MountHandle = {
   update(props: Partial<DsViewerProps>): void;
@@ -79,7 +80,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
   const modeSel = document.createElement("select");
   modeSel.dataset.testid = "ds-mode";
   for (const [v, label] of [
-    ["all", "All live Allocs"],
+    ["all", "Named variables"],
     ["single", "Single object"],
   ] as const) {
     const o = document.createElement("option");
@@ -184,6 +185,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
 
   function paintPane(
     id: number,
+    titleText: string,
     obj: ObjectState,
     snap: ReturnType<Timeline["snapshot"]>,
     occupied: Rect[],
@@ -209,7 +211,8 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
       "display:flex;justify-content:space-between;align-items:center;gap:4px;padding:1px 2px;user-select:none;";
     const title = document.createElement("strong");
     title.style.font = "11px ui-monospace, monospace";
-    title.textContent = `#${id} ${obj.type_name}`;
+    title.textContent = titleText;
+    title.title = `${titleText} · ${obj.type_name} #${id}`;
     title.dataset.testid = `ds-pane-title-${id}`;
 
     const localSel = document.createElement("select");
@@ -263,16 +266,16 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     const occupied: Rect[] = [];
 
     if (mode === "all") {
-      const ids = [...snap.objects.keys()].sort((a, b) => a - b);
-      if (ids.length === 0) {
+      const bindings = bindingsFromSnapshot(snap);
+      if (bindings.length === 0) {
         const empty = document.createElement("div");
         empty.style.cssText = "padding:8px;font:12px sans-serif;color:#64748b;";
-        empty.textContent = "No live heap objects at this playhead";
+        empty.textContent = "No variable-bound structures at this playhead";
         canvas.appendChild(empty);
         return;
       }
-      for (const id of ids) {
-        paintPane(id, snap.objects.get(id)!, snap, occupied);
+      for (const b of bindings) {
+        paintPane(b.id, b.title, b.obj, snap, occupied);
       }
       growCanvas();
       return;
@@ -297,7 +300,8 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
       if (r === repr) o.selected = true;
       select.appendChild(o);
     }
-    paintPane(objId, obj, snap, occupied);
+    const bound = bindingsFromSnapshot(snap).find((b) => b.id === objId);
+    paintPane(objId, bound?.title ?? String(objId), obj, snap, occupied);
     growCanvas();
   }
 
