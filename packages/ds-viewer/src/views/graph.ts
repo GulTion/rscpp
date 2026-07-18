@@ -105,6 +105,7 @@ export function renderTree(
   root.descendants().forEach((d) => {
     const x = d.x ?? 0;
     const y = d.y ?? 0;
+    const id = String(d.data.id);
     const c = document.createElementNS(NS, "circle");
     c.setAttribute("cx", String(x));
     c.setAttribute("cy", String(y));
@@ -112,6 +113,8 @@ export function renderTree(
     c.setAttribute("fill", "#e0f2fe");
     c.setAttribute("stroke", "#0284c7");
     c.setAttribute("data-testid", `ds-node-${d.data.id}`);
+    if (cur.has(id)) c.classList.add("ds-node-current");
+    else if (trail.has(id)) c.classList.add("ds-node-trail");
     const t = document.createElementNS(NS, "text");
     t.setAttribute("x", String(x));
     t.setAttribute("y", String(y + 4));
