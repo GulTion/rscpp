@@ -81,8 +81,25 @@ export function objectIdOfArg(v: ValueJson): number | null {
   return null;
 }
 
-export function formatFnLabel(node: FnTreeNode): string {
-  const args = node.args
+/** Args that differ from the parent call (or scalars on the root). */
+export function changingArgs(
+  node: FnTreeNode,
+  parent: FnTreeNode | null,
+): FnArg[] {
+  if (!parent) {
+    // No parent: only scalars — refs/objects are usually shared for the whole run
+    return node.args.filter((a) =>
+      ["Int", "Float", "Bool", "Char", "Str"].includes(a.value.kind),
+    );
+  }
+  return node.args.filter((a) => !argUnchangedFromParent(parent, a));
+}
+
+export function formatFnLabel(
+  node: FnTreeNode,
+  parent: FnTreeNode | null = null,
+): string {
+  const args = changingArgs(node, parent)
     .map((a) => `${a.name}=${formatArgValue(a.value)}`)
     .join(", ");
   const base = shortName(node.name);

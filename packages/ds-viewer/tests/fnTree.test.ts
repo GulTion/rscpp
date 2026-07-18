@@ -90,7 +90,8 @@ describe("buildFnTree", () => {
     const dfs0 = roots[0].children[0];
     expect(dfs0.args.map((a) => a.name)).toEqual(["u", "adj", "vis"]);
     expect(formatFnLabel(dfs0)).toContain("u=0");
-    expect(formatFnLabel(dfs0)).toContain("vis=#8");
+    expect(formatFnLabel(dfs0)).not.toContain("vis=");
+    expect(formatFnLabel(dfs0)).not.toContain("adj=");
     const dfs1 = dfs0.children[0];
     expect(dfs1.args.find((a) => a.name === "u")?.value).toEqual({
       kind: "Int",
@@ -102,6 +103,7 @@ describe("buildFnTree", () => {
     expect(argUnchangedFromParent(dfs0, dfs1.args.find((a) => a.name === "u")!)).toBe(
       false,
     );
+    expect(formatFnLabel(dfs1, dfs0)).toBe("dfs(u=1)");
     expect(dfs1.active).toBe(true);
   });
 

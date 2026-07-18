@@ -1,6 +1,6 @@
 import { hierarchy, tree as d3tree } from "d3-hierarchy";
 import {
-  argUnchangedFromParent,
+  changingArgs,
   formatArgValue,
   formatFnLabel,
   type FnTreeNode,
@@ -22,9 +22,7 @@ function ensureStyle(): void {
 .ds-fn-edge { fill: none; stroke: #94a3b8; stroke-width: 1.5px; }
 .ds-fn-edge.active { stroke: #0284c7; stroke-width: 2px; }
 .ds-fn-label-name { font: 700 10px ui-sans-serif, system-ui, sans-serif; fill: #0f172a; }
-.ds-fn-label-args { font: 9px ui-monospace, monospace; fill: #475569; }
-.ds-fn-arg-same { fill: #94a3b8; }
-.ds-fn-arg-change { fill: #b45309; font-weight: 700; }
+.ds-fn-label-args { font: 9px ui-monospace, monospace; fill: #b45309; font-weight: 700; }
 `;
   document.head?.appendChild(style);
 }
@@ -32,23 +30,6 @@ function ensureStyle(): void {
 function shortName(name: string): string {
   const i = name.lastIndexOf("::");
   return i >= 0 ? name.slice(i + 2) : name;
-}
-
-/** Compact changing-arg summary for under the node, e.g. `u=1`. */
-function changingArgsLine(node: FnTreeNode, parent: FnTreeNode | null): string {
-  const parts: string[] = [];
-  for (const a of node.args) {
-    const same = parent ? argUnchangedFromParent(parent, a) : false;
-    if (!same) parts.push(`${a.name}=${formatArgValue(a.value)}`);
-  }
-  // If everything is "same" (or root with only refs), still show primary scalar if any
-  if (parts.length === 0) {
-    const scalar = node.args.find(
-      (a) => a.value.kind === "Int" || a.value.kind === "Bool",
-    );
-    if (scalar) return `${scalar.name}=${formatArgValue(scalar.value)}`;
-  }
-  return parts.slice(0, 3).join(" ");
 }
 
 export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
@@ -89,7 +70,6 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     return;
   }
 
-  // Top-down tree: sibling spacing × depth spacing
   const layout = d3tree<N>().nodeSize([72, 70]);
   layout(root);
 
@@ -116,7 +96,6 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
   const g = document.createElementNS(NS, "g");
   g.setAttribute("transform", `translate(${pad - minX},${pad - minY})`);
 
-  // Edges first (under nodes)
   for (const d of nodes) {
     if (!d.parent || d.parent.data.call_id === -999) continue;
     const x0 = d.parent.x ?? 0;
@@ -125,7 +104,6 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     const y1 = d.y ?? 0;
     const midY = (y0 + y1) / 2;
     const path = document.createElementNS(NS, "path");
-    // Orthogonal-ish curve from parent circle bottom to child top
     path.setAttribute(
       "d",
       `M ${x0} ${y0 + R} C ${x0} ${midY}, ${x1} ${midY}, ${x1} ${y1 - R}`,
@@ -139,6 +117,7 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     const x = d.x ?? 0;
     const y = d.y ?? 0;
     const parent = d.data.parentRef ?? null;
+    const changed = changingArgs(d.data, parent);
 
     const circle = document.createElementNS(NS, "circle");
     circle.setAttribute("cx", String(x));
@@ -148,19 +127,20 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     if (d.data.active) circle.classList.add("active");
     else circle.classList.add("done");
     circle.setAttribute("data-testid", `ds-fn-node-${d.data.call_id}`);
-    circle.setAttribute("title", formatFnLabel(d.data));
 
-    // Abbreviation inside circle
+    const title = document.createElementNS(NS, "title");
+    title.textContent = formatFnLabel(d.data, parent);
+    circle.appendChild(title);
+
+    const sn = shortName(d.data.name);
     const abbr = document.createElementNS(NS, "text");
     abbr.setAttribute("x", String(x));
     abbr.setAttribute("y", String(y + 3.5));
     abbr.setAttribute("text-anchor", "middle");
     abbr.setAttribute("class", "ds-fn-label-name");
     abbr.setAttribute("font-size", "9");
-    const sn = shortName(d.data.name);
     abbr.textContent = sn.length > 5 ? sn.slice(0, 4) + "…" : sn;
 
-    // Name + changing args under node
     const nameT = document.createElementNS(NS, "text");
     nameT.setAttribute("x", String(x));
     nameT.setAttribute("y", String(y + R + 12));
@@ -168,39 +148,15 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     nameT.setAttribute("class", "ds-fn-label-name");
     nameT.textContent = sn;
 
-    const argsLine = changingArgsLine(d.data, parent);
     const argsT = document.createElementNS(NS, "text");
     argsT.setAttribute("x", String(x));
     argsT.setAttribute("y", String(y + R + 23));
     argsT.setAttribute("text-anchor", "middle");
     argsT.setAttribute("class", "ds-fn-label-args");
-    if (argsLine) {
-      const changeNames = new Set(
-        d.data.args
-          .filter((a) => !(parent && argUnchangedFromParent(parent, a)))
-          .map((a) => a.name),
-      );
-      const bits = argsLine.split(" ");
-      bits.forEach((bit, i) => {
-        if (i > 0) {
-          const sp = document.createElementNS(NS, "tspan");
-          sp.textContent = " ";
-          argsT.appendChild(sp);
-        }
-        const name = bit.split("=")[0] ?? "";
-        const span = document.createElementNS(NS, "tspan");
-        span.textContent = bit;
-        span.setAttribute(
-          "class",
-          changeNames.has(name) ? "ds-fn-arg-change" : "ds-fn-arg-same",
-        );
-        argsT.appendChild(span);
-      });
-    }
-
-    const title = document.createElementNS(NS, "title");
-    title.textContent = formatFnLabel(d.data);
-    circle.appendChild(title);
+    argsT.textContent = changed
+      .slice(0, 3)
+      .map((a) => `${a.name}=${formatArgValue(a.value)}`)
+      .join(" ");
 
     g.append(circle, abbr, nameT, argsT);
   }
