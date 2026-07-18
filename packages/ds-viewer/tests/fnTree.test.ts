@@ -89,9 +89,8 @@ describe("buildFnTree", () => {
     expect(roots[0].name).toContain("countComponents");
     const dfs0 = roots[0].children[0];
     expect(dfs0.args.map((a) => a.name)).toEqual(["u", "adj", "vis"]);
-    expect(formatFnLabel(dfs0)).toContain("u=0");
-    expect(formatFnLabel(dfs0)).not.toContain("vis=");
-    expect(formatFnLabel(dfs0)).not.toContain("adj=");
+    // First dfs under countComponents: only scalar u — never vis/adj (#ids)
+    expect(formatFnLabel(dfs0, roots[0])).toBe("dfs(u=0)");
     const dfs1 = dfs0.children[0];
     expect(dfs1.args.find((a) => a.name === "u")?.value).toEqual({
       kind: "Int",

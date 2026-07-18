@@ -81,18 +81,29 @@ export function objectIdOfArg(v: ValueJson): number | null {
   return null;
 }
 
-/** Args that differ from the parent call (or scalars on the root). */
+function isScalarArg(v: ValueJson): boolean {
+  return (
+    v.kind === "Int" ||
+    v.kind === "Float" ||
+    v.kind === "Bool" ||
+    v.kind === "Char" ||
+    v.kind === "Str"
+  );
+}
+
+/**
+ * Args shown on the tree: scalars that changed vs parent.
+ * Heap Object/Ref/Ptr args (e.g. vis, adj) are never shown — they stay shared.
+ */
 export function changingArgs(
   node: FnTreeNode,
   parent: FnTreeNode | null,
 ): FnArg[] {
-  if (!parent) {
-    // No parent: only scalars — refs/objects are usually shared for the whole run
-    return node.args.filter((a) =>
-      ["Int", "Float", "Bool", "Char", "Str"].includes(a.value.kind),
-    );
-  }
-  return node.args.filter((a) => !argUnchangedFromParent(parent, a));
+  return node.args.filter((a) => {
+    if (!isScalarArg(a.value)) return false;
+    if (!parent) return true;
+    return !argUnchangedFromParent(parent, a);
+  });
 }
 
 export function formatFnLabel(
