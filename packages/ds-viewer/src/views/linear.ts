@@ -2,6 +2,7 @@ import type { ObjectState } from "@rscpp/timeline";
 import { diffElems, formatVal } from "../diff.js";
 import type { AccessHighlight } from "../access.js";
 import { EMPTY_ACCESS, ensureAccessStyle } from "../access.js";
+import { setMathContent } from "../math.js";
 
 function markAccess(el: HTMLElement, index: number, access: AccessHighlight): void {
   if (access.current.includes(index)) el.classList.add("ds-access-current");
@@ -33,8 +34,8 @@ export function renderLinear(
       const tr = document.createElement("tr");
       const tdI = document.createElement("td");
       const tdV = document.createElement("td");
-      tdI.textContent = String(d.index);
-      tdV.textContent = formatVal(d.value);
+      setMathContent(tdI, String(d.index));
+      setMathContent(tdV, formatVal(d.value));
       tdI.style.cssText = tdV.style.cssText = "border:1px solid #ccc;padding:2px 6px;";
       if (d.kind === "add" || d.kind === "change") tdV.classList.add("ds-flash");
       markAccess(tdV, d.index, access);
@@ -53,7 +54,7 @@ export function renderLinear(
     if (d.kind === "remove") continue;
     const cell = document.createElement("div");
     cell.dataset.testid = `ds-cell-${d.index}`;
-    cell.textContent = formatVal(d.value);
+    setMathContent(cell, formatVal(d.value));
     cell.style.cssText =
       "border:1px solid #94a3b8;padding:4px 8px;border-radius:4px;min-width:2ch;text-align:center;";
     if (d.kind === "add" || d.kind === "change") cell.classList.add("ds-flash");

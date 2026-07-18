@@ -17,3 +17,4 @@ export { walkHighlight } from "./walk.js";
 export type { WalkHighlight } from "./walk.js";
 export { buildFnTree, FN_TREE_PANE_ID, formatFnLabel } from "./fnTree.js";
 export type { FnTreeNode, FnArg } from "./fnTree.js";
+export { setMathContent, toTex, MATH_FONT } from "./math.js";

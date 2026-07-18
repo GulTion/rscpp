@@ -4,13 +4,16 @@ export type GraphViewOpts = {
   direction: GraphDirection;
   /** When true, keep parallel edges; when false, one edge per pair. */
   multigraph: boolean;
+  /** When true, parse and show edge weights. */
+  weighted?: boolean;
 };
 
-export type Edge = { from: number; to: number };
+export type Edge = { from: number; to: number; weight?: number };
 
 export type DrawEdge = {
   from: number;
   to: number;
+  weight?: number;
   /** 0..count-1 among parallel edges sharing the same pair key. */
   index: number;
   count: number;
@@ -19,6 +22,7 @@ export type DrawEdge = {
 export const DEFAULT_GRAPH_OPTS: GraphViewOpts = {
   direction: "undirected",
   multigraph: false,
+  weighted: false,
 };
 
 function pairKey(e: Edge, direction: GraphDirection): string {
@@ -37,9 +41,6 @@ function pairKey(e: Edge, direction: GraphDirection): string {
 export function normalizeEdges(edges: Edge[], opts: GraphViewOpts): DrawEdge[] {
   const buckets = new Map<string, Edge[]>();
   for (const e of edges) {
-    if (e.from === e.to && opts.direction === "undirected") {
-      // keep self-loops as a single undirected loop key
-    }
     const key = pairKey(e, opts.direction);
     let list = buckets.get(key);
     if (!list) {
@@ -47,11 +48,11 @@ export function normalizeEdges(edges: Edge[], opts: GraphViewOpts): DrawEdge[] {
       buckets.set(key, list);
     }
     if (!opts.multigraph && list.length > 0) continue;
-    // For undirected, store canonical from=min to=max for drawing consistency
     if (opts.direction === "undirected") {
       list.push({
         from: Math.min(e.from, e.to),
         to: Math.max(e.from, e.to),
+        weight: e.weight,
       });
     } else {
       list.push(e);
@@ -61,7 +62,13 @@ export function normalizeEdges(edges: Edge[], opts: GraphViewOpts): DrawEdge[] {
   for (const list of buckets.values()) {
     const count = list.length;
     list.forEach((e, index) => {
-      out.push({ from: e.from, to: e.to, index, count });
+      out.push({
+        from: e.from,
+        to: e.to,
+        weight: e.weight,
+        index,
+        count,
+      });
     });
   }
   return out;

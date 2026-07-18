@@ -11,6 +11,7 @@ import {
 import type { WalkHighlight } from "../walk.js";
 import type { AccessHighlight } from "../access.js";
 import { EMPTY_ACCESS } from "../access.js";
+import { applyMathFont } from "../math.js";
 
 const MAX_NODES = 200;
 const NS = "http://www.w3.org/2000/svg";
@@ -120,6 +121,7 @@ export function renderTree(
     t.setAttribute("y", String(y + 4));
     t.setAttribute("text-anchor", "middle");
     t.setAttribute("font-size", "11");
+    applyMathFont(t);
     t.textContent = String(d.data.id);
     g.append(c, t);
   });
@@ -170,7 +172,7 @@ export function renderGraph(
 ): void {
   host.innerHTML = "";
   ensureWalkStyle();
-  const raw = edgesFromObject(obj, heap, encoding);
+  const raw = edgesFromObject(obj, heap, encoding, Boolean(opts.weighted));
   const drawEdges = normalizeEdges(raw, opts);
   const currentNodes = new Set(walk.currentNodes.map(String));
   const trailNodes = new Set(walk.trailNodes.map(String));
@@ -272,6 +274,28 @@ export function renderGraph(
       path.setAttribute("marker-end", `url(#${arrowId})`);
     }
     layer.appendChild(path);
+
+    if (opts.weighted && e.weight !== undefined) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const off = (e.index - (e.count - 1) / 2) * 10;
+      const mx = (a.x + b.x) / 2 + nx * (off + 8);
+      const my = (a.y + b.y) / 2 + ny * (off + 8);
+      const label = document.createElementNS(NS, "text");
+      label.setAttribute("x", String(mx));
+      label.setAttribute("y", String(my));
+      label.setAttribute("text-anchor", "middle");
+      label.setAttribute("font-size", "10");
+      label.setAttribute("fill", "#0f172a");
+      label.style.fontFamily =
+        'KaTeX_Main, "Times New Roman", serif';
+      label.textContent = String(e.weight);
+      label.dataset.testid = `ds-edge-w-${e.from}-${e.to}-${e.index}`;
+      layer.appendChild(label);
+    }
   }
 
   g.nodes().forEach((id) => {
@@ -290,6 +314,7 @@ export function renderGraph(
     t.setAttribute("y", String(n.y + 4));
     t.setAttribute("text-anchor", "middle");
     t.setAttribute("font-size", "11");
+    applyMathFont(t);
     t.textContent = id;
     layer.append(c, t);
   });

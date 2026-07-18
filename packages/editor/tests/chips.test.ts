@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatChip } from "../src/chips";
+import { formatChip, isSimpleChipValue } from "../src/chips";
 import { lookupChipsFromEvents } from "../src/chipDecos";
 import type { HeapSnapshot, ValueJson } from "@rscpp/timeline";
 
@@ -8,7 +8,7 @@ describe("formatChip", () => {
     expect(formatChip({ kind: "Int", value: 5 })).toBe("⦃5⦄");
   });
 
-  it("resolves Ref to vector elems", () => {
+  it("resolves Ref to vector elems (for title/debug)", () => {
     const heap: HeapSnapshot = {
       objects: new Map([
         [
@@ -18,8 +18,6 @@ describe("formatChip", () => {
             elems: [
               { kind: "Int", value: 2 },
               { kind: "Int", value: 7 },
-              { kind: "Int", value: 11 },
-              { kind: "Int", value: 15 },
             ] as ValueJson[],
           },
         ],
@@ -31,7 +29,9 @@ describe("formatChip", () => {
       kind: "Ref" as const,
       value: { kind: "Heap", value: 0 },
     };
-    expect(formatChip(ref, heap)).toBe("⦃[2,7,11,15]⦄");
+    expect(formatChip(ref, heap)).toBe("⦃[2,7]⦄");
+    expect(isSimpleChipValue(ref, heap)).toBe(false);
+    expect(isSimpleChipValue({ kind: "Int", value: 1 })).toBe(true);
   });
 });
 

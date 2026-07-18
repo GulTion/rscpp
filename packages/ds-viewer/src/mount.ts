@@ -26,6 +26,8 @@ import { walkHighlight, type WalkHighlight } from "./walk.js";
 import { accessHighlight } from "./access.js";
 import { buildFnTree, FN_TREE_PANE_ID } from "./fnTree.js";
 import { renderFnTree } from "./views/fnTree.js";
+import { MATH_FONT } from "./math.js";
+import "katex/dist/katex.min.css";
 
 export type MountHandle = {
   update(props: Partial<DsViewerProps>): void;
@@ -128,7 +130,13 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
 
   el.dataset.testid = "ds-root";
   el.innerHTML = "";
-  el.style.cssText = "display:flex;flex-direction:column;min-height:0;height:100%;";
+  el.style.cssText = [
+    "display:flex",
+    "flex-direction:column",
+    "min-height:0",
+    "height:100%",
+    `font-family:${MATH_FONT}`,
+  ].join(";");
 
   const toolbar = document.createElement("div");
   toolbar.style.cssText =
@@ -328,7 +336,19 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
       });
       multiLab.append(multi, document.createTextNode("Multigraph"));
 
-      graphBar.append(dirSel, multiLab);
+      const weightLab = document.createElement("label");
+      weightLab.style.cssText = "display:inline-flex;gap:3px;align-items:center;";
+      const weight = document.createElement("input");
+      weight.type = "checkbox";
+      weight.checked = Boolean(gOpts.weighted);
+      weight.dataset.testid = `ds-graph-weighted-${id}`;
+      weight.addEventListener("change", () => {
+        graphOptsById.set(id, { ...optsFor(id), weighted: weight.checked });
+        paint();
+      });
+      weightLab.append(weight, document.createTextNode("Weighted"));
+
+      graphBar.append(dirSel, multiLab, weightLab);
       pane.append(head, graphBar);
     } else {
       pane.append(head);

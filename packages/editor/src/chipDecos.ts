@@ -1,7 +1,7 @@
 import type { EditorState } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
 import type { EventJson, HeapSnapshot, Timeline, ValueJson } from "@rscpp/timeline";
-import { formatChip, chipTitle } from "./chips.js";
+import { formatChip, chipTitle, isSimpleChipValue } from "./chips.js";
 import { buildByteIndexMap, spanBytesToJs } from "./spans.js";
 import { WidgetType } from "@codemirror/view";
 
@@ -53,6 +53,7 @@ export function lookupChipsFromEvents(
   const map = buildByteIndexMap(source);
   const out: ChipAt[] = [];
   for (const { start, end, result } of latest.values()) {
+    if (!isSimpleChipValue(result)) continue;
     const { to } = spanBytesToJs(map, start, end);
     out.push({
       from: to,
@@ -73,6 +74,7 @@ export function localChipsFromSnapshot(
   const out: ChipAt[] = [];
   for (const [name, value] of locals) {
     if (name.length === 0) continue;
+    if (!isSimpleChipValue(value, heap)) continue;
     const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
     let m: RegExpExecArray | null;
     while ((m = re.exec(text))) {

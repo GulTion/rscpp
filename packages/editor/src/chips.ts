@@ -67,6 +67,43 @@ function formatAddress(
   return "…";
 }
 
+/** True for scalars / easy values — not containers (vector, map, …). */
+export function isSimpleChipValue(
+  value: ValueJson | { kind: string; value?: unknown },
+  heap?: HeapSnapshot,
+): boolean {
+  const v = value as ValueJson;
+  switch (v.kind) {
+    case "Int":
+    case "Float":
+    case "Bool":
+    case "Char":
+    case "Str":
+    case "Void":
+    case "Nullptr":
+      return true;
+    case "Object": {
+      const obj = heap?.objects.get(v.value);
+      if (!obj) return true; // bare id
+      if (obj.elems && obj.elems.length > 0) return false;
+      if (obj.entries && obj.entries.length > 0) return false;
+      return true;
+    }
+    case "Ref":
+    case "Ptr": {
+      const addr = v.value as { kind?: string; value?: unknown } | null;
+      if (!addr || typeof addr !== "object") return false;
+      if (addr.kind === "Heap" && typeof addr.value === "number") {
+        return isSimpleChipValue({ kind: "Object", value: addr.value }, heap);
+      }
+      if (addr.kind === "Null") return true;
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
 /** Compact chip text; resolves Object/Ref to heap contents when snapshot is provided. */
 export function formatChip(
   value: ValueJson | { kind: string; value?: unknown },

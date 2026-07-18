@@ -5,6 +5,7 @@ import {
   formatFnLabel,
   type FnTreeNode,
 } from "../fnTree.js";
+import { applyMathFont } from "../math.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const MAX_NODES = 80;
@@ -139,6 +140,7 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     abbr.setAttribute("text-anchor", "middle");
     abbr.setAttribute("class", "ds-fn-label-name");
     abbr.setAttribute("font-size", "9");
+    applyMathFont(abbr);
     abbr.textContent = sn.length > 5 ? sn.slice(0, 4) + "…" : sn;
 
     const nameT = document.createElementNS(NS, "text");
@@ -146,6 +148,7 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     nameT.setAttribute("y", String(y + R + 12));
     nameT.setAttribute("text-anchor", "middle");
     nameT.setAttribute("class", "ds-fn-label-name");
+    applyMathFont(nameT);
     nameT.textContent = sn;
 
     const argsT = document.createElementNS(NS, "text");
@@ -153,6 +156,7 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     argsT.setAttribute("y", String(y + R + 23));
     argsT.setAttribute("text-anchor", "middle");
     argsT.setAttribute("class", "ds-fn-label-args");
+    applyMathFont(argsT);
     argsT.textContent = changed
       .slice(0, 3)
       .map((a) => `${a.name}=${formatArgValue(a.value)}`)

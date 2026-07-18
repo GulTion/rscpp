@@ -108,20 +108,33 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
   const pauseBtn = document.createElement("button");
   pauseBtn.textContent = "Pause";
   pauseBtn.dataset.testid = "seeker-pause";
-  const speed = document.createElement("select");
+
+  const speedWrap = document.createElement("label");
+  speedWrap.style.cssText =
+    "display:inline-flex;align-items:center;gap:6px;font:12px ui-sans-serif,system-ui,sans-serif;color:#334155;";
+  speedWrap.appendChild(document.createTextNode("Speed"));
+  const speed = document.createElement("input");
+  speed.type = "range";
+  speed.min = "1";
+  speed.max = "100";
+  speed.step = "1";
+  speed.value = "30";
   speed.dataset.testid = "seeker-speed";
-  for (const s of [1, 10, 30, 60, 120, 240, 500, 1000]) {
-    const o = document.createElement("option");
-    o.value = String(s);
-    o.textContent = `${s}/s`;
-    if (s === 120) o.selected = true;
-    speed.appendChild(o);
-  }
+  speed.style.cssText = "width:120px;accent-color:#0f172a;";
+  const speedVal = document.createElement("span");
+  speedVal.dataset.testid = "seeker-speed-label";
+  speedVal.style.cssText = "font:12px monospace;min-width:3.5rem;";
+  speedVal.textContent = `${speed.value}/s`;
+  speed.addEventListener("input", () => {
+    speedVal.textContent = `${speed.value}/s`;
+  });
+  speedWrap.append(speed, speedVal);
+
   const indexLabel = document.createElement("span");
   indexLabel.dataset.testid = "seeker-index";
   indexLabel.style.font = "12px monospace";
 
-  controls.append(playBtn, pauseBtn, speed, indexLabel);
+  controls.append(playBtn, pauseBtn, speedWrap, indexLabel);
   const legend = document.createElement("div");
   legend.dataset.testid = "seeker-fn-legend";
   legend.style.cssText =
@@ -142,7 +155,7 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
     legend.innerHTML = "";
     const len = Math.max(timeline.length, 1);
 
-    // Nested function call segments (color by name; child inset 1px per depth)
+    // Nested function call segments (color by name; child inset 2px per depth)
     const calls = buildCallSegments(timeline.events);
     const seenNames = new Map<string, string>();
     for (const seg of calls) {
@@ -152,8 +165,8 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
       const color = COLORS[colorIndexForName(seg.name, COLORS.length)];
       seenNames.set(seg.name, color);
 
-      // depth 0 = full height; each nested level +1px top/bottom padding inside parent
-      const inset = seg.depth; // px
+      // depth 0 = full height; each nested level +2px top/bottom padding inside parent
+      const inset = seg.depth * 2;
       const segEl = document.createElement("div");
       segEl.dataset.seg = `fn-${seg.call_id}`;
       segEl.dataset.fn = seg.name;
@@ -170,8 +183,6 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
         `z-index:${seg.depth}`,
         "pointer-events:none",
         "box-sizing:border-box",
-        // 1px visual pad so parent color shows as a border around the child
-        seg.depth > 0 ? "outline:1px solid transparent" : "",
       ]
         .filter(Boolean)
         .join(";");
@@ -250,8 +261,8 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
       markers.appendChild(tip);
     }
 
-    // Nested loop segments (same nesting + 1px inset model as functions).
-    // Inset starts at 1px so parent function color remains visible at the edges.
+    // Nested loop segments (same nesting + 2px inset model as functions).
+    // Inset starts at 2px so parent function color remains visible at the edges.
     const loops = buildLoopSegments(timeline.events);
     const seenLoops = new Map<number, string>();
     for (const seg of loops) {
@@ -260,8 +271,8 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
       const width = Math.max(((end - seg.startIndex + 1) / len) * 100, 0.4);
       const color = COLORS[seg.loop_id % COLORS.length];
       seenLoops.set(seg.loop_id, color);
-      // +1 so even outermost loop leaves 1px of function color above/below
-      const inset = seg.depth + 1;
+      // +1 so outermost loop leaves 2px of function color; nested loops +2px each
+      const inset = (seg.depth + 1) * 2;
       const segEl = document.createElement("div");
       segEl.dataset.seg = `loop-${seg.loop_id}`;
       segEl.dataset.loopId = String(seg.loop_id);
@@ -475,12 +486,19 @@ export function mountSeeker(el: HTMLElement, props: SeekerProps): MountHandle {
   }
 
   function onKeyDown(e: KeyboardEvent): void {
-    if (e.code !== "Space" && e.key !== " ") return;
-    if (e.repeat) return;
     if (isTypingTarget(e.target)) return;
-    e.preventDefault();
-    if (timeline.playing) timeline.pause();
-    else timeline.play({ speed: Number(speed.value) });
+    if (e.code === "Space" || e.key === " ") {
+      if (e.repeat) return;
+      e.preventDefault();
+      if (timeline.playing) timeline.pause();
+      else timeline.play({ speed: Number(speed.value) });
+      return;
+    }
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      timeline.pause();
+      timeline.step(e.key === "ArrowRight" ? 1 : -1);
+    }
   }
   window.addEventListener("keydown", onKeyDown);
 

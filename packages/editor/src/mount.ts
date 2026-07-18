@@ -13,6 +13,7 @@ import type { RunResult } from "@rscpp/runner";
 import { applyHighlights, highlightField } from "./decorations.js";
 import { buildChipDecos } from "./chipDecos.js";
 import { buildByteIndexMap, jsToByte } from "./spans.js";
+import { eventIndexForLine } from "./lineSeek.js";
 
 export type MountHandle = {
   update(props: Partial<EditorProps>): void;
@@ -138,6 +139,20 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
           ".cm-scroller": { overflow: "auto" },
         }),
         EditorView.domEventHandlers({
+          mousedown: (e, v) => {
+            const t = e.target as HTMLElement | null;
+            if (!t?.closest?.(".cm-gutters")) return false;
+            e.preventDefault();
+            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+            if (pos == null) return true;
+            const line = v.state.doc.lineAt(pos);
+            const lineIndex0 = line.number - 1;
+            const doc = v.state.doc.toString();
+            const source = timeline.source || doc;
+            const idx = eventIndexForLine(timeline.events, source, lineIndex0);
+            if (idx !== null) timeline.seek(idx + 1);
+            return true;
+          },
           click: (_e, v) => {
             const pos = v.state.selection.main.head;
             const doc = v.state.doc.toString();

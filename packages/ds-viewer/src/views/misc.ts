@@ -3,6 +3,7 @@ import { formatVal } from "../diff.js";
 import type { GraphEncoding } from "../represent.js";
 import type { AccessHighlight } from "../access.js";
 import { EMPTY_ACCESS, ensureAccessStyle } from "../access.js";
+import { setMathContent } from "../math.js";
 
 export function renderRaw(host: HTMLElement, obj: ObjectState | undefined): void {
   host.innerHTML = "";
@@ -53,7 +54,7 @@ export function renderMatrix(
       const row = heap.objects.get(rowVal.value);
       (row?.elems ?? []).forEach((cell, j) => {
         const td = document.createElement("td");
-        td.textContent = formatVal(cell);
+        setMathContent(td, formatVal(cell));
         td.style.cssText = "border:1px solid #ccc;padding:2px 6px;";
         td.dataset.testid = `ds-matrix-${i}-${j}`;
         const k = `${i},${j}`;
@@ -63,7 +64,7 @@ export function renderMatrix(
       });
     } else {
       const td = document.createElement("td");
-      td.textContent = formatVal(rowVal);
+      setMathContent(td, formatVal(rowVal));
       td.style.cssText = "border:1px solid #ccc;padding:2px 6px;";
       if (curRow.has(i)) td.classList.add("ds-access-current");
       else if (trailRow.has(i)) td.classList.add("ds-access-trail");
@@ -78,8 +79,9 @@ export function edgesFromObject(
   obj: ObjectState,
   heap: HeapSnapshot,
   encoding: GraphEncoding,
-): { from: number; to: number }[] {
-  const edges: { from: number; to: number }[] = [];
+  weighted = false,
+): { from: number; to: number; weight?: number }[] {
+  const edges: { from: number; to: number; weight?: number }[] = [];
 
   if (encoding === "adjacency-matrix") {
     const elems = obj.elems ?? [];
@@ -87,7 +89,12 @@ export function edgesFromObject(
       if (rowVal.kind !== "Object") return;
       const row = heap.objects.get(rowVal.value);
       row?.elems?.forEach((cell, j) => {
-        if (cell.kind === "Int" && cell.value !== 0) edges.push({ from: i, to: j });
+        if (cell.kind !== "Int" || cell.value === 0) return;
+        edges.push(
+          weighted
+            ? { from: i, to: j, weight: cell.value }
+            : { from: i, to: j },
+        );
       });
     });
     return edges;
@@ -99,7 +106,22 @@ export function edgesFromObject(
       if (rowVal.kind !== "Object") return;
       const row = heap.objects.get(rowVal.value);
       for (const cell of row?.elems ?? []) {
-        if (cell.kind === "Int") edges.push({ from: i, to: cell.value });
+        if (cell.kind === "Int") {
+          edges.push({ from: i, to: cell.value });
+          continue;
+        }
+        // weighted: neighbor is pair/object {to, weight}
+        if (weighted && cell.kind === "Object") {
+          const pair = heap.objects.get(cell.value);
+          const pe = pair?.elems ?? [];
+          if (
+            pe.length >= 2 &&
+            pe[0].kind === "Int" &&
+            pe[1].kind === "Int"
+          ) {
+            edges.push({ from: i, to: pe[0].value, weight: pe[1].value });
+          }
+        }
       }
     });
     for (const ent of obj.entries ?? []) {
@@ -116,19 +138,38 @@ export function edgesFromObject(
         const neigh = heap.objects.get(val.value);
         for (const n of neigh?.elems ?? []) {
           if (n.kind === "Int") edges.push({ from, to: n.value });
+          if (weighted && n.kind === "Object") {
+            const pair = heap.objects.get(n.value);
+            const pe = pair?.elems ?? [];
+            if (
+              pe.length >= 2 &&
+              pe[0].kind === "Int" &&
+              pe[1].kind === "Int"
+            ) {
+              edges.push({ from, to: pe[0].value, weight: pe[1].value });
+            }
+          }
         }
       }
     }
     return edges;
   }
 
-  // edge-list
+  // edge-list: [u,v] or weighted [u,v,w]
   for (const e of obj.elems ?? []) {
     if (e.kind !== "Object") continue;
     const child = heap.objects.get(e.value);
     const ce = child?.elems ?? [];
     if (ce.length >= 2 && ce[0].kind === "Int" && ce[1].kind === "Int") {
-      edges.push({ from: ce[0].value, to: ce[1].value });
+      if (weighted && ce.length >= 3 && ce[2].kind === "Int") {
+        edges.push({
+          from: ce[0].value,
+          to: ce[1].value,
+          weight: ce[2].value,
+        });
+      } else {
+        edges.push({ from: ce[0].value, to: ce[1].value });
+      }
     }
   }
   return edges;
