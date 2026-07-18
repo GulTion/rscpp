@@ -1,6 +1,8 @@
 import type { HeapSnapshot, ObjectState, ValueJson } from "@rscpp/timeline";
 import { formatVal } from "../diff.js";
 import type { GraphEncoding } from "../represent.js";
+import type { AccessHighlight } from "../access.js";
+import { EMPTY_ACCESS, ensureAccessStyle } from "../access.js";
 
 export function renderRaw(host: HTMLElement, obj: ObjectState | undefined): void {
   host.innerHTML = "";
@@ -25,28 +27,50 @@ export function renderMatrix(
   host: HTMLElement,
   obj: ObjectState,
   heap: HeapSnapshot,
+  access: AccessHighlight = EMPTY_ACCESS,
 ): void {
   host.innerHTML = "";
+  ensureAccessStyle();
   const table = document.createElement("table");
   table.dataset.testid = "ds-matrix";
   table.style.borderCollapse = "collapse";
-  for (const rowVal of obj.elems ?? []) {
+  const cur = new Set(access.currentCells.map((c) => `${c.i},${c.j}`));
+  const trail = new Set(access.trailCells.map((c) => `${c.i},${c.j}`));
+  const curRow = new Set(access.current);
+  const trailRow = new Set(access.trail);
+
+  (obj.elems ?? []).forEach((rowVal, i) => {
     const tr = document.createElement("tr");
+    const rowOnlyCurrent =
+      curRow.has(i) && ![...cur].some((k) => k.startsWith(`${i},`));
+    const rowOnlyTrail =
+      trailRow.has(i) &&
+      !rowOnlyCurrent &&
+      ![...trail].some((k) => k.startsWith(`${i},`)) &&
+      ![...cur].some((k) => k.startsWith(`${i},`));
+
     if (rowVal.kind === "Object") {
       const row = heap.objects.get(rowVal.value);
-      for (const cell of row?.elems ?? []) {
+      (row?.elems ?? []).forEach((cell, j) => {
         const td = document.createElement("td");
         td.textContent = formatVal(cell);
         td.style.cssText = "border:1px solid #ccc;padding:2px 6px;";
+        td.dataset.testid = `ds-matrix-${i}-${j}`;
+        const k = `${i},${j}`;
+        if (cur.has(k) || rowOnlyCurrent) td.classList.add("ds-access-current");
+        else if (trail.has(k) || rowOnlyTrail) td.classList.add("ds-access-trail");
         tr.appendChild(td);
-      }
+      });
     } else {
       const td = document.createElement("td");
       td.textContent = formatVal(rowVal);
+      td.style.cssText = "border:1px solid #ccc;padding:2px 6px;";
+      if (curRow.has(i)) td.classList.add("ds-access-current");
+      else if (trailRow.has(i)) td.classList.add("ds-access-trail");
       tr.appendChild(td);
     }
     table.appendChild(tr);
-  }
+  });
   host.appendChild(table);
 }
 

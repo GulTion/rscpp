@@ -23,6 +23,7 @@ import {
   type GraphViewOpts,
 } from "./graphOpts.js";
 import { walkHighlight, type WalkHighlight } from "./walk.js";
+import { accessHighlight } from "./access.js";
 import { buildFnTree, FN_TREE_PANE_ID } from "./fnTree.js";
 import { renderFnTree } from "./views/fnTree.js";
 
@@ -49,16 +50,17 @@ function renderOne(
   repr: Representation,
   graphOpts: GraphViewOpts,
   walk: WalkHighlight | undefined,
+  access: ReturnType<typeof accessHighlight> | undefined,
 ): void {
   switch (repr) {
     case "array":
     case "table":
     case "stack":
     case "queue":
-      renderLinear(host, prev, obj, repr);
+      renderLinear(host, prev, obj, repr, access);
       break;
     case "matrix":
-      renderMatrix(host, obj, snap);
+      renderMatrix(host, obj, snap, access);
       break;
     case "tree":
       renderTree(host, obj, snap);
@@ -339,7 +341,15 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     const walk = isGraphEncoding(repr)
       ? walkHighlight(timeline.events, timeline.index, id, snap, repr)
       : undefined;
-    renderOne(viewHost, obj, prevById.get(id), snap, repr, gOpts, walk);
+    const access =
+      repr === "array" ||
+      repr === "table" ||
+      repr === "stack" ||
+      repr === "queue" ||
+      repr === "matrix"
+        ? accessHighlight(timeline.events, timeline.index, id, snap)
+        : undefined;
+    renderOne(viewHost, obj, prevById.get(id), snap, repr, gOpts, walk, access);
     prevById.set(id, structuredClone(obj));
 
     let pos = positions.get(id);

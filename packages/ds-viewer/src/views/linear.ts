@@ -1,13 +1,22 @@
 import type { ObjectState } from "@rscpp/timeline";
 import { diffElems, formatVal } from "../diff.js";
+import type { AccessHighlight } from "../access.js";
+import { EMPTY_ACCESS, ensureAccessStyle } from "../access.js";
+
+function markAccess(el: HTMLElement, index: number, access: AccessHighlight): void {
+  if (access.current.includes(index)) el.classList.add("ds-access-current");
+  else if (access.trail.includes(index)) el.classList.add("ds-access-trail");
+}
 
 export function renderLinear(
   host: HTMLElement,
   prev: ObjectState | undefined,
   next: ObjectState | undefined,
   mode: "array" | "table" | "stack" | "queue",
+  access: AccessHighlight = EMPTY_ACCESS,
 ): void {
   host.innerHTML = "";
+  ensureAccessStyle();
   const wrap = document.createElement("div");
   wrap.dataset.testid = "ds-linear";
   wrap.style.cssText =
@@ -27,7 +36,10 @@ export function renderLinear(
       tdI.textContent = String(d.index);
       tdV.textContent = formatVal(d.value);
       tdI.style.cssText = tdV.style.cssText = "border:1px solid #ccc;padding:2px 6px;";
-      if (d.kind === "add" || d.kind === "change") tdV.className = "ds-flash";
+      if (d.kind === "add" || d.kind === "change") tdV.classList.add("ds-flash");
+      markAccess(tdV, d.index, access);
+      markAccess(tr, d.index, access);
+      tr.dataset.testid = `ds-row-${d.index}`;
       tr.append(tdI, tdV);
       table.appendChild(tr);
     }
@@ -44,7 +56,8 @@ export function renderLinear(
     cell.textContent = formatVal(d.value);
     cell.style.cssText =
       "border:1px solid #94a3b8;padding:4px 8px;border-radius:4px;min-width:2ch;text-align:center;";
-    if (d.kind === "add" || d.kind === "change") cell.className = "ds-flash";
+    if (d.kind === "add" || d.kind === "change") cell.classList.add("ds-flash");
+    markAccess(cell, d.index, access);
     wrap.appendChild(cell);
   }
   if (mode === "stack") {
@@ -60,14 +73,4 @@ export function renderLinear(
     wrap.prepend(label);
   }
   host.appendChild(wrap);
-}
-
-const style = document.createElement("style");
-style.textContent = `
-.ds-flash { animation: dsflash 0.45s ease; background: #fef08a; }
-@keyframes dsflash { from { background: #facc15; } to { background: transparent; } }
-`;
-if (typeof document !== "undefined" && !document.getElementById("ds-viewer-style")) {
-  style.id = "ds-viewer-style";
-  document.head?.appendChild(style);
 }
