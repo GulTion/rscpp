@@ -3,6 +3,13 @@ import { proposeRepresentations, type Representation } from "./represent.js";
 import { renderLinear } from "./views/linear.js";
 import { renderMatrix, renderRaw } from "./views/misc.js";
 import { renderGraph, renderTree } from "./views/graph.js";
+import {
+  applyPos,
+  autoPack,
+  canvasExtent,
+  type Pos,
+  type Rect,
+} from "./layout.js";
 
 export type MountHandle = {
   update(props: Partial<DsViewerProps>): void;
@@ -57,13 +64,17 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
   if (objId !== null && props.representation) pref.set(objId, props.representation);
   let onRepresentationChange = props.onRepresentationChange;
   const prevById = new Map<number, ObjectState>();
+  /** Sticky layout by Alloc id. */
+  const positions = new Map<number, Pos>();
+  let zTop = 1;
 
   el.dataset.testid = "ds-root";
   el.innerHTML = "";
+  el.style.cssText = "display:flex;flex-direction:column;min-height:0;height:100%;";
 
   const toolbar = document.createElement("div");
   toolbar.style.cssText =
-    "display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;";
+    "display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap;flex-shrink:0;";
 
   const modeSel = document.createElement("select");
   modeSel.dataset.testid = "ds-mode";
@@ -82,13 +93,26 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
   select.dataset.testid = "ds-repr-select";
   select.title = "Default / focused representation";
 
-  const body = document.createElement("div");
-  body.dataset.testid = "ds-body";
-  body.style.cssText =
-    "display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:100%;";
+  const resetBtn = document.createElement("button");
+  resetBtn.type = "button";
+  resetBtn.textContent = "Reset layout";
+  resetBtn.dataset.testid = "ds-reset-layout";
+  resetBtn.title = "Clear saved positions and re-pack";
 
-  toolbar.append(modeSel, select);
-  el.append(toolbar, body);
+  const canvas = document.createElement("div");
+  canvas.dataset.testid = "ds-canvas";
+  canvas.style.cssText = [
+    "position:relative",
+    "flex:1",
+    "min-height:120px",
+    "overflow:auto",
+    "background:#f1f5f9",
+    "border:1px solid #e2e8f0",
+    "border-radius:4px",
+  ].join(";");
+
+  toolbar.append(modeSel, select, resetBtn);
+  el.append(toolbar, canvas);
 
   function reprFor(id: number, obj: ObjectState): Representation {
     const proposed = proposeRepresentations(obj, timeline.snapshot());
@@ -99,27 +123,98 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     return proposed[0] ?? "raw";
   }
 
+  function bindDrag(handle: HTMLElement, pane: HTMLElement, id: number): void {
+    handle.style.cursor = "grab";
+    handle.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      // Don't start drag from form controls in the header.
+      const t = e.target as HTMLElement;
+      if (t.closest("select,button,input,a")) return;
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      handle.style.cursor = "grabbing";
+      zTop += 1;
+      pane.style.zIndex = String(zTop);
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const orig = positions.get(id) ?? {
+        x: pane.offsetLeft,
+        y: pane.offsetTop,
+      };
+      const onMove = (ev: PointerEvent) => {
+        const next = {
+          x: Math.max(0, orig.x + (ev.clientX - startX)),
+          y: Math.max(0, orig.y + (ev.clientY - startY)),
+        };
+        positions.set(id, next);
+        applyPos(pane, next);
+        growCanvas();
+      };
+      const onUp = (ev: PointerEvent) => {
+        handle.releasePointerCapture(ev.pointerId);
+        handle.style.cursor = "grab";
+        handle.removeEventListener("pointermove", onMove);
+        handle.removeEventListener("pointerup", onUp);
+        handle.removeEventListener("pointercancel", onUp);
+      };
+      handle.addEventListener("pointermove", onMove);
+      handle.addEventListener("pointerup", onUp);
+      handle.addEventListener("pointercancel", onUp);
+    });
+  }
+
+  function growCanvas(): void {
+    const rects: Rect[] = [];
+    canvas.querySelectorAll<HTMLElement>("[data-pane]").forEach((p) => {
+      rects.push({
+        x: p.offsetLeft,
+        y: p.offsetTop,
+        w: p.offsetWidth,
+        h: p.offsetHeight,
+      });
+    });
+    const { w, h } = canvasExtent(
+      rects,
+      canvas.clientWidth || 280,
+      canvas.clientHeight || 120,
+    );
+    canvas.style.minWidth = `${w}px`;
+    canvas.style.minHeight = `${h}px`;
+  }
+
   function paintPane(
-    pane: HTMLElement,
     id: number,
     obj: ObjectState,
     snap: ReturnType<Timeline["snapshot"]>,
-  ): void {
-    pane.innerHTML = "";
+    occupied: Rect[],
+  ): HTMLElement {
+    const pane = document.createElement("div");
+    pane.dataset.pane = String(id);
     pane.dataset.testid = `ds-pane-${id}`;
-    pane.style.cssText =
-      "border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#f8fafc;";
+    pane.style.cssText = [
+      "position:absolute",
+      "width:max-content",
+      "max-width:min(480px,100%)",
+      "border:1px solid #cbd5e1",
+      "border-radius:4px",
+      "padding:2px",
+      "background:#fff",
+      "box-shadow:0 1px 2px #0001",
+      "z-index:1",
+    ].join(";");
 
     const head = document.createElement("div");
+    head.dataset.testid = `ds-pane-handle-${id}`;
     head.style.cssText =
-      "display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;";
+      "display:flex;justify-content:space-between;align-items:center;gap:4px;padding:1px 2px;user-select:none;";
     const title = document.createElement("strong");
-    title.style.font = "12px ui-monospace, monospace";
+    title.style.font = "11px ui-monospace, monospace";
     title.textContent = `#${id} ${obj.type_name}`;
     title.dataset.testid = `ds-pane-title-${id}`;
 
     const localSel = document.createElement("select");
     localSel.dataset.testid = `ds-repr-${id}`;
+    localSel.style.cssText = "font:11px sans-serif;max-width:7rem;";
     const options = proposeRepresentations(obj, snap);
     const repr = reprFor(id, obj);
     for (const r of options) {
@@ -137,37 +232,60 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
 
     head.append(title, localSel);
     const viewHost = document.createElement("div");
+    viewHost.style.cssText = "overflow:auto;max-width:100%;";
     pane.append(head, viewHost);
+    canvas.appendChild(pane);
     renderOne(viewHost, obj, prevById.get(id), snap, repr);
     prevById.set(id, structuredClone(obj));
+
+    let pos = positions.get(id);
+    if (!pos) {
+      const w = Math.max(pane.offsetWidth, 40);
+      const h = Math.max(pane.offsetHeight, 24);
+      pos = autoPack(w, h, occupied);
+      positions.set(id, pos);
+    }
+    applyPos(pane, pos);
+    occupied.push({
+      x: pos.x,
+      y: pos.y,
+      w: pane.offsetWidth,
+      h: pane.offsetHeight,
+    });
+    bindDrag(head, pane, id);
+    return pane;
   }
 
   function paint(): void {
     const snap = timeline.snapshot();
-    body.innerHTML = "";
+    canvas.innerHTML = "";
     select.style.display = mode === "single" ? "" : "none";
+    const occupied: Rect[] = [];
 
     if (mode === "all") {
       const ids = [...snap.objects.keys()].sort((a, b) => a - b);
       if (ids.length === 0) {
-        body.textContent = "No live heap objects at this playhead";
+        const empty = document.createElement("div");
+        empty.style.cssText = "padding:8px;font:12px sans-serif;color:#64748b;";
+        empty.textContent = "No live heap objects at this playhead";
+        canvas.appendChild(empty);
         return;
       }
       for (const id of ids) {
-        const obj = snap.objects.get(id)!;
-        const pane = document.createElement("div");
-        body.appendChild(pane);
-        paintPane(pane, id, obj, snap);
+        paintPane(id, snap.objects.get(id)!, snap, occupied);
       }
+      growCanvas();
       return;
     }
 
-    // single
     select.innerHTML = "";
     const obj = objId !== null ? snap.objects.get(objId) : undefined;
     if (!obj || objId === null) {
-      body.textContent =
+      const empty = document.createElement("div");
+      empty.style.cssText = "padding:8px;font:12px sans-serif;color:#64748b;";
+      empty.textContent =
         objId === null ? "Select an object" : `Object #${objId} not in snapshot`;
+      canvas.appendChild(empty);
       return;
     }
     const options = proposeRepresentations(obj, snap);
@@ -179,9 +297,8 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
       if (r === repr) o.selected = true;
       select.appendChild(o);
     }
-    const pane = document.createElement("div");
-    body.appendChild(pane);
-    paintPane(pane, objId, obj, snap);
+    paintPane(objId, obj, snap, occupied);
+    growCanvas();
   }
 
   modeSel.addEventListener("change", () => {
@@ -196,6 +313,11 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     paint();
   });
 
+  resetBtn.addEventListener("click", () => {
+    positions.clear();
+    paint();
+  });
+
   let unsub = timeline.subscribe((ev) => {
     if (ev.type === "tick" || ev.type === "seek") paint();
   });
@@ -207,6 +329,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
         unsub();
         timeline = next.timeline;
         prevById.clear();
+        positions.clear();
         unsub = timeline.subscribe((ev) => {
           if (ev.type === "tick" || ev.type === "seek") paint();
         });
@@ -222,6 +345,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     },
     destroy() {
       unsub();
+      positions.clear();
       el.innerHTML = "";
     },
   };

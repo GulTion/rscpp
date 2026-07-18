@@ -51,6 +51,9 @@ importers:
       '@types/dagre':
         specifier: ^0.7.52
         version: 0.7.54
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
