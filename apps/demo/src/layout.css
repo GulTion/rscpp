@@ -21,8 +21,17 @@
   grid-row: 1;
   grid-column: 2;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+#ds-host {
+  flex: 1;
+  min-height: 0;
 }
 
 #seeker-pane {
