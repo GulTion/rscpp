@@ -18,6 +18,10 @@ import {
   type Rect,
 } from "./layout.js";
 import { bindingsFromSnapshot } from "./bindings.js";
+import {
+  DEFAULT_GRAPH_OPTS,
+  type GraphViewOpts,
+} from "./graphOpts.js";
 
 export type MountHandle = {
   update(props: Partial<DsViewerProps>): void;
@@ -40,6 +44,7 @@ function renderOne(
   prev: ObjectState | undefined,
   snap: ReturnType<Timeline["snapshot"]>,
   repr: Representation,
+  graphOpts: GraphViewOpts,
 ): void {
   switch (repr) {
     case "array":
@@ -57,7 +62,7 @@ function renderOne(
     case "adjacency-list":
     case "adjacency-matrix":
     case "edge-list":
-      renderGraph(host, obj, snap, repr);
+      renderGraph(host, obj, snap, repr, graphOpts);
       break;
     default:
       renderRaw(host, obj);
@@ -108,7 +113,12 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
   const prevById = new Map<number, ObjectState>();
   /** Sticky layout by Alloc id. */
   const positions = new Map<number, Pos>();
+  const graphOptsById = new Map<number, GraphViewOpts>();
   let zTop = 1;
+
+  function optsFor(id: number): GraphViewOpts {
+    return graphOptsById.get(id) ?? { ...DEFAULT_GRAPH_OPTS };
+  }
 
   el.dataset.testid = "ds-root";
   el.innerHTML = "";
@@ -272,11 +282,57 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     });
 
     head.append(title, localSel);
+
+    const gOpts = optsFor(id);
+    if (isGraphEncoding(repr)) {
+      const graphBar = document.createElement("div");
+      graphBar.style.cssText =
+        "display:flex;gap:6px;align-items:center;padding:1px 2px;font:11px sans-serif;";
+      graphBar.dataset.testid = `ds-graph-opts-${id}`;
+
+      const dirSel = document.createElement("select");
+      dirSel.dataset.testid = `ds-graph-dir-${id}`;
+      for (const [v, label] of [
+        ["undirected", "Undirected"],
+        ["directed", "Directed"],
+      ] as const) {
+        const o = document.createElement("option");
+        o.value = v;
+        o.textContent = label;
+        if (v === gOpts.direction) o.selected = true;
+        dirSel.appendChild(o);
+      }
+      dirSel.addEventListener("change", () => {
+        graphOptsById.set(id, {
+          ...optsFor(id),
+          direction: dirSel.value as GraphViewOpts["direction"],
+        });
+        paint();
+      });
+
+      const multiLab = document.createElement("label");
+      multiLab.style.cssText = "display:inline-flex;gap:3px;align-items:center;";
+      const multi = document.createElement("input");
+      multi.type = "checkbox";
+      multi.checked = gOpts.multigraph;
+      multi.dataset.testid = `ds-graph-multi-${id}`;
+      multi.addEventListener("change", () => {
+        graphOptsById.set(id, { ...optsFor(id), multigraph: multi.checked });
+        paint();
+      });
+      multiLab.append(multi, document.createTextNode("Multigraph"));
+
+      graphBar.append(dirSel, multiLab);
+      pane.append(head, graphBar);
+    } else {
+      pane.append(head);
+    }
+
     const viewHost = document.createElement("div");
     viewHost.style.cssText = "overflow:auto;max-width:100%;";
-    pane.append(head, viewHost);
+    pane.append(viewHost);
     canvas.appendChild(pane);
-    renderOne(viewHost, obj, prevById.get(id), snap, repr);
+    renderOne(viewHost, obj, prevById.get(id), snap, repr, gOpts);
     prevById.set(id, structuredClone(obj));
 
     let pos = positions.get(id);
@@ -367,6 +423,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
         timeline = next.timeline;
         prevById.clear();
         positions.clear();
+        graphOptsById.clear();
         unsub = timeline.subscribe((ev) => {
           if (ev.type === "tick" || ev.type === "seek") paint();
         });

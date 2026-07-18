@@ -3,8 +3,14 @@ import { hierarchy, tree as d3tree } from "d3-hierarchy";
 import dagre from "dagre";
 import { edgesFromObject } from "./misc.js";
 import type { GraphEncoding } from "../represent.js";
+import {
+  normalizeEdges,
+  type GraphViewOpts,
+  DEFAULT_GRAPH_OPTS,
+} from "../graphOpts.js";
 
 const MAX_NODES = 200;
+const NS = "http://www.w3.org/2000/svg";
 
 export function renderTree(
   host: HTMLElement,
@@ -12,8 +18,7 @@ export function renderTree(
   _heap: HeapSnapshot,
 ): void {
   host.innerHTML = "";
-  const parents = (obj.elems ?? [])
-    .map((e) => (e.kind === "Int" ? e.value : -1));
+  const parents = (obj.elems ?? []).map((e) => (e.kind === "Int" ? e.value : -1));
   if (parents.length > MAX_NODES) {
     host.textContent = `tree too large (${parents.length} > ${MAX_NODES}); use table`;
     return;
@@ -33,7 +38,7 @@ export function renderTree(
   const layout = d3tree<N>().nodeSize([40, 60]);
   layout(root);
 
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const svg = document.createElementNS(NS, "svg");
   svg.setAttribute("data-testid", "ds-tree");
   let minX = Infinity,
     maxX = -Infinity,
@@ -51,11 +56,11 @@ export function renderTree(
   svg.setAttribute("width", String(Math.max(w, 120)));
   svg.setAttribute("height", String(Math.max(h, 80)));
 
-  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  const g = document.createElementNS(NS, "g");
   g.setAttribute("transform", `translate(${pad - minX},${pad - minY})`);
 
   root.links().forEach((l) => {
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    const line = document.createElementNS(NS, "line");
     line.setAttribute("x1", String(l.source.x ?? 0));
     line.setAttribute("y1", String(l.source.y ?? 0));
     line.setAttribute("x2", String(l.target.x ?? 0));
@@ -67,14 +72,14 @@ export function renderTree(
   root.descendants().forEach((d) => {
     const x = d.x ?? 0;
     const y = d.y ?? 0;
-    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    const c = document.createElementNS(NS, "circle");
     c.setAttribute("cx", String(x));
     c.setAttribute("cy", String(y));
     c.setAttribute("r", "12");
     c.setAttribute("fill", "#e0f2fe");
     c.setAttribute("stroke", "#0284c7");
     c.setAttribute("data-testid", `ds-node-${d.data.id}`);
-    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    const t = document.createElementNS(NS, "text");
     t.setAttribute("x", String(x));
     t.setAttribute("y", String(y + 4));
     t.setAttribute("text-anchor", "middle");
@@ -87,20 +92,53 @@ export function renderTree(
   host.appendChild(svg);
 }
 
+function edgePath(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  index: number,
+  count: number,
+): string {
+  if (x1 === x2 && y1 === y2) {
+    const r = 18 + index * 6;
+    return `M ${x1} ${y1 - 12} A ${r} ${r} 0 1 1 ${x1 + 0.1} ${y1 - 12}`;
+  }
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const off = (index - (count - 1) / 2) * 10;
+  const cx = (x1 + x2) / 2 + nx * off;
+  const cy = (y1 + y2) / 2 + ny * off;
+  // Shorten so arrow/line meets node circle (r≈12)
+  const trim = 14;
+  const sx = x1 + (dx / len) * trim;
+  const sy = y1 + (dy / len) * trim;
+  const ex = x2 - (dx / len) * trim;
+  const ey = y2 - (dy / len) * trim;
+  if (count === 1 && Math.abs(off) < 0.01) {
+    return `M ${sx} ${sy} L ${ex} ${ey}`;
+  }
+  return `M ${sx} ${sy} Q ${cx} ${cy} ${ex} ${ey}`;
+}
+
 export function renderGraph(
   host: HTMLElement,
   obj: ObjectState,
   heap: HeapSnapshot,
   encoding: GraphEncoding,
+  opts: GraphViewOpts = DEFAULT_GRAPH_OPTS,
 ): void {
   host.innerHTML = "";
-  const edges = edgesFromObject(obj, heap, encoding);
+  const raw = edgesFromObject(obj, heap, encoding);
+  const drawEdges = normalizeEdges(raw, opts);
   const ids = new Set<number>();
-  edges.forEach((e) => {
+  for (const e of drawEdges) {
     ids.add(e.from);
     ids.add(e.to);
-  });
-  // Include isolated adjacency-list rows (node with no edges)
+  }
   if (encoding === "adjacency-list" || encoding === "adjacency-matrix") {
     const elems = obj.elems ?? [];
     if (elems.every((e) => e.kind === "Object")) {
@@ -116,44 +154,78 @@ export function renderGraph(
     return;
   }
 
+  // Layout on unique pairs (ignore parallel copies)
+  const layoutEdges = new Map<string, { from: number; to: number }>();
+  for (const e of drawEdges) {
+    const k = `${e.from}->${e.to}`;
+    if (!layoutEdges.has(k)) layoutEdges.set(k, { from: e.from, to: e.to });
+  }
+
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: "TB", nodesep: 30, ranksep: 40 });
+  g.setGraph({ rankdir: "TB", nodesep: 36, ranksep: 48 });
   g.setDefaultEdgeLabel(() => ({}));
-  for (const id of ids) g.setNode(String(id), { width: 28, height: 28, label: String(id) });
-  for (const e of edges) g.setEdge(String(e.from), String(e.to));
+  for (const id of ids) {
+    g.setNode(String(id), { width: 28, height: 28, label: String(id) });
+  }
+  for (const e of layoutEdges.values()) {
+    g.setEdge(String(e.from), String(e.to));
+  }
   dagre.layout(g);
 
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const svg = document.createElementNS(NS, "svg");
   svg.setAttribute("data-testid", "ds-graph");
+  svg.dataset.direction = opts.direction;
+  svg.dataset.multigraph = String(opts.multigraph);
   const graph = g.graph();
   svg.setAttribute("width", String((graph.width ?? 200) + 40));
   svg.setAttribute("height", String((graph.height ?? 120) + 40));
 
-  const layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  const arrowId = `ds-arrow-${Math.random().toString(36).slice(2, 9)}`;
+  const defs = document.createElementNS(NS, "defs");
+  const marker = document.createElementNS(NS, "marker");
+  marker.setAttribute("id", arrowId);
+  marker.setAttribute("viewBox", "0 0 10 10");
+  marker.setAttribute("refX", "9");
+  marker.setAttribute("refY", "5");
+  marker.setAttribute("markerWidth", "7");
+  marker.setAttribute("markerHeight", "7");
+  marker.setAttribute("orient", "auto-start-reverse");
+  const tip = document.createElementNS(NS, "path");
+  tip.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
+  tip.setAttribute("fill", "#64748b");
+  marker.appendChild(tip);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  const layer = document.createElementNS(NS, "g");
   layer.setAttribute("transform", "translate(20,20)");
 
-  g.edges().forEach((e) => {
-    const edge = g.edge(e);
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    const pts = (edge.points as { x: number; y: number }[])
-      .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
-      .join(" ");
-    path.setAttribute("d", pts);
+  for (const e of drawEdges) {
+    const a = g.node(String(e.from));
+    const b = g.node(String(e.to));
+    if (!a || !b) continue;
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", edgePath(a.x, a.y, b.x, b.y, e.index, e.count));
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", "#64748b");
+    path.setAttribute("stroke-width", "1.5");
+    path.dataset.testid = `ds-edge-${e.from}-${e.to}-${e.index}`;
+    if (opts.direction === "directed") {
+      path.setAttribute("marker-end", `url(#${arrowId})`);
+    }
     layer.appendChild(path);
-  });
+  }
 
   g.nodes().forEach((id) => {
     const n = g.node(id);
-    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    const c = document.createElementNS(NS, "circle");
     c.setAttribute("cx", String(n.x));
     c.setAttribute("cy", String(n.y));
     c.setAttribute("r", "12");
     c.setAttribute("fill", "#fce7f3");
     c.setAttribute("stroke", "#db2777");
     c.setAttribute("data-testid", `ds-node-${id}`);
-    const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    const t = document.createElementNS(NS, "text");
     t.setAttribute("x", String(n.x));
     t.setAttribute("y", String(n.y + 4));
     t.setAttribute("text-anchor", "middle");
