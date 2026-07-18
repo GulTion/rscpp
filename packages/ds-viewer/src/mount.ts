@@ -23,6 +23,8 @@ import {
   type GraphViewOpts,
 } from "./graphOpts.js";
 import { walkHighlight, type WalkHighlight } from "./walk.js";
+import { buildFnTree, FN_TREE_PANE_ID } from "./fnTree.js";
+import { renderFnTree } from "./views/fnTree.js";
 
 export type MountHandle = {
   update(props: Partial<DsViewerProps>): void;
@@ -358,23 +360,75 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     return pane;
   }
 
+  function paintFnTreePane(occupied: Rect[]): void {
+    const id = FN_TREE_PANE_ID;
+    const pane = document.createElement("div");
+    pane.dataset.pane = String(id);
+    pane.dataset.testid = "ds-pane-fn-tree";
+    pane.style.cssText = [
+      "position:absolute",
+      "width:max-content",
+      "max-width:min(520px,100%)",
+      "border:1px solid #cbd5e1",
+      "border-radius:4px",
+      "padding:2px",
+      "background:#fff",
+      "box-shadow:0 1px 2px #0001",
+      "z-index:1",
+    ].join(";");
+
+    const head = document.createElement("div");
+    head.dataset.testid = "ds-pane-handle-fn-tree";
+    head.style.cssText =
+      "display:flex;justify-content:space-between;align-items:center;gap:4px;padding:1px 2px;user-select:none;";
+    const title = document.createElement("strong");
+    title.style.font = "11px ui-monospace, monospace";
+    title.textContent = "Function Tree";
+    title.dataset.testid = "ds-pane-title-fn-tree";
+    head.appendChild(title);
+
+    const viewHost = document.createElement("div");
+    viewHost.style.cssText = "overflow:auto;max-width:100%;";
+    pane.append(head, viewHost);
+    canvas.appendChild(pane);
+
+    const roots = buildFnTree(timeline.events, timeline.index);
+    renderFnTree(viewHost, roots);
+
+    let pos = positions.get(id);
+    if (!pos) {
+      const w = Math.max(pane.offsetWidth, 40);
+      const h = Math.max(pane.offsetHeight, 24);
+      pos = autoPack(w, h, occupied);
+      positions.set(id, pos);
+    }
+    applyPos(pane, pos);
+    occupied.push({
+      x: pos.x,
+      y: pos.y,
+      w: pane.offsetWidth,
+      h: pane.offsetHeight,
+    });
+    bindDrag(head, pane, id);
+  }
+
   function paint(): void {
     const snap = timeline.snapshot();
     canvas.innerHTML = "";
     select.style.display = mode === "single" ? "" : "none";
     const occupied: Rect[] = [];
 
+    // Always show call tree on the canvas
+    paintFnTreePane(occupied);
+
     if (mode === "all") {
       const bindings = bindingsFromSnapshot(snap);
       if (bindings.length === 0) {
-        const empty = document.createElement("div");
-        empty.style.cssText = "padding:8px;font:12px sans-serif;color:#64748b;";
-        empty.textContent = "No variable-bound structures at this playhead";
-        canvas.appendChild(empty);
-        return;
-      }
-      for (const b of bindings) {
-        paintPane(b.id, b.title, b.obj, snap, occupied);
+        // keep Function Tree; optional hint if nothing else
+      } else {
+        for (const b of bindings) {
+          paintPane(b.id, b.title, b.obj, snap, occupied);
+        }
       }
       growCanvas();
       return;
@@ -383,11 +437,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     select.innerHTML = "";
     const obj = objId !== null ? snap.objects.get(objId) : undefined;
     if (!obj || objId === null) {
-      const empty = document.createElement("div");
-      empty.style.cssText = "padding:8px;font:12px sans-serif;color:#64748b;";
-      empty.textContent =
-        objId === null ? "Select an object" : `Object #${objId} not in snapshot`;
-      canvas.appendChild(empty);
+      growCanvas();
       return;
     }
     const options = proposeRepresentations(obj, snap);

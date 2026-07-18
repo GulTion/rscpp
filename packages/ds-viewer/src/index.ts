@@ -15,3 +15,5 @@ export { normalizeEdges, DEFAULT_GRAPH_OPTS } from "./graphOpts.js";
 export type { GraphViewOpts, GraphDirection, DrawEdge } from "./graphOpts.js";
 export { walkHighlight } from "./walk.js";
 export type { WalkHighlight } from "./walk.js";
+export { buildFnTree, FN_TREE_PANE_ID, formatFnLabel } from "./fnTree.js";
+export type { FnTreeNode, FnArg } from "./fnTree.js";

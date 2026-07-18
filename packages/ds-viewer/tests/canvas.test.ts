@@ -139,8 +139,10 @@ describe("ds canvas layout", () => {
 
     (root.querySelector('[data-testid="ds-reset-layout"]') as HTMLButtonElement).click();
     const after = root.querySelector('[data-testid="ds-pane-1"]') as HTMLElement;
-    expect(after.style.left).toBe("8px");
-    expect(after.style.top).toBe("8px");
+    // Function Tree packs first; variables pack below it
+    expect(parseInt(after.style.left, 10)).toBe(8);
+    expect(parseInt(after.style.top, 10)).toBeGreaterThanOrEqual(8);
+    expect(root.querySelector('[data-testid="ds-pane-fn-tree"]')).toBeTruthy();
   });
 
   it("auto-packs a second object below the first", () => {
@@ -149,7 +151,7 @@ describe("ds canvas layout", () => {
     mountDsViewer(root, { timeline, objId: null, mode: "all" });
     const a = root.querySelector('[data-testid="ds-pane-1"]') as HTMLElement;
     const b = root.querySelector('[data-testid="ds-pane-2"]') as HTMLElement;
-    expect(a.style.top).toBe("8px");
     expect(parseInt(b.style.top, 10)).toBeGreaterThan(parseInt(a.style.top, 10));
+    expect(root.querySelector('[data-testid="ds-fn-tree"]')).toBeTruthy();
   });
 });
