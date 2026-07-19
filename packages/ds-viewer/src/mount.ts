@@ -62,7 +62,7 @@ function renderOne(
       renderLinear(host, prev, obj, repr, access);
       break;
     case "matrix":
-      renderMatrix(host, obj, snap, access);
+      renderMatrix(host, obj, snap, access, prev);
       break;
     case "tree":
       renderTree(host, obj, snap, access);
@@ -172,8 +172,8 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     "flex:1",
     "min-height:120px",
     "overflow:auto",
-    "background:#f1f5f9",
-    "border:1px solid #e2e8f0",
+    "background:var(--track-alt, #f1f5f9)",
+    "border:1px solid var(--border, #e2e8f0)",
     "border-radius:4px",
   ].join(";");
 
@@ -263,11 +263,12 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
       "position:absolute",
       "width:max-content",
       "max-width:min(480px,100%)",
-      "border:1px solid #cbd5e1",
+      "border:1px solid var(--border, #cbd5e1)",
       "border-radius:4px",
       "padding:2px",
-      "background:#fff",
-      "box-shadow:0 1px 2px #0001",
+      "background:var(--panel, #fff)",
+      "color:var(--text, inherit)",
+      "box-shadow:0 1px 2px var(--shadow, #0001)",
       "z-index:1",
     ].join(";");
 
@@ -377,7 +378,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     if (!pos) {
       const w = Math.max(pane.offsetWidth, 40);
       const h = Math.max(pane.offsetHeight, 24);
-      pos = autoPack(w, h, occupied);
+      pos = autoPack(w, h, occupied, canvas.clientWidth || 480);
       positions.set(id, pos);
     }
     applyPos(pane, pos);
@@ -400,11 +401,12 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
       "position:absolute",
       "width:max-content",
       "max-width:min(520px,100%)",
-      "border:1px solid #cbd5e1",
+      "border:1px solid var(--border, #cbd5e1)",
       "border-radius:4px",
       "padding:2px",
-      "background:#fff",
-      "box-shadow:0 1px 2px #0001",
+      "background:var(--panel, #fff)",
+      "color:var(--text, inherit)",
+      "box-shadow:0 1px 2px var(--shadow, #0001)",
       "z-index:1",
     ].join(";");
 
@@ -430,7 +432,7 @@ export function mountDsViewer(el: HTMLElement, props: DsViewerProps): MountHandl
     if (!pos) {
       const w = Math.max(pane.offsetWidth, 40);
       const h = Math.max(pane.offsetHeight, 24);
-      pos = autoPack(w, h, occupied);
+      pos = autoPack(w, h, occupied, canvas.clientWidth || 480);
       positions.set(id, pos);
     }
     applyPos(pane, pos);

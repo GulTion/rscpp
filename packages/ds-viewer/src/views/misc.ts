@@ -2,8 +2,15 @@ import type { HeapSnapshot, ObjectState, ValueJson } from "@rscpp/timeline";
 import { formatVal } from "../diff.js";
 import type { GraphEncoding } from "../represent.js";
 import type { AccessHighlight } from "../access.js";
-import { EMPTY_ACCESS, ensureAccessStyle } from "../access.js";
-import { setMathContent } from "../math.js";
+import {
+  EMPTY_ACCESS,
+  attachIndexHint,
+  ensureAccessStyle,
+  fillAccessCell,
+  markCellAccess,
+  markIndexAccess,
+  shouldAnimateWrite,
+} from "../access.js";
 
 export function renderRaw(host: HTMLElement, obj: ObjectState | undefined): void {
   host.innerHTML = "";
@@ -24,50 +31,82 @@ export function renderRaw(host: HTMLElement, obj: ObjectState | undefined): void
   host.appendChild(pre);
 }
 
+function headerStyle(): string {
+  return "border:1px solid var(--border, #cbd5e1);padding:2px 6px;background:var(--track-alt, #f1f5f9);color:var(--muted, #64748b);font:11px ui-monospace,monospace;text-align:center;";
+}
+
+function cellStyle(): string {
+  return "border:1px solid var(--border, #ccc);padding:2px 6px;text-align:center;overflow:hidden;vertical-align:middle;color:var(--text, inherit);";
+}
+
 export function renderMatrix(
   host: HTMLElement,
   obj: ObjectState,
   heap: HeapSnapshot,
   access: AccessHighlight = EMPTY_ACCESS,
+  _prev?: ObjectState,
 ): void {
   host.innerHTML = "";
   ensureAccessStyle();
   const table = document.createElement("table");
   table.dataset.testid = "ds-matrix";
-  table.style.borderCollapse = "collapse";
-  const cur = new Set(access.currentCells.map((c) => `${c.i},${c.j}`));
-  const trail = new Set(access.trailCells.map((c) => `${c.i},${c.j}`));
-  const curRow = new Set(access.current);
-  const trailRow = new Set(access.trail);
+  table.style.cssText = "border-collapse:collapse;";
 
-  (obj.elems ?? []).forEach((rowVal, i) => {
+  const rows = obj.elems ?? [];
+  let cols = 0;
+  for (const rowVal of rows) {
+    if (rowVal.kind === "Object") {
+      cols = Math.max(cols, heap.objects.get(rowVal.value)?.elems?.length ?? 0);
+    } else {
+      cols = Math.max(cols, 1);
+    }
+  }
+
+  const head = document.createElement("tr");
+  const corner = document.createElement("th");
+  corner.style.cssText = headerStyle();
+  corner.textContent = "";
+  head.appendChild(corner);
+  for (let j = 0; j < cols; j++) {
+    const th = document.createElement("th");
+    th.style.cssText = headerStyle();
+    th.textContent = String(j);
+    th.dataset.testid = `ds-matrix-col-${j}`;
+    head.appendChild(th);
+  }
+  table.appendChild(head);
+
+  rows.forEach((rowVal, i) => {
     const tr = document.createElement("tr");
-    const rowOnlyCurrent =
-      curRow.has(i) && ![...cur].some((k) => k.startsWith(`${i},`));
-    const rowOnlyTrail =
-      trailRow.has(i) &&
-      !rowOnlyCurrent &&
-      ![...trail].some((k) => k.startsWith(`${i},`)) &&
-      ![...cur].some((k) => k.startsWith(`${i},`));
+    const rowTh = document.createElement("th");
+    rowTh.style.cssText = headerStyle();
+    rowTh.textContent = String(i);
+    rowTh.dataset.testid = `ds-matrix-row-${i}`;
+    tr.appendChild(rowTh);
 
     if (rowVal.kind === "Object") {
       const row = heap.objects.get(rowVal.value);
-      (row?.elems ?? []).forEach((cell, j) => {
+      for (let j = 0; j < cols; j++) {
         const td = document.createElement("td");
-        setMathContent(td, formatVal(cell));
-        td.style.cssText = "border:1px solid #ccc;padding:2px 6px;";
+        td.style.cssText = cellStyle();
         td.dataset.testid = `ds-matrix-${i}-${j}`;
-        const k = `${i},${j}`;
-        if (cur.has(k) || rowOnlyCurrent) td.classList.add("ds-access-current");
-        else if (trail.has(k) || rowOnlyTrail) td.classList.add("ds-access-trail");
+        const nextV = row?.elems?.[j];
+        const key = `${i},${j}`;
+        const anim = shouldAnimateWrite(access, { i, j });
+        const oldText = access.writeOld.get(key);
+        fillAccessCell(td, formatVal(nextV), oldText, anim);
+        markCellAccess(td, { i, j }, access);
+        attachIndexHint(td, access, { i, j });
         tr.appendChild(td);
-      });
+      }
     } else {
       const td = document.createElement("td");
-      setMathContent(td, formatVal(rowVal));
-      td.style.cssText = "border:1px solid #ccc;padding:2px 6px;";
-      if (curRow.has(i)) td.classList.add("ds-access-current");
-      else if (trailRow.has(i)) td.classList.add("ds-access-trail");
+      td.style.cssText = cellStyle();
+      td.colSpan = Math.max(cols, 1);
+      const anim = shouldAnimateWrite(access, i);
+      fillAccessCell(td, formatVal(rowVal), access.writeOld.get(String(i)), anim);
+      markIndexAccess(td, i, access);
+      attachIndexHint(td, access, i);
       tr.appendChild(td);
     }
     table.appendChild(tr);

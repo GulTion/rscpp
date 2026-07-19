@@ -13,17 +13,36 @@ const R = 16;
 
 function ensureStyle(): void {
   if (typeof document === "undefined") return;
-  if (document.getElementById("ds-fn-tree-style")) return;
-  const style = document.createElement("style");
-  style.id = "ds-fn-tree-style";
+  let style = document.getElementById("ds-fn-tree-style") as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "ds-fn-tree-style";
+    document.head?.appendChild(style);
+  }
   style.textContent = `
 .ds-fn-node-circle { fill: #e2e8f0; stroke: #64748b; stroke-width: 1.5px; }
-.ds-fn-node-circle.active { fill: #7dd3fc; stroke: #0369a1; stroke-width: 2.5px; }
+.ds-fn-node-circle.active {
+  fill: #7dd3fc; stroke: #0369a1; stroke-width: 2.5px;
+  animation: ds-fn-pulse 0.7s ease-in-out infinite;
+}
+.ds-fn-node-circle.exiting {
+  fill: #fca5a5; stroke: #dc2626; stroke-width: 2.5px;
+  filter: drop-shadow(0 0 3px #dc262688);
+}
 .ds-fn-node-circle.done { fill: #f1f5f9; stroke: #94a3b8; opacity: 0.55; }
+@keyframes ds-fn-pulse {
+  0%, 100% { stroke-width: 2.5px; opacity: 1; }
+  50% { stroke-width: 4px; opacity: 0.92; }
+}
 .ds-fn-edge { fill: none; stroke: #94a3b8; stroke-width: 1.5px; }
 .ds-fn-edge.active { stroke: #0284c7; stroke-width: 2px; }
 .ds-fn-label-name { font: 700 10px ui-sans-serif, system-ui, sans-serif; fill: #0f172a; }
 .ds-fn-label-args { font: 9px ui-monospace, monospace; fill: #b45309; font-weight: 700; }
+:root[data-theme="dark"] .ds-fn-node-circle { fill: #1e293b; stroke: #94a3b8; }
+:root[data-theme="dark"] .ds-fn-node-circle.done { fill: #0f172a; stroke: #64748b; }
+:root[data-theme="dark"] .ds-fn-edge { stroke: #64748b; }
+:root[data-theme="dark"] .ds-fn-label-name { fill: #e2e8f0; }
+:root[data-theme="dark"] .ds-fn-label-args { fill: #fcd34d; }
 `;
   document.head?.appendChild(style);
 }
@@ -52,6 +71,7 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     enterIndex: -1,
     exitIndex: null,
     active: false,
+    exiting: false,
     children: roots,
   };
 
@@ -125,7 +145,8 @@ export function renderFnTree(host: HTMLElement, roots: FnTreeNode[]): void {
     circle.setAttribute("cy", String(y));
     circle.setAttribute("r", String(R));
     circle.setAttribute("class", "ds-fn-node-circle");
-    if (d.data.active) circle.classList.add("active");
+    if (d.data.exiting) circle.classList.add("exiting");
+    else if (d.data.active) circle.classList.add("active");
     else circle.classList.add("done");
     circle.setAttribute("data-testid", `ds-fn-node-${d.data.call_id}`);
 
