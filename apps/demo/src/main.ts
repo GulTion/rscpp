@@ -1,12 +1,16 @@
 import "./layout.css";
+import { initTheme } from "./theme";
 import { createTimeline } from "@rscpp/timeline";
 import { mountSeeker } from "@rscpp/seeker";
 import { mountEditor } from "@rscpp/editor";
 import { mountDsViewer, listAllocIds } from "@rscpp/ds-viewer";
 import type { Representation } from "@rscpp/ds-viewer";
+import { mountDebugger } from "@rscpp/debugger";
 import { initRunner, run, runMethod } from "@rscpp/runner";
 import type { RunResult } from "@rscpp/runner";
 import { installDebug } from "./debug";
+
+const theme = initTheme();
 import twoSum from "../../../packages/timeline/src/fixtures/two_sum.json";
 import parentTree from "../../../packages/timeline/src/fixtures/parent_tree.json";
 import vectorPush from "../../../packages/timeline/src/fixtures/vector_push.json";
@@ -14,6 +18,7 @@ import dfs from "../../../packages/timeline/src/fixtures/dfs.json";
 import dfsMain from "../../../packages/timeline/src/fixtures/dfs_main.json";
 import validParen from "../../../packages/timeline/src/fixtures/valid_parentheses.json";
 import validParenMain from "../../../packages/timeline/src/fixtures/valid_parentheses_main.json";
+import nQueens from "../../../packages/timeline/src/fixtures/n_queens.json";
 import type { EventJson } from "@rscpp/timeline";
 
 type FixtureMeta = {
@@ -42,6 +47,7 @@ root.innerHTML = `
           <option value="dfs_main">dfs main (444)</option>
           <option value="valid_parentheses">valid_parentheses (270)</option>
           <option value="valid_parentheses_main">valid_paren main (213)</option>
+          <option value="n_queens">n_queens (2292)</option>
           <option value="vector_push">vector_push</option>
           <option value="parent_tree">parent_tree</option>
         </select>
@@ -85,6 +91,13 @@ const fixtures: Record<string, FixtureMeta> = {
     preferObjId: 2,
     preferRepr: "stack",
   },
+  n_queens: {
+    ...(nQueens as FixtureMeta),
+    method: "Solution::solveNQueens",
+    args: [4],
+    preferObjId: 0,
+    preferRepr: "array",
+  },
   vector_push: {
     source: "// vector push fixture",
     events: vectorPush.events as EventJson[],
@@ -111,12 +124,33 @@ let lastRun: RunResult | null = {
 const seekerEl = document.querySelector("#seeker-pane") as HTMLElement;
 const seeker = mountSeeker(seekerEl, { timeline, source });
 
+const debuggerEl = document.createElement("div");
+document.body.appendChild(debuggerEl);
+const eventDebugger = mountDebugger(debuggerEl, { timeline });
+
 const editorEl = document.querySelector("#editor-pane") as HTMLElement;
 let editor: ReturnType<typeof mountEditor>;
 
 const dsHost = document.querySelector("#ds-host") as HTMLElement;
 const picker = document.querySelector("[data-testid=ds-object-picker]") as HTMLSelectElement;
 const fixtureSel = document.querySelector("[data-testid=fixture-select]") as HTMLSelectElement;
+
+const themeBtn = document.createElement("button");
+themeBtn.type = "button";
+themeBtn.dataset.testid = "theme-toggle";
+function syncThemeLabel(): void {
+  const p = theme.getPreference();
+  const label =
+    p === "system" ? "System" : p === "light" ? "Light" : "Dark";
+  themeBtn.textContent = `Theme: ${label}`;
+}
+syncThemeLabel();
+themeBtn.addEventListener("click", () => {
+  theme.cycle();
+  syncThemeLabel();
+});
+const dsToolbar = dsHost.previousElementSibling;
+if (dsToolbar) dsToolbar.appendChild(themeBtn);
 
 let ds = mountDsViewer(dsHost, { timeline, objId: null, mode: "all" });
 
@@ -197,6 +231,7 @@ function remountTimeline(
   timeline = createTimeline({ events, source });
   seeker.update({ timeline, source });
   editor.update({ timeline, source });
+  eventDebugger.update({ timeline });
   ds.update({ timeline, objId: null });
   seekShowingObject(next.preferObjId);
   refreshPicker(next.preferObjId, next.preferRepr);
@@ -251,7 +286,7 @@ void initRunner().then(() => {
   status.dataset.testid = "wasm-status";
   status.textContent = "wasm ready";
   status.style.cssText =
-    "position:fixed;right:8px;top:8px;font:11px monospace;opacity:0.6;";
+    "position:fixed;right:64px;top:12px;font:11px monospace;opacity:0.6;z-index:9998;";
   document.body.appendChild(status);
 });
 

@@ -1,3 +1,56 @@
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --border: #cbd5e1;
+  --text: #0f172a;
+  --muted: #64748b;
+  --control-bg: #ffffff;
+  --control-border: #cbd5e1;
+  --track: #e2e8f0;
+  --track-alt: #f1f5f9;
+  --thumb: #0f172a;
+  --code-bg: #ffffff;
+  --code-fg: #0f172a;
+  --gutter-bg: #f1f5f9;
+  --gutter-fg: #64748b;
+  --chip-local-bg: #ccfbf1;
+  --chip-local-fg: #0f766e;
+  --chip-lookup-bg: #fef3c7;
+  --chip-lookup-fg: #b45309;
+  --shadow: #00000018;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1220;
+  --panel: #111827;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --control-bg: #1e293b;
+  --control-border: #475569;
+  --track: #1e293b;
+  --track-alt: #334155;
+  --thumb: #e2e8f0;
+  --code-bg: #0f172a;
+  --code-fg: #e2e8f0;
+  --gutter-bg: #0b1220;
+  --gutter-fg: #94a3b8;
+  --chip-local-bg: #134e4a;
+  --chip-local-fg: #5eead4;
+  --chip-lookup-bg: #78350f;
+  --chip-lookup-fg: #fcd34d;
+  --shadow: #00000066;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
 #root {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -7,6 +60,8 @@
   padding: 8px;
   box-sizing: border-box;
   font-family: ui-sans-serif, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
 #editor-pane {
@@ -14,7 +69,8 @@
   grid-column: 1;
   min-height: 0;
   overflow: auto;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
+  background: var(--panel);
 }
 
 #ds-pane {
@@ -22,7 +78,8 @@
   grid-column: 2;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
+  background: var(--panel);
   display: flex;
   flex-direction: column;
   padding: 6px;
@@ -37,10 +94,29 @@
 #seeker-pane {
   grid-row: 2;
   grid-column: 1 / -1;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
+  background: var(--panel);
   padding: 8px;
 }
 
-body {
-  margin: 0;
+#ds-pane select,
+#ds-pane label,
+#editor-pane select,
+#editor-pane input,
+#editor-pane button {
+  color: var(--text);
+}
+
+#ds-pane select,
+#editor-pane select,
+#editor-pane input,
+#editor-pane button,
+[data-testid="theme-toggle"] {
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 8px;
 }
