@@ -5,7 +5,7 @@ import {
   keymap,
   lineNumbers,
 } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { cpp } from "@codemirror/lang-cpp";
 import type { Timeline } from "@rscpp/timeline";
@@ -14,6 +14,11 @@ import { applyHighlights, highlightField } from "./decorations.js";
 import { buildChipDecos } from "./chipDecos.js";
 import { buildByteIndexMap, jsToByte } from "./spans.js";
 import { eventIndexForLine } from "./lineSeek.js";
+import {
+  editorTheme,
+  readDocumentTheme,
+  watchDocumentTheme,
+} from "./theme.js";
 
 export type MountHandle = {
   update(props: Partial<EditorProps>): void;
@@ -123,6 +128,7 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
     { decorations: (v) => v.decorations },
   );
 
+  const themeComp = new Compartment();
   let view = new EditorView({
     parent: cmHost,
     state: EditorState.create({
@@ -134,10 +140,7 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
         keymap.of([...defaultKeymap, ...historyKeymap]),
         highlightField,
         chipPlugin,
-        EditorView.theme({
-          "&": { height: "100%", fontSize: "13px" },
-          ".cm-scroller": { overflow: "auto" },
-        }),
+        themeComp.of(editorTheme(readDocumentTheme())),
         EditorView.domEventHandlers({
           mousedown: (e, v) => {
             const t = e.target as HTMLElement | null;
@@ -206,6 +209,9 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
     if (ev.type === "highlight" || ev.type === "tick" || ev.type === "seek") {
       onTimeline();
     }
+  });
+  const unwatchTheme = watchDocumentTheme((mode) => {
+    view.dispatch({ effects: themeComp.reconfigure(editorTheme(mode)) });
   });
   onTimeline();
 
@@ -292,6 +298,7 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
       return view.state.doc.toString();
     },
     destroy() {
+      unwatchTheme();
       unsub();
       view.destroy();
       el.innerHTML = "";
