@@ -4,5 +4,21 @@ export {
   buildLoopSegments,
   buildCallSegments,
   colorIndexForName,
+  currentSegment,
 } from "./segments.js";
-export type { LoopSegment, CallSegment } from "./segments.js";
+export type { LoopSegment, CallSegment, ActiveSegment } from "./segments.js";
+export {
+  countVisibleInRange,
+  playheadToVisualInRange,
+  visualToPlayheadInRange,
+} from "./detailAxis.js";
+export {
+  LAYER_H,
+  allSpans,
+  callStackDepth,
+  loopStackDepth,
+  maxStackDepth,
+  slabBottom,
+  stackHeight,
+  containmentDepth,
+} from "./stackLayout.js";

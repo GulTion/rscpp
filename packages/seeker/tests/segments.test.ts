@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildCallSegments, buildLoopSegments, colorIndexForName } from "../src/segments";
+import {
+  buildCallSegments,
+  buildLoopSegments,
+  colorIndexForName,
+  currentSegment,
+} from "../src/segments";
 
 describe("buildCallSegments", () => {
   it("nests child call inside parent", () => {
@@ -51,5 +56,53 @@ describe("colorIndexForName", () => {
   it("is stable for same name", () => {
     expect(colorIndexForName("main", 7)).toBe(colorIndexForName("main", 7));
     expect(colorIndexForName("main", 7)).not.toBe(colorIndexForName("fn", 7));
+  });
+});
+
+describe("currentSegment", () => {
+  const events = [
+    { kind: "FnEnter", name: "twoSum", call_id: 0, parent_id: null },
+    { kind: "Write" },
+    { kind: "LoopIter", loop_id: 1 },
+    { kind: "Write" },
+    { kind: "LoopEnd", loop_id: 1, reason: "exhausted" },
+    { kind: "Write" },
+    { kind: "FnExit", name: "twoSum", call_id: 0, parent_id: null },
+  ];
+
+  it("picks call when playhead is in function but outside loop", () => {
+    // after first Write (index 2), before LoopIter applied as current focus inside fn
+    const seg = currentSegment(events, 2);
+    expect(seg?.kind).toBe("call");
+    expect(seg?.label).toBe("twoSum");
+  });
+
+  it("picks loop when playhead is inside loop", () => {
+    // after LoopIter+Write (index 4) still before LoopEnd fully past? index 4 = after LoopEnd event at 4
+    // playhead 4: events[0..4) applied, current is LoopEnd — contains: start 2, end 4, p<=5 → yes loop
+    // playhead 3: after Write inside loop
+    const seg = currentSegment(events, 3);
+    expect(seg?.kind).toBe("loop");
+    expect(seg?.label).toBe("loop #1");
+  });
+
+  it("picks nested call over an outer loop that wraps it", () => {
+    // countComponents while wraps dfs — detail should zoom to dfs, not the while
+    const nested = [
+      { kind: "FnEnter", name: "countComponents", call_id: 0, parent_id: null },
+      { kind: "LoopIter", loop_id: 1 },
+      { kind: "FnEnter", name: "dfs", call_id: 1, parent_id: 0 },
+      { kind: "Write" },
+      { kind: "FnExit", name: "dfs", call_id: 1, parent_id: 0 },
+      { kind: "LoopEnd", loop_id: 1, reason: "exhausted" },
+      { kind: "FnExit", name: "countComponents", call_id: 0, parent_id: null },
+    ];
+    const seg = currentSegment(nested, 4); // inside dfs body
+    expect(seg?.kind).toBe("call");
+    expect(seg?.label).toBe("dfs");
+  });
+
+  it("returns null outside all segments", () => {
+    expect(currentSegment(events, 0)).toBeNull();
   });
 });
