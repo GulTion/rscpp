@@ -163,6 +163,25 @@ impl Engine {
         cur
     }
 
+    /// Non-type template arg encoded as `Named` path `"21"` (see parser).
+    pub(super) fn nttp_usize(args: &[Type]) -> Option<usize> {
+        args.first().and_then(|t| match t {
+            Type::Named { path, .. } => path.segments.last()?.name.parse().ok(),
+            _ => None,
+        })
+    }
+
+    /// Fill a bitset from an unsigned integer value (low bits).
+    pub(super) fn bitset_from_ulong(n: usize, val: u64) -> Object {
+        let mut bits = vec![false; n];
+        for (i, b) in bits.iter_mut().enumerate() {
+            if i < 64 {
+                *b = (val >> i) & 1 == 1;
+            }
+        }
+        Object::Bitset { bits }
+    }
+
     pub(super) fn default_value_for_type(&mut self, ty: &Type) -> Result<Value> {
         let ty = self.resolve_type(ty).clone();
         match &ty {
@@ -195,6 +214,14 @@ impl Engine {
                     self.emit_alloc(id, "array", path.span);
                     return Ok(Value::Object(id));
                 }
+                if name == "bitset" {
+                    let n = Self::nttp_usize(args).unwrap_or(0);
+                    let id = self.heap.alloc(Object::Bitset {
+                        bits: vec![false; n],
+                    });
+                    self.emit_alloc(id, "bitset", path.span);
+                    return Ok(Value::Object(id));
+                }
                 if name == "priority_queue" {
                     let min_heap = args.iter().any(|t| match t {
                         Type::Named { path, .. } => path
@@ -225,7 +252,7 @@ impl Engine {
                     let ctor = format!("{name}::{name}");
                     if self.functions.contains_key(&ctor) {
                         // Default-construct via zero-arg ctor when present (`Trie trie;`).
-                        self.call_fn(&ctor, &[], Some(Value::Object(id)))?;
+                        self.call_fn(&ctor, &[], Some(Value::Object(id)), None)?;
                     }
                     return Ok(Value::Object(id));
                 }
@@ -274,7 +301,7 @@ impl Engine {
         self.emit(Event::Write {
             slot: Slot::MapEntry {
                 obj: map_id,
-                key: key.to_string(),
+                key: key.clone(),
             },
             old: None,
             value: def.clone(),

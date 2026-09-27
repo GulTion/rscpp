@@ -31,6 +31,8 @@ pub fn is_builtin_call(name: &str) -> bool {
             | "floor"
             | "__builtin_popcount"
             | "__builtin_popcountll"
+            | "popcount"
+            | "std::popcount"
             | "std::min"
             | "std::max"
             | "std::abs"
@@ -158,7 +160,7 @@ pub fn call_builtin(name: &str, args: &[Value], span: Span) -> Result<BuiltinOut
                 chosen: None,
             })
         }
-        "__builtin_popcount" | "__builtin_popcountll" => {
+        "__builtin_popcount" | "__builtin_popcountll" | "popcount" | "std::popcount" => {
             if args.len() != 1 {
                 return Err(RuntimeError::at(
                     span,

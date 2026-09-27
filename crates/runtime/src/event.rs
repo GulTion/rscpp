@@ -17,7 +17,7 @@ pub enum Slot {
     Global { name: String },
     Object { obj: ObjId },
     Index { obj: ObjId, index: usize },
-    MapEntry { obj: ObjId, key: String },
+    MapEntry { obj: ObjId, key: MapKey },
     Field { obj: ObjId, field: String },
 }
 
@@ -33,8 +33,9 @@ pub struct AllocEntry {
 ///
 /// Serialized as `{ "kind": "<Variant>", ... }`. Full field guide: `docs/events.md`.
 ///
-/// **`call_id` / `parent_id` appear only on `FnEnter` / `FnExit`.** The root activation
+/// **`call_id` / `parent_id` appear on `FnEnter` / `FnExit` / `Call`.** The root activation
 /// (`main` or top-level `run_method`) uses `call_id: 0` and `parent_id: null`.
+/// `Call` (when present) shares `call_id` with the following `FnEnter` and uses the call-site span.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "kind")]
 pub enum Event {
@@ -77,6 +78,16 @@ pub enum Event {
         call_id: u64,
         /// Caller's `call_id`; `None` for top-level entry (e.g. `main`).
         parent_id: Option<u64>,
+        args: Vec<Value>,
+        span: Span,
+    },
+    /// Call expression about to run (call-site highlight **before** `FnEnter`).
+    ///
+    /// `call_id` matches the following `FnEnter` / `FnExit`. `span` is the call
+    /// expression (e.g. `shift(0, k - 1)`), while `FnEnter.span` is the callee body.
+    Call {
+        name: String,
+        call_id: u64,
         args: Vec<Value>,
         span: Span,
     },

@@ -43,6 +43,7 @@ Stable testids: `seeker-root`, `seeker-scrubber`, `seeker-play`, `seeker-pause`,
 | `dfs_main` | ~444 | Same graph via `main` (CF profile) |
 | `valid_parentheses` | ~270 | Object `#2 stack` → `stack`; scrub to watch push/pop |
 | `valid_parentheses_main` | ~213 | Full main with two isValid calls |
+| `n_queens` | ~2292 | Backtracking DFS for n=4; watch nested `dfs` + loops |
 
 Regenerate:
 

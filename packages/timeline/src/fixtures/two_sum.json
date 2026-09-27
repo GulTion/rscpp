@@ -324,7 +324,10 @@
       "kind": "Write",
       "old": null,
       "slot": {
-        "key": "2",
+        "key": {
+          "kind": "Int",
+          "value": 2
+        },
         "kind": "MapEntry",
         "obj": 2
       },
@@ -366,7 +369,10 @@
         "value": 0
       },
       "slot": {
-        "key": "2",
+        "key": {
+          "kind": "Int",
+          "value": 2
+        },
         "kind": "MapEntry",
         "obj": 2
       },

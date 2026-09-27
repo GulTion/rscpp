@@ -16,6 +16,8 @@ export type FnTreeNode = {
   exitIndex: number | null;
   /** Still on the stack at the playhead. */
   active: boolean;
+  /** Current event is this call's FnExit (red flash before done/grey). */
+  exiting: boolean;
   children: FnTreeNode[];
 };
 
@@ -167,6 +169,7 @@ export function buildFnTree(
   for (const r of recs.values()) {
     if (r.enterIndex >= t) continue;
     const exited = r.exitIndex !== null && r.exitIndex < t;
+    const exiting = r.exitIndex !== null && r.exitIndex === t - 1;
     liveById.set(r.call_id, {
       call_id: r.call_id,
       parent_id: r.parent_id,
@@ -175,6 +178,7 @@ export function buildFnTree(
       enterIndex: r.enterIndex,
       exitIndex: r.exitIndex,
       active: !exited,
+      exiting,
       children: [],
     });
   }

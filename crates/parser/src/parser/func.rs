@@ -206,6 +206,11 @@ impl Parser {
         ty: &Type,
     ) -> Result<InitDeclarator, ParseError> {
         let start = name.span.start;
+        if self.at_punct(Punct::LBracket) {
+            return Err(self.err(
+                "C-style array declarator `T name[]` is not supported — use `vector<T>`",
+            ));
+        }
         let init = if self.at_punct(Punct::Eq) {
             self.bump();
             // assignment-expr: `int a = 0, b = 1` must not eat the declarator comma

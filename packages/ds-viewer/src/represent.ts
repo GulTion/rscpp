@@ -131,6 +131,9 @@ export function proposeRepresentations(
   obj: ObjectState,
   heap: HeapSnapshot,
 ): Representation[] {
+  if (obj.type_name === "closure" || obj.type_name === "functor") {
+    return ["raw"];
+  }
   const out: Representation[] = [];
   const elems = obj.elems ?? [];
   const entries = obj.entries ?? [];

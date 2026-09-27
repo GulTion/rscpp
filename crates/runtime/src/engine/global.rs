@@ -15,6 +15,7 @@ impl Engine {
             } else {
                 self.default_value_for_type(&d.ty)?
             };
+            self.bind_closure_name(&val, &decl.name.name);
             self.globals.insert(decl.name.name.clone(), val.clone());
             self.emit(Event::VarCreate {
                 name: decl.name.name.clone(),

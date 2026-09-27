@@ -95,14 +95,26 @@ impl Parser {
     fn expect_punct(&mut self, p: Punct) -> Result<Token, ParseError> {
         match self.peek_kind() {
             TokenKind::Punct(q) if *q == p => Ok(self.bump()),
-            _ => Err(self.err(format!("expected `{p:?}`"))),
+            found => {
+                let mut msg = format!("expected `{}`, found {}", p.as_str(), found.describe());
+                if p == Punct::Semi && matches!(found, TokenKind::Punct(Punct::LBracket)) {
+                    msg.push_str(
+                        "; C-style array declarator `T name[]` is not supported — use `vector<T>`",
+                    );
+                }
+                Err(self.err(msg))
+            }
         }
     }
 
     fn expect_keyword(&mut self, kw: Keyword) -> Result<Token, ParseError> {
         match self.peek_kind() {
             TokenKind::Keyword(k) if *k == kw => Ok(self.bump()),
-            _ => Err(self.err(format!("expected keyword `{kw:?}`"))),
+            found => Err(self.err(format!(
+                "expected `{}`, found {}",
+                kw.as_str(),
+                found.describe()
+            ))),
         }
     }
 

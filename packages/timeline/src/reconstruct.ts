@@ -116,30 +116,42 @@ function applyWrite(snap: HeapSnapshot, ev: EventJson): void {
       if (slot.name) setLocal(snap.frames, slot.name, value);
       break;
     case "Index":
-      if (typeof slot.obj === "number" && typeof slot.index === "number") {
-        const o = snap.objects.get(slot.obj);
-        if (o) {
-          if (!o.elems) o.elems = [];
-          o.elems[slot.index] = cloneValue(value);
-        }
-      }
+      // Prefer ContainerMod (index_assign) — same twin pattern as MapEntry.
       break;
     case "MapEntry":
-      if (typeof slot.obj === "number") {
-        const o = snap.objects.get(slot.obj);
-        if (o) {
-          if (!o.entries) o.entries = [];
-          const i = o.entries.findIndex(
-            (e) => JSON.stringify(e.key) === JSON.stringify(slot.key),
-          );
-          if (i >= 0) o.entries[i].value = cloneValue(value);
-          else o.entries.push({ key: structuredClone(slot.key), value: cloneValue(value) });
-        }
-      }
+      // Prefer ContainerMod (map_default_insert / map_assign).
       break;
     case "Object":
     case "Field":
       // Field writes are rare in v1; treat Object slot as no-op on elems
+      break;
+  }
+}
+
+function applySlotValue(
+  snap: HeapSnapshot,
+  slot: { kind?: string; name?: string; obj?: number; index?: number; field?: string } | undefined,
+  value: ValueJson | undefined,
+): void {
+  if (!slot || value === undefined) return;
+  switch (slot.kind) {
+    case "Local":
+    case "Global":
+      if (slot.name) setLocal(snap.frames, slot.name, value);
+      break;
+    case "Index": {
+      if (typeof slot.obj !== "number" || typeof slot.index !== "number") return;
+      const o = snap.objects.get(slot.obj);
+      if (!o) return;
+      if (!o.elems) o.elems = [];
+      o.elems[slot.index] = cloneValue(value);
+      break;
+    }
+    case "Field": {
+      // Class fields not modeled as elems in v1
+      break;
+    }
+    default:
       break;
   }
 }
@@ -157,7 +169,12 @@ function applyEvent(snap: HeapSnapshot, ev: EventJson): void {
           value: e.value !== undefined ? cloneValue(e.value) : undefined,
         }));
       }
-      if (!state.elems && !state.entries) state.elems = [];
+      if (type_name === "closure" || type_name === "functor") {
+        delete state.elems;
+        delete state.entries;
+      } else if (!state.elems && !state.entries) {
+        state.elems = [];
+      }
       snap.objects.set(id, state);
       break;
     }
@@ -223,6 +240,14 @@ function applyEvent(snap: HeapSnapshot, ev: EventJson): void {
     case "Continue":
       // Break is followed by LoopEnd; Continue keeps instance open
       break;
+    case "Swap": {
+      // value_a/value_b are pre-swap contents of slots a/b.
+      const a = ev.a as { kind?: string; name?: string; obj?: number; index?: number };
+      const b = ev.b as { kind?: string; name?: string; obj?: number; index?: number };
+      applySlotValue(snap, a, ev.value_b as ValueJson | undefined);
+      applySlotValue(snap, b, ev.value_a as ValueJson | undefined);
+      break;
+    }
     default:
       break;
   }

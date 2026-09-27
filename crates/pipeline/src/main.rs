@@ -234,9 +234,8 @@ fn format_event(e: &Event) -> String {
             slot,
             old,
             value,
-            call_id,
             ..
-        } => format!("Write@{call_id:?} {slot:?}: {old:?} → {value}"),
+        } => format!("Write {slot:?}: {old:?} → {value}"),
         Event::FnEnter {
             name,
             call_id,
@@ -244,6 +243,12 @@ fn format_event(e: &Event) -> String {
             args,
             ..
         } => format!("FnEnter {name}#{call_id} parent={parent_id:?} ({args:?})"),
+        Event::Call {
+            name,
+            call_id,
+            args,
+            ..
+        } => format!("Call {name}#{call_id} ({args:?})"),
         Event::FnExit {
             name,
             call_id,
@@ -287,18 +292,16 @@ fn format_event(e: &Event) -> String {
             kind,
             key,
             result,
-            call_id,
             ..
-        } => format!("ContainerLookup@{call_id:?} {kind} key={key:?} → {result}"),
+        } => format!("ContainerLookup {kind} key={key:?} → {result}"),
         Event::Alloc {
             id,
             kind,
             size,
             entries,
-            call_id,
             ..
         } => format!(
-            "Alloc@{call_id:?} #{id} ({kind}) size={size} entries={}",
+            "Alloc #{id} ({kind}) size={size} entries={}",
             entries.len()
         ),
         Event::Dealloc { id, .. } => format!("Dealloc #{id}"),

@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 export default defineConfig({
+  // Relative asset URLs so the build works under a GitHub Pages subpath (/<repo>/).
+  base: "./",
   server: { port: 5173 },
   resolve: {
     alias: {

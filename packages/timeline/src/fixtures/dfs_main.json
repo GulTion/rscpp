@@ -5477,6 +5477,18 @@
       }
     },
     {
+      "kind": "VarDestroy",
+      "name": "i",
+      "span": {
+        "end": 913,
+        "start": 544
+      },
+      "value": {
+        "kind": "Int",
+        "value": 6
+      }
+    },
+    {
       "id": 8,
       "kind": "Dealloc",
       "span": {
@@ -5494,18 +5506,6 @@
       "value": {
         "kind": "Object",
         "value": 8
-      }
-    },
-    {
-      "kind": "VarDestroy",
-      "name": "i",
-      "span": {
-        "end": 913,
-        "start": 544
-      },
-      "value": {
-        "kind": "Int",
-        "value": 6
       }
     },
     {

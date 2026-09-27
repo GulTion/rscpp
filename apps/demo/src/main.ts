@@ -1,5 +1,6 @@
 import "./layout.css";
 import { initTheme } from "./theme";
+import { loadEditorDraft, saveEditorDraft } from "./editorDraft";
 import { createTimeline } from "@rscpp/timeline";
 import { mountSeeker } from "@rscpp/seeker";
 import { mountEditor } from "@rscpp/editor";
@@ -114,6 +115,12 @@ const fixtures: Record<string, FixtureMeta> = {
 
 let source = String(twoSum.source ?? "");
 let events = twoSum.events as EventJson[];
+let draft = loadEditorDraft();
+let editorProfile: "leetcode" | "codeforces" = draft?.profile ?? "leetcode";
+let editorMethod = draft?.method ?? "Solution::twoSum";
+let editorArgsJson = draft?.argsJson ?? "[[2,7,11,15],9]";
+if (draft?.source) source = draft.source;
+
 let timeline = createTimeline({ events, source });
 let lastRun: RunResult | null = {
   ok: Boolean(twoSum.ok),
@@ -241,11 +248,17 @@ function remountTimeline(
 editor = mountEditor(editorEl, {
   timeline,
   source,
-  profile: "leetcode",
-  method: "Solution::twoSum",
-  argsJson: "[[2,7,11,15],9]",
+  profile: editorProfile,
+  method: editorMethod,
+  argsJson: editorArgsJson,
   runMain: (src) => run(src),
   runMethod: (src, method, args) => runMethod(src, method, args),
+  onDraftChange: (d) => {
+    editorProfile = d.profile;
+    editorMethod = d.method;
+    editorArgsJson = d.argsJson;
+    saveEditorDraft(d);
+  },
   onRun: (result) => {
     remountTimeline({
       source: editor.getSource(),
@@ -253,6 +266,14 @@ editor = mountEditor(editorEl, {
       run: result,
     });
   },
+});
+
+// Persist initial draft so a blank storage gets the starting values.
+saveEditorDraft({
+  source: editor.getSource(),
+  method: editorMethod,
+  argsJson: editorArgsJson,
+  profile: editorProfile,
 });
 
 picker.addEventListener("change", () => {
@@ -271,6 +292,12 @@ fixtureSel.addEventListener("change", () => {
     preferRepr: fx.preferRepr,
   });
   editor.update({
+    source: String(fx.source ?? ""),
+    profile: fx.profile ?? "leetcode",
+    method: fx.method ?? "Solution::twoSum",
+    argsJson: fx.args !== undefined && fx.args !== null ? JSON.stringify(fx.args) : "[]",
+  });
+  saveEditorDraft({
     source: String(fx.source ?? ""),
     profile: fx.profile ?? "leetcode",
     method: fx.method ?? "Solution::twoSum",

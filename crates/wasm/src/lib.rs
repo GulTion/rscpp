@@ -14,14 +14,25 @@ pub struct RunError {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub span: Option<Span>,
+    /// Multi-line location snippet when source was available at emit time.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub formatted: Option<String>,
+}
+
+impl RunError {
+    fn from_runtime(e: &RuntimeError, source: Option<&str>) -> Self {
+        let formatted = source.map(|src| e.format_with_source(src));
+        Self {
+            message: e.message.clone(),
+            span: e.span,
+            formatted,
+        }
+    }
 }
 
 impl From<&RuntimeError> for RunError {
     fn from(e: &RuntimeError) -> Self {
-        Self {
-            message: e.message.clone(),
-            span: e.span,
-        }
+        Self::from_runtime(e, None)
     }
 }
 
@@ -42,7 +53,7 @@ pub struct RunResult {
     pub error: Option<RunError>,
 }
 
-fn finish(mut eng: Engine, result: Result<Value, RuntimeError>) -> RunResult {
+fn finish(source: &str, mut eng: Engine, result: Result<Value, RuntimeError>) -> RunResult {
     match result {
         Ok(value) => RunResult {
             ok: true,
@@ -54,17 +65,17 @@ fn finish(mut eng: Engine, result: Result<Value, RuntimeError>) -> RunResult {
             ok: false,
             value: None,
             events: eng.take_events(),
-            error: Some(RunError::from(e)),
+            error: Some(RunError::from_runtime(&e, Some(source))),
         },
     }
 }
 
-fn load_error(e: RuntimeError) -> RunResult {
+fn load_error(source: &str, e: RuntimeError) -> RunResult {
     RunResult {
         ok: false,
         value: None,
         events: vec![],
-        error: Some(RunError::from(e)),
+        error: Some(RunError::from_runtime(&e, Some(source))),
     }
 }
 
@@ -77,9 +88,9 @@ pub fn run_result_with_fuel(source: &str, fuel: u64) -> RunResult {
     match Engine::from_source_with_fuel(source, fuel) {
         Ok(mut eng) => {
             let r = eng.run_main();
-            finish(eng, r)
+            finish(source, eng, r)
         }
-        Err(e) => load_error(e),
+        Err(e) => load_error(source, e),
     }
 }
 
@@ -90,15 +101,15 @@ pub fn run_method_result(source: &str, method: &str, args_json: &serde_json::Val
         Ok(mut eng) => match args_from_json(&mut eng, args_json) {
             Ok(args) => {
                 let r = eng.call(method, &args);
-                finish(eng, r)
+                finish(source, eng, r)
             }
             Err(e) => {
-                let mut out = load_error(e);
+                let mut out = load_error(source, e);
                 out.events = eng.take_events();
                 out
             }
         },
-        Err(e) => load_error(e),
+        Err(e) => load_error(source, e),
     }
 }
 
@@ -263,5 +274,36 @@ public:
         assert_eq!(v["ok"], false);
         assert!(v["error"]["message"].is_string());
         assert!(v["error"]["span"]["start"].is_number());
+        assert!(
+            v["error"]["formatted"]
+                .as_str()
+                .unwrap()
+                .contains("--> "),
+            "{v}"
+        );
+    }
+
+    #[test]
+    fn c_array_declarator_error_is_clear() {
+        let src = r#"
+class Solution {
+public:
+    static int f() {
+        int prime[]={2,3};
+        return 0;
+    }
+};
+"#;
+        let r = run_method_result(src, "Solution::f", &serde_json::json!([]));
+        assert!(!r.ok);
+        let err = r.error.as_ref().unwrap();
+        assert!(
+            err.message.contains("vector") || err.message.contains("array declarator"),
+            "{}",
+            err.message
+        );
+        let fmt = err.formatted.as_ref().expect("formatted");
+        assert!(fmt.contains("--> "), "{fmt}");
+        assert!(fmt.contains("prime"), "{fmt}");
     }
 }

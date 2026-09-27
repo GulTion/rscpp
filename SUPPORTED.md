@@ -102,6 +102,20 @@ Ref: [array](https://cplusplus.com/reference/array/array/). Runtime: `stl/array.
 | `[]` / `at` / `front` / `back` / `fill` / `size` | yes | |
 | Other | **no** | |
 
+### `bitset`
+
+Ref: [bitset](https://cplusplus.com/reference/bitset/bitset/). Runtime: `stl/bitset.rs`.
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Container type | **yes** | Fixed `N` from `bitset<N>` NTTP |
+| `bitset<N> b = val` / `b(val)` | yes | Init from integer |
+| `[]` read/write | yes | Bool; assign truthy ints |
+| `size` / `count` / `test` / `any` / `none` / `all` | yes | |
+| `set` / `reset` / `flip` | yes | 0..=2 args as in std |
+| `to_string` / `to_ulong` / `to_ullong` | yes | |
+| Bitwise ops (`&` `\|` `^` `<<` …) | no | Sema soft; not runtime |
+
 ### `stack`
 
 Ref: [stack](https://cplusplus.com/reference/stack/stack/). Runtime: `stl/stack.rs`.
@@ -477,7 +491,7 @@ Ranges: `v.begin()`/`v.end()` or free `begin`/`end` on **vector** (string where 
 | `partial_sum` | yes | no | In-place when out==begin |
 | `std::move` (cast) | yes | n/a | Identity; not range `move` |
 | `pow` / `sqrt` / `ceil` / `floor` / `abs` | yes | n/a | |
-| `__builtin_popcount` | yes | n/a | |
+| `__builtin_popcount` / `popcount` / `std::popcount` | yes | n/a | |
 | `tie` / `make_tuple` / `make_pair` | partial | n/a | Common LeetCode forms |
 
 ---

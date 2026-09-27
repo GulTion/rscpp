@@ -9,21 +9,29 @@ const setHighlights = StateEffect.define<{
 }>();
 
 const KIND_COLOR: Record<string, string> = {
-  Write: "#f59e0b88",
-  Alloc: "#22c55e88",
+  Write: "#facc1588",
+  VarCreate: "#38bdf899",
+  VarAssign: "#facc1588",
+  Alloc: "transparent",
+  Dealloc: "transparent",
+  RefBind: "transparent",
   ContainerMod: "#06b6d488",
-  LoopIter: "#64748b66",
-  LoopEnd: "#64748b44",
+  LoopIter: "#86efac99",
+  LoopEnd: "#fca5a599",
   FnEnter: "#22c55e99",
-  FnExit: "#22c55e55",
+  Call: "#a78bfa99",
+  FnExit: "#fca5a599",
+  CompareTrue: "#86efac99",
+  CompareFalse: "#fca5a599",
   ScopeEnter: "transparent",
   ScopeExit: "transparent",
   Branch: "transparent",
-  Step: "#94a3b866",
+  Step: "transparent",
+  VarDestroy: "transparent",
   error: "#ef4444aa",
 };
 
-function markColor(kind: string): string {
+export function markColor(kind: string): string {
   return KIND_COLOR[kind] ?? "#64748b66";
 }
 
@@ -68,10 +76,13 @@ export function applyHighlights(
   const map = buildByteIndexMap(source);
   const first = ranges.find((r) => r.end > r.start);
   const effects: unknown[] = [setHighlights.of({ ranges, source })];
-  // scroll first range into view (converted to CM coords)
   if (first) {
     const { from } = spanBytesToJs(map, first.start, first.end);
-    effects.push(EditorView.scrollIntoView(Math.min(from, view.state.doc.length), { y: "center" }));
+    effects.push(
+      EditorView.scrollIntoView(Math.min(from, view.state.doc.length), {
+        y: "center",
+      }),
+    );
   }
   view.dispatch({ effects: effects as never });
 }

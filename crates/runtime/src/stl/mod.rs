@@ -1,6 +1,7 @@
 //! Per-container STL method implementations (one file per type).
 
 mod array;
+mod bitset;
 mod deque;
 mod list;
 mod map;
@@ -147,6 +148,7 @@ pub fn call_method(
         "deque" => deque::call(ctx, id, base, method, args, span),
         "list" => list::call(ctx, id, base, method, args, span),
         "array" => array::call(ctx, id, base, method, args, span),
+        "bitset" => bitset::call(ctx, id, base, method, args, span),
         "string" => string::call(ctx, id, base, method, args, span),
         "map" | "unordered_map" => map::call(ctx, id, base, kind, method, args, span),
         "set" | "unordered_set" => set::call(ctx, id, base, method, args, span),

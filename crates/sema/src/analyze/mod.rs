@@ -295,6 +295,7 @@ impl Context {
             ("floor", 1),
             ("__builtin_popcount", 1),
             ("__builtin_popcountll", 1),
+            ("popcount", 1),
             ("size", 1),
             ("empty", 1),
             ("isdigit", 1),

@@ -17,6 +17,7 @@ import { eventIndexForLine } from "./lineSeek.js";
 import {
   editorTheme,
   readDocumentTheme,
+  syntaxColors,
   watchDocumentTheme,
 } from "./theme.js";
 
@@ -37,6 +38,13 @@ export type EditorProps = {
   argsJson?: string;
   expectedJson?: string;
   onRun?: (result: RunResult) => void;
+  /** Fired when source / method / args / profile change (for persistence). */
+  onDraftChange?: (draft: {
+    source: string;
+    method: string;
+    argsJson: string;
+    profile: EditorProfile;
+  }) => void;
   runMain?: (source: string) => Promise<RunResult>;
   runMethod?: (
     source: string,
@@ -52,6 +60,7 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
   let argsJson = props.argsJson ?? "[[2,7,11,15],9]";
   let expectedJson = props.expectedJson ?? "";
   let onRun = props.onRun;
+  let onDraftChange = props.onDraftChange;
   let runMain = props.runMain;
   let runMethod = props.runMethod;
 
@@ -137,10 +146,14 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
         lineNumbers(),
         history(),
         cpp(),
+        syntaxColors,
         keymap.of([...defaultKeymap, ...historyKeymap]),
         highlightField,
         chipPlugin,
         themeComp.of(editorTheme(readDocumentTheme())),
+        EditorView.updateListener.of((u) => {
+          if (u.docChanged) emitDraft();
+        }),
         EditorView.domEventHandlers({
           mousedown: (e, v) => {
             const t = e.target as HTMLElement | null;
@@ -186,6 +199,15 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
     }),
   });
 
+  function emitDraft(): void {
+    onDraftChange?.({
+      source: view.state.doc.toString(),
+      method: methodInput.value,
+      argsJson: argsInput.value,
+      profile,
+    });
+  }
+
   function paintHighlights(): void {
     applyHighlights(
       view,
@@ -218,6 +240,16 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
   profileSel.addEventListener("change", () => {
     profile = profileSel.value as EditorProfile;
     syncProfileUi();
+    emitDraft();
+  });
+
+  methodInput.addEventListener("input", () => {
+    method = methodInput.value;
+    emitDraft();
+  });
+  argsInput.addEventListener("input", () => {
+    argsJson = argsInput.value;
+    emitDraft();
   });
 
   runBtn.addEventListener("click", async () => {
@@ -246,7 +278,9 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
       result = await runMain(source);
     }
     if (!result.ok && result.error) {
-      errorBox.textContent = result.error.message;
+      errorBox.textContent =
+        result.error.formatted ?? result.error.message;
+      errorBox.style.whiteSpace = "pre-wrap";
       if (result.error.span) {
         applyHighlights(
           view,
@@ -290,6 +324,7 @@ export function mountEditor(el: HTMLElement, props: EditorProps): MountHandle {
       }
       if (next.expectedJson !== undefined) expectedJson = next.expectedJson;
       if (next.onRun) onRun = next.onRun;
+      if (next.onDraftChange) onDraftChange = next.onDraftChange;
       if (next.runMain) runMain = next.runMain;
       if (next.runMethod) runMethod = next.runMethod;
       void expectedJson;

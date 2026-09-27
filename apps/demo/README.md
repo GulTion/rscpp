@@ -56,7 +56,7 @@ pnpm --filter demo preview                 # serve dist locally
 
 ## Using the demo
 
-1. Pick a **Fixture** (e.g. `two_sum`, `dfs`, `valid_parentheses`) or edit code and click **Run**.
+1. Pick a **Fixture** (e.g. `two_sum`, `dfs`, `n_queens`, `valid_parentheses`) or edit code and click **Run**.
 2. Use the **seeker** (bottom): scrub, Play/Pause, speed (`1`–`1000` events/s).
 3. **Space** toggles play/pause (ignored while typing in the editor).
 4. **DS pane** defaults to **All live Allocs**; switch to **Single object** to focus one heap id.

@@ -7,6 +7,7 @@ description = "Tree-walking C++ interpreter with event stream for rscpp"
 
 [dependencies]
 rscpp-ast = { path = "../ast" }
+rscpp-lexer = { path = "../lexer" }
 rscpp-parser = { path = "../parser" }
 rscpp-sema = { path = "../sema" }
 serde = { version = "1", features = ["derive"] }

@@ -1,4 +1,5 @@
 use rscpp_ast::Span;
+use rscpp_lexer::format_diagnostic;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,6 +14,10 @@ impl ParseError {
             span,
             message: message.into(),
         }
+    }
+
+    pub fn format_with_source(&self, source: &str) -> String {
+        format_diagnostic(source, self.span, "parse", &self.message)
     }
 }
 

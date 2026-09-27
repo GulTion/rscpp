@@ -44,7 +44,6 @@ function ensureStyle(): void {
 :root[data-theme="dark"] .ds-fn-label-name { fill: #e2e8f0; }
 :root[data-theme="dark"] .ds-fn-label-args { fill: #fcd34d; }
 `;
-  document.head?.appendChild(style);
 }
 
 function shortName(name: string): string {

@@ -433,6 +433,10 @@ impl Context {
         if d.is_numeric() && s.is_numeric() {
             return true;
         }
+        // `bitset<N> b = 0;` / `bitset<N> b(val)` — construct from integer
+        if matches!(d, Ty::Named { name, .. } if name == "bitset") && s.is_numeric() {
+            return true;
+        }
         // pointer: T* <- nullptr (void*), or compatible pointee
         if let (Ty::Pointer(a), Ty::Pointer(b)) = (d, s) {
             if matches!(b.as_ref(), Ty::Void) {

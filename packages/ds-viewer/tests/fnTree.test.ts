@@ -112,4 +112,17 @@ describe("buildFnTree", () => {
     expect(dfs0.active).toBe(false);
     expect(dfs0.children[0].active).toBe(false);
   });
+
+  it("marks exiting red on the FnExit step, then done after", () => {
+    // events[14] is first FnExit (call_id 2); playhead 15 → just exited
+    const atExit = buildFnTree(events, 15);
+    const inner = atExit[0].children[0].children[0];
+    expect(inner.exiting).toBe(true);
+    expect(inner.active).toBe(false);
+
+    const after = buildFnTree(events, 16);
+    const inner2 = after[0].children[0].children[0];
+    expect(inner2.exiting).toBe(false);
+    expect(inner2.active).toBe(false);
+  });
 });

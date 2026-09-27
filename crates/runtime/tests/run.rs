@@ -795,3 +795,133 @@ int main() {
     let mut eng = Engine::from_source(src).unwrap();
     assert_eq!(eng.run_main().unwrap(), Value::Int(34));
 }
+
+#[test]
+fn swap_is_single_mutation_event() {
+    let mut eng = Engine::from_source(
+        r#"
+int main() {
+  vector<int> v = {1, 2};
+  swap(v[0], v[1]);
+  return v[0] * 10 + v[1];
+}
+"#,
+    )
+    .unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(21));
+    let evs = eng.events();
+    let swap_i = evs
+        .iter()
+        .position(|e| matches!(e, Event::Swap { .. }))
+        .unwrap();
+    let before = &evs[..swap_i];
+    let has_index_write = before.iter().any(|e| {
+        matches!(
+            e,
+            Event::Write {
+                slot: Slot::Index { .. },
+                ..
+            }
+        )
+    });
+    let has_index_mod = before.iter().any(|e| matches!(e, Event::ContainerMod { kind, .. } if kind == "index_assign"));
+    assert!(!has_index_write, "Write Index must not precede Swap");
+    assert!(!has_index_mod, "ContainerMod index_assign must not precede Swap");
+}
+
+#[test]
+fn lambda_fnenter_uses_body_span_and_param_spans() {
+    let src = r#"
+int main() {
+  auto shift = [&](int i, int j) {
+    return i + j;
+  };
+  return shift(2, 3);
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(5));
+    let lambda_body_start = src.find("{\n    return i + j").unwrap();
+    let call_site = src.find("shift(2, 3)").unwrap();
+    let enter = eng
+        .events()
+        .iter()
+        .find(|e| matches!(e, Event::FnEnter { name, .. } if name == "shift"))
+        .unwrap();
+    if let Event::FnEnter { span, .. } = enter {
+        assert!(
+            span.start >= lambda_body_start && span.start < call_site,
+            "FnEnter span should be lambda body, not call site: {:?} vs call {}",
+            span,
+            call_site
+        );
+    }
+    let creates: Vec<_> = eng
+        .events()
+        .iter()
+        .filter(|e| matches!(e, Event::VarCreate { name, .. } if name == "i" || name == "j"))
+        .collect();
+    assert!(creates.len() >= 2);
+    for e in creates {
+        if let Event::VarCreate { name, span, .. } = e {
+            let needle = if *name == "i" { "(int i" } else { "int j)" };
+            let at = src.find(needle).unwrap();
+            assert!(
+                span.start >= at && span.start < call_site,
+                "param {name} span {:?} should cover param decl, not call",
+                span
+            );
+        }
+    }
+}
+
+#[test]
+fn call_site_emitted_before_lambda_fnenter() {
+    let src = r#"
+int main() {
+  auto shift = [&](int i, int j) { return i + j; };
+  int a = shift(1, 2);
+  int b = shift(3, 4);
+  return a * 10 + b;
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(37));
+    let call0 = src.find("shift(1, 2)").unwrap();
+    let call1 = src.find("shift(3, 4)").unwrap();
+    let mut calls = eng.events().iter().filter(|e| matches!(e, Event::Call { name, .. } if name == "shift"));
+    let c0 = calls.next().expect("first Call");
+    let c1 = calls.next().expect("second Call");
+    if let Event::Call { span, call_id, .. } = c0 {
+        assert_eq!(span.start, call0);
+        // Following FnEnter shares call_id and uses body span
+        let enter = eng.events().iter().find(|e| matches!(e, Event::FnEnter { call_id: id, name, .. } if *id == *call_id && name == "shift"));
+        assert!(enter.is_some());
+        if let Some(Event::FnEnter { span: body, .. }) = enter {
+            // Body is declared before the call site in source.
+            assert!(body.start < call0, "FnEnter should be body, not call site");
+        }
+    }
+    if let Event::Call { span, .. } = c1 {
+        assert_eq!(span.start, call1);
+    }
+    // Between first FnExit and second Call there should be a Call at call1 (visible step)
+    let exit0 = eng.events().iter().position(|e| matches!(e, Event::FnExit { name, call_id, .. } if name == "shift" && *call_id == 1)).unwrap();
+    let call1_i = eng.events().iter().position(|e| matches!(e, Event::Call { span, .. } if span.start == call1)).unwrap();
+    assert!(call1_i > exit0);
+}
+
+#[test]
+fn named_lambda_uses_binding_name_not_lambda() {
+    let src = r#"
+int main() {
+  auto shift = [&](int i, int j) { return i + j; };
+  return shift(1, 2);
+}
+"#;
+    let mut eng = Engine::from_source(src).unwrap();
+    assert_eq!(eng.run_main().unwrap(), Value::Int(3));
+    assert!(eng.events().iter().any(|e| matches!(e, Event::FnEnter { name, .. } if name == "shift")));
+    assert!(!eng.events().iter().any(|e| matches!(e, Event::FnEnter { name, .. } if name == "<lambda>")));
+}
+

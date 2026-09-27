@@ -85,6 +85,7 @@ export function isSimpleChipValue(
     case "Object": {
       const obj = heap?.objects.get(v.value);
       if (!obj) return true; // bare id
+      if (obj.type_name === "closure" || obj.type_name === "functor") return false;
       if (obj.elems && obj.elems.length > 0) return false;
       if (obj.entries && obj.entries.length > 0) return false;
       return true;
@@ -116,22 +117,24 @@ export function formatChip(
     case "Bool":
     case "Char":
     case "Str":
-      return `⦃${v.value}⦄`;
+      return String(v.value);
     case "Void":
-      return "⦃void⦄";
+      return "void";
     case "Nullptr":
-      return "⦃nullptr⦄";
+      return "nullptr";
     case "Object": {
       const obj = heap?.objects.get(v.value);
-      if (obj?.elems) return `⦃[${formatElems(obj.elems, heap, 1)}]⦄`;
-      if (obj?.entries?.length) return `⦃{…${obj.entries.length}}⦄`;
-      return `⦃#${v.value}⦄`;
+      if (!obj) return `#${v.value}`;
+      if (obj.type_name === "closure" || obj.type_name === "functor") return "";
+      if (obj.elems) return `[${formatElems(obj.elems, heap, 1)}]`;
+      if (obj.entries?.length) return `{…${obj.entries.length}}`;
+      return `#${v.value}`;
     }
     case "Ref":
     case "Ptr":
-      return `⦃${formatAddress(v.value, heap, 0)}⦄`;
+      return formatAddress(v.value, heap, 0);
     default:
-      return "⦃…⦄";
+      return "…";
   }
 }
 

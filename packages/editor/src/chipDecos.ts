@@ -65,7 +65,7 @@ export function frameBodySpans(
   return out;
 }
 
-/** Latest ContainerLookup results keyed by span, for chips like `nums.size()⦃4⦄` / `nums[i]⦃8⦄`. */
+/** Latest ContainerLookup results keyed by span, for chips like `nums.size() 4` / `nums[i] 8`. */
 export function lookupChipsFromEvents(
   events: EventJson[],
   index: number,

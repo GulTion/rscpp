@@ -1,4 +1,4 @@
-use rscpp_runtime::{Engine, Event, Value};
+use rscpp_runtime::{Engine, Event, MapKey, Slot, Value};
 
 #[test]
 fn vector_index_read_emits_container_lookup() {
@@ -94,6 +94,19 @@ int main() {
                 value: Some(Value::Int(10)),
                 ..
             } if kind == "map_assign"
+        )
+    }));
+    assert!(eng.events().iter().any(|e| {
+        matches!(
+            e,
+            Event::Write {
+                slot: Slot::MapEntry {
+                    key: MapKey::Int(1),
+                    ..
+                },
+                value: Value::Int(10),
+                ..
+            }
         )
     }));
 }

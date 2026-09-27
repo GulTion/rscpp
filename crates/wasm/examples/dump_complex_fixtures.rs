@@ -51,6 +51,14 @@ fn main() {
         serde_json::json!(["({[]})()[]{}"]),
     );
 
+    let nqueens = std::fs::read_to_string("examples/n_queens.cpp").unwrap();
+    write_fixture(
+        "packages/timeline/src/fixtures/n_queens.json",
+        &nqueens,
+        "Solution::solveNQueens",
+        serde_json::json!([4]),
+    );
+
     // Full mains — more events (calls from main + setup)
     write_main_fixture(
         "packages/timeline/src/fixtures/dfs_main.json",
@@ -60,4 +68,5 @@ fn main() {
         "packages/timeline/src/fixtures/valid_parentheses_main.json",
         "examples/valid_parentheses.cpp",
     );
+    // n_queens main hits a temporary-lifetime edge case; method fixture is enough for the demo.
 }

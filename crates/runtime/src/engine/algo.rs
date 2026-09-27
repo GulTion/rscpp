@@ -17,8 +17,13 @@ impl Engine {
         let Some(lb) = lb else {
             return Err(RuntimeError::at(span, "swap arg is not an lvalue"));
         };
-        self.write_lvalue(&la, vb.clone(), span)?;
-        self.write_lvalue(&lb, va.clone(), span)?;
+        self.suppress_write_events = true;
+        let w = (|| {
+            self.write_lvalue(&la, vb.clone(), span)?;
+            self.write_lvalue(&lb, va.clone(), span)
+        })();
+        self.suppress_write_events = false;
+        w?;
         self.emit(Event::Swap {
             a: Self::slot_of(&la),
             b: Self::slot_of(&lb),

@@ -1,4 +1,5 @@
 use rscpp_ast::Span;
+use rscpp_lexer::format_diagnostic;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -19,6 +20,13 @@ impl RuntimeError {
         Self {
             span: Some(span),
             message: message.into(),
+        }
+    }
+
+    pub fn format_with_source(&self, source: &str) -> String {
+        match self.span {
+            Some(span) => format_diagnostic(source, span, "runtime", &self.message),
+            None => format!("runtime error: {}", self.message),
         }
     }
 }

@@ -68,7 +68,7 @@ impl Vm {
                 self.emit(Event::Write {
                     slot: Slot::MapEntry {
                         obj: id,
-                        key: k.to_string(),
+                        key: k.clone(),
                     },
                     old,
                     value: val,
@@ -81,7 +81,7 @@ impl Vm {
                 self.emit(Event::Write {
                     slot: Slot::MapEntry {
                         obj: id,
-                        key: k.to_string(),
+                        key: k.clone(),
                     },
                     old,
                     value: val,

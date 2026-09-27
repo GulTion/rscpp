@@ -46,5 +46,8 @@ export function bindingsFromSnapshot(snap: HeapSnapshot): VarBinding[] {
       id,
       title: [...names].join(", "),
       obj: snap.objects.get(id)!,
-    }));
+    }))
+    .filter(
+      (b) => b.obj.type_name !== "closure" && b.obj.type_name !== "functor",
+    );
 }

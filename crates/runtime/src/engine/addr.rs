@@ -17,7 +17,7 @@ impl Engine {
             },
             LValue::MapEntry { obj, key } => Slot::MapEntry {
                 obj: *obj,
-                key: key.to_string(),
+                key: key.clone(),
             },
             LValue::Field { obj, field } => Slot::Field {
                 obj: *obj,
@@ -77,7 +77,7 @@ impl Engine {
             },
             LValue::MapEntry { obj, key } => Address::MapEntry {
                 obj: *obj,
-                key: key.to_string(),
+                key: key.clone(),
             },
             LValue::Field { obj, field } => Address::Field {
                 obj: *obj,
@@ -97,15 +97,10 @@ impl Engine {
                 obj: *obj,
                 index: *index,
             }),
-            Address::MapEntry { obj, key } => {
-                // rebuild MapKey from string — int keys only for now
-                let key = if let Ok(i) = key.parse::<i64>() {
-                    MapKey::Int(i)
-                } else {
-                    MapKey::Str(key.clone())
-                };
-                Some(LValue::MapEntry { obj: *obj, key })
-            }
+            Address::MapEntry { obj, key } => Some(LValue::MapEntry {
+                obj: *obj,
+                key: key.clone(),
+            }),
             Address::Field { obj, field } => Some(LValue::Field {
                 obj: *obj,
                 field: field.clone(),
@@ -147,6 +142,10 @@ impl Engine {
                     .get(*index)
                     .cloned()
                     .ok_or_else(|| RuntimeError::new("index out of bounds")),
+                Some(Object::Bitset { bits }) => bits
+                    .get(*index)
+                    .map(|b| Value::Bool(*b))
+                    .ok_or_else(|| RuntimeError::new("bitset index out of bounds")),
                 _ => Err(RuntimeError::new("bad index address")),
             },
             Address::Field { obj, field } => match self.heap.get(*obj) {
@@ -160,24 +159,13 @@ impl Engine {
                 },
                 _ => Err(RuntimeError::new("bad field address")),
             },
-            Address::MapEntry { obj, key } => {
-                let mk = if let Ok(i) = key.parse::<i64>() {
-                    MapKey::Int(i)
-                } else if key == "true" || key == "false" {
-                    MapKey::Bool(key == "true")
-                } else if key.chars().count() == 1 {
-                    MapKey::Char(key.chars().next().unwrap())
-                } else {
-                    MapKey::Str(key.clone())
-                };
-                match self.heap.get(*obj) {
-                    Some(Object::Map(m)) => Ok(m.get(&mk).cloned().unwrap_or(Value::Int(0))),
-                    Some(Object::UnorderedMap(m)) => {
-                        Ok(m.get(&mk).cloned().unwrap_or(Value::Int(0)))
-                    }
-                    _ => Err(RuntimeError::new("bad map address")),
+            Address::MapEntry { obj, key } => match self.heap.get(*obj) {
+                Some(Object::Map(m)) => Ok(m.get(key).cloned().unwrap_or(Value::Int(0))),
+                Some(Object::UnorderedMap(m)) => {
+                    Ok(m.get(key).cloned().unwrap_or(Value::Int(0)))
                 }
-            }
+                _ => Err(RuntimeError::new("bad map address")),
+            },
         }
     }
 
@@ -186,7 +174,7 @@ impl Engine {
             Address::Null => Err(RuntimeError::at(span, "null pointer write")),
             Address::Stack { frame, name } if *frame == usize::MAX => {
                 self.globals.insert(name.clone(), val.clone());
-                self.emit(Event::Write {
+                self.emit_mutation(Event::Write {
                     slot: Slot::Global { name: name.clone() },
                     old: None,
                     value: val,
@@ -200,7 +188,7 @@ impl Engine {
                     .get_mut(*frame)
                     .ok_or_else(|| RuntimeError::at(span, "dangling stack address"))?;
                 let old = frame.locals.insert(name.clone(), val.clone());
-                self.emit(Event::Write {
+                self.emit_mutation(Event::Write {
                     slot: Slot::Local { name: name.clone() },
                     old,
                     value: val,

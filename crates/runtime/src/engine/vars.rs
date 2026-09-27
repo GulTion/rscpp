@@ -25,6 +25,7 @@ impl Engine {
                 span,
             });
         }
+        self.bind_closure_name(&val, name);
         if let Some(frame) = self.stack.last_mut() {
             frame.locals.insert(name.to_string(), val.clone());
         } else {
@@ -36,6 +37,17 @@ impl Engine {
             span,
         });
         Ok(())
+    }
+
+    /// First bind of a lambda object gets that variable's name for Call/FnEnter.
+    pub(super) fn bind_closure_name(&mut self, val: &Value, name: &str) {
+        let Value::Object(id) = val else { return };
+        if let Some(Object::Closure {
+            name: slot @ None, ..
+        }) = self.heap.get_mut(*id)
+        {
+            *slot = Some(name.to_string());
+        }
     }
 
     pub(super) fn lookup_raw(&self, name: &str) -> Result<Value> {
@@ -69,20 +81,20 @@ impl Engine {
             if self.stack[i].locals.contains_key(name) {
                 let old = self.stack[i].locals.get(name).cloned();
                 if matches!(val, Value::Ptr(_)) {
-                    self.emit(Event::PtrMove {
+                    self.emit_mutation(Event::PtrMove {
                         name: name.to_string(),
                         to: val.clone(),
                         span,
                     });
                 }
                 self.stack[i].locals.insert(name.to_string(), val.clone());
-                self.emit(Event::VarAssign {
+                self.emit_mutation(Event::VarAssign {
                     name: name.to_string(),
                     old: old.clone(),
                     value: val.clone(),
                     span,
                 });
-                self.emit(Event::Write {
+                self.emit_mutation(Event::Write {
                     slot: Slot::Local {
                         name: name.to_string(),
                     },
@@ -96,20 +108,20 @@ impl Engine {
         if self.globals.contains_key(name) {
             let old = self.globals.get(name).cloned();
             if matches!(val, Value::Ptr(_)) {
-                self.emit(Event::PtrMove {
+                self.emit_mutation(Event::PtrMove {
                     name: name.to_string(),
                     to: val.clone(),
                     span,
                 });
             }
             self.globals.insert(name.to_string(), val.clone());
-            self.emit(Event::VarAssign {
+            self.emit_mutation(Event::VarAssign {
                 name: name.to_string(),
                 old: old.clone(),
                 value: val.clone(),
                 span,
             });
-            self.emit(Event::Write {
+            self.emit_mutation(Event::Write {
                 slot: Slot::Global {
                     name: name.to_string(),
                 },
@@ -136,7 +148,7 @@ impl Engine {
                         }
                         let old = elems[*index].clone();
                         elems[*index] = val.clone();
-                        self.emit(Event::Write {
+                        self.emit_mutation(Event::Write {
                             slot: Slot::Index {
                                 obj: *obj,
                                 index: *index,
@@ -145,7 +157,7 @@ impl Engine {
                             value: val.clone(),
                             span,
                         });
-                        self.emit(Event::ContainerMod {
+                        self.emit_mutation(Event::ContainerMod {
                             container: Value::Object(*obj),
                             kind: "index_assign".into(),
                             index: Some(*index),
@@ -163,7 +175,7 @@ impl Engine {
                         }
                         let old = elems[*index].clone();
                         elems[*index] = val.clone();
-                        self.emit(Event::Write {
+                        self.emit_mutation(Event::Write {
                             slot: Slot::Index {
                                 obj: *obj,
                                 index: *index,
@@ -172,7 +184,7 @@ impl Engine {
                             value: val.clone(),
                             span,
                         });
-                        self.emit(Event::ContainerMod {
+                        self.emit_mutation(Event::ContainerMod {
                             container: Value::Object(*obj),
                             kind: "index_assign".into(),
                             index: Some(*index),
@@ -190,7 +202,7 @@ impl Engine {
                         }
                         let old = elems[*index].clone();
                         elems[*index] = val.clone();
-                        self.emit(Event::Write {
+                        self.emit_mutation(Event::Write {
                             slot: Slot::Index {
                                 obj: *obj,
                                 index: *index,
@@ -199,7 +211,7 @@ impl Engine {
                             value: val.clone(),
                             span,
                         });
-                        self.emit(Event::ContainerMod {
+                        self.emit_mutation(Event::ContainerMod {
                             container: Value::Object(*obj),
                             kind: "index_assign".into(),
                             index: Some(*index),
@@ -211,11 +223,39 @@ impl Engine {
                         });
                         Ok(())
                     }
+                    Some(Object::Bitset { bits }) => {
+                        if *index >= bits.len() {
+                            return Err(RuntimeError::at(span, "bitset index out of bounds"));
+                        }
+                        let bit = val.as_bool().map_err(RuntimeError::new)?;
+                        let old = Value::Bool(bits[*index]);
+                        bits[*index] = bit;
+                        let value = Value::Bool(bit);
+                        self.emit_mutation(Event::Write {
+                            slot: Slot::Index {
+                                obj: *obj,
+                                index: *index,
+                            },
+                            old: Some(old.clone()),
+                            value: value.clone(),
+                            span,
+                        });
+                        self.emit_mutation(Event::ContainerMod {
+                            container: Value::Object(*obj),
+                            kind: "index_assign".into(),
+                            index: Some(*index),
+                            key: Some(Value::Int(*index as i64)),
+                            old: Some(old),
+                            value: Some(value),
+                            elems: vec![],
+                            span,
+                        });
+                        Ok(())
+                    }
                     _ => Err(RuntimeError::at(span, "index assignment on non-sequence")),
                 }
             }
             LValue::MapEntry { obj, key } => {
-                let key_s = key.to_string();
                 let old = match self.heap.get(*obj) {
                     Some(Object::Map(m)) => m.get(key).cloned(),
                     Some(Object::UnorderedMap(m)) => m.get(key).cloned(),
@@ -230,16 +270,16 @@ impl Engine {
                     }
                     _ => return Err(RuntimeError::at(span, "map entry assign on non-map")),
                 }
-                self.emit(Event::Write {
+                self.emit_mutation(Event::Write {
                     slot: Slot::MapEntry {
                         obj: *obj,
-                        key: key_s,
+                        key: key.clone(),
                     },
                     old: old.clone(),
                     value: val.clone(),
                     span,
                 });
-                self.emit(Event::ContainerMod {
+                self.emit_mutation(Event::ContainerMod {
                     container: Value::Object(*obj),
                     kind: "map_assign".into(),
                     index: None,
@@ -277,7 +317,7 @@ impl Engine {
                     },
                     _ => return Err(RuntimeError::at(span, "field assign on bad object")),
                 }
-                self.emit(Event::Write {
+                self.emit_mutation(Event::Write {
                     slot: Slot::Field {
                         obj: *obj,
                         field: field.clone(),
@@ -286,7 +326,7 @@ impl Engine {
                     value: val.clone(),
                     span,
                 });
-                self.emit(Event::VarAssign {
+                self.emit_mutation(Event::VarAssign {
                     name: field.clone(),
                     old,
                     value: val,

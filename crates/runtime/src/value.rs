@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
 use std::fmt;
 
+use rscpp_ast::Span;
 use serde::Serialize;
 
 /// Hashable / ordered key for map & set (LeetCode subset).
@@ -67,6 +68,10 @@ pub enum Object {
         elems: Vec<Value>,
         n: usize,
     },
+    /// `std::bitset<N>` — fixed length `n` bits.
+    Bitset {
+        bits: Vec<bool>,
+    },
     Pair {
         first: Value,
         second: Value,
@@ -87,9 +92,11 @@ pub enum Object {
         name: String,
         fields: HashMap<String, Value>,
     },
-    /// Lambda / closure: params + body + captured locals.
+    /// Lambda / closure: params (name + source span) + body + captured locals.
+    /// `name` is set on first bind (`auto shift = [&]…`) for Call/FnEnter display.
     Closure {
-        params: Vec<String>,
+        name: Option<String>,
+        params: Vec<(String, Span)>,
         body: rscpp_ast::Block,
         captures: HashMap<String, Value>,
     },
@@ -130,6 +137,7 @@ impl Object {
             Object::Deque(_) => "deque",
             Object::List(_) => "list",
             Object::Array { .. } => "array",
+            Object::Bitset { .. } => "bitset",
             Object::Pair { .. } => "pair",
             Object::String(_) => "string",
             Object::Map(_) => "map",
@@ -154,6 +162,7 @@ impl Object {
                 elems: vec![],
                 n: 0,
             },
+            "bitset" => Object::Bitset { bits: vec![] },
             "string" => Object::String(String::new()),
             "pair" => Object::Pair {
                 first: Value::Int(0),
@@ -177,6 +186,7 @@ impl Object {
         match self {
             Object::Vector(e) | Object::Stack(e) | Object::List(e) => e.len(),
             Object::Array { n, .. } => *n,
+            Object::Bitset { bits } => bits.len(),
             Object::Deque(q) | Object::Queue(q) => q.len(),
             Object::String(s) => s.len(),
             Object::Map(m) => m.len(),
@@ -201,6 +211,11 @@ impl Object {
                     *e = Value::Int(0);
                 }
             }
+            Object::Bitset { bits } => {
+                for b in bits.iter_mut() {
+                    *b = false;
+                }
+            }
             Object::Deque(q) | Object::Queue(q) => q.clear(),
             Object::String(s) => s.clear(),
             Object::Map(m) => m.clear(),
@@ -222,6 +237,11 @@ impl Object {
         match self {
             Object::Vector(e) | Object::Stack(e) | Object::List(e) => (e.len(), e.clone(), vec![]),
             Object::Array { elems, n } => (*n, elems.clone(), vec![]),
+            Object::Bitset { bits } => (
+                bits.len(),
+                bits.iter().map(|b| Value::Bool(*b)).collect(),
+                vec![],
+            ),
             Object::Deque(q) | Object::Queue(q) => (q.len(), q.iter().cloned().collect(), vec![]),
             Object::Pair { first, second } => (2, vec![first.clone(), second.clone()], vec![]),
             Object::String(s) => (s.len(), s.chars().map(Value::Char).collect(), vec![]),
@@ -305,7 +325,7 @@ pub enum Address {
     },
     MapEntry {
         obj: ObjId,
-        key: String,
+        key: MapKey,
     },
 }
 

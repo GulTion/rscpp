@@ -227,6 +227,19 @@ impl Engine {
                         };
                         Ok((v, Some(LValue::Index { obj: id, index: i })))
                     }
+                    Some(Object::Bitset { bits }) => {
+                        let i = idx_val.as_int().map_err(RuntimeError::new)? as usize;
+                        let bit = *bits
+                            .get(i)
+                            .ok_or_else(|| RuntimeError::at(*span, "bitset index out of bounds"))?;
+                        let v = Value::Bool(bit);
+                        let v = if emit_index_lookup {
+                            self.query(Value::Object(id), "index", Some(idx_val), v, *span)
+                        } else {
+                            v
+                        };
+                        Ok((v, Some(LValue::Index { obj: id, index: i })))
+                    }
                     Some(Object::String(s)) => {
                         let i = idx_val.as_int().map_err(RuntimeError::new)? as usize;
                         let ch = s
@@ -350,12 +363,13 @@ impl Engine {
                 }
             }
             Expr::Lambda { params, body, span } => {
-                let param_names: Vec<String> = params
+                let param_names: Vec<(String, Span)> = params
                     .iter()
-                    .filter_map(|p| p.name.as_ref().map(|n| n.name.clone()))
+                    .filter_map(|p| p.name.as_ref().map(|n| (n.name.clone(), n.span)))
                     .collect();
                 let captures = self.capture_locals();
                 let id = self.heap.alloc(Object::Closure {
+                    name: None,
                     params: param_names,
                     body: body.clone(),
                     captures,
@@ -887,7 +901,7 @@ impl Engine {
                 let id = self.alloc_class_instance(&name, span)?;
                 let ctor = format!("{name}::{name}");
                 if self.functions.contains_key(&ctor) {
-                    self.call_fn(&ctor, &arg_vals, Some(Value::Object(id)))?;
+                    self.call_fn(&ctor, &arg_vals, Some(Value::Object(id)), Some(span))?;
                 }
                 return Ok((Value::Object(id), None));
             }
@@ -922,7 +936,7 @@ impl Engine {
                 return Ok((Value::Int(n), None));
             }
             let (resolved, this) = self.resolve_fn_call(&name)?;
-            let ret = self.call_fn(&resolved, &arg_vals, this)?;
+            let ret = self.call_fn(&resolved, &arg_vals, this, Some(span))?;
             return Ok((ret, None));
         }
 
@@ -1056,7 +1070,7 @@ impl Engine {
                 _ => return Err(RuntimeError::at(span, "dangling object")),
             };
             let q = format!("{name}::{method}");
-            return self.call_fn(&q, args, Some(base));
+            return self.call_fn(&q, args, Some(base), Some(span));
         }
 
         if self.heap.get(id).is_none() {

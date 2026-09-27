@@ -81,7 +81,7 @@ means “look up heap object **id `3`**.” There is **no** deep copy of the vec
 | `Heap` | `number` (object id) |
 | `Index` | `{ "obj": number, "index": number }` |
 | `Field` | `{ "obj": number, "field": string }` |
-| `MapEntry` | `{ "obj": number, "key": string }` |
+| `MapEntry` | `{ "obj": number, "key": ValueJson }` |
 
 ---
 
@@ -95,7 +95,7 @@ Where a write happened (for highlighting):
 | `Global` | `name` |
 | `Object` | `obj` (heap id) |
 | `Index` | `obj`, `index` |
-| `MapEntry` | `obj`, `key` |
+| `MapEntry` | `obj`, `key` (same shape as `ValueJson` / `MapKey`: `{ "kind": "Int", "value": … }`, …) |
 | `Field` | `obj`, `field` |
 
 ---
@@ -121,10 +121,11 @@ Every event has `"kind": "<Name>"` plus fields. Common: `span`.
 Design: `docs/superpowers/specs/2026-07-17-loop-lifecycle-events-design.md`.
 
 | `Compare` | `op`, `left`, `right`, `result`, `span` | |
-| `FnEnter` | `name`, **`call_id`**, **`parent_id?`**, `args[]`, `span` | activation edge; **root/`main` has `call_id: 0`**, `parent_id: null` |
+| `FnEnter` | `name`, **`call_id`**, **`parent_id?`**, `args[]`, `span` | activation edge; **root/`main` has `call_id: 0`**, `parent_id: null`; `span` is callee body / def |
+| `Call` | `name`, **`call_id`**, `args[]`, `span` | call expression about to run; **`span` is the call site**; precedes matching `FnEnter` with the same `call_id` |
 | `FnExit` | `name`, **`call_id`**, **`parent_id?`**, `ret`, `span` | same ids as matching enter |
 
-**`call_id` / `parent_id` appear only on `FnEnter` / `FnExit`.** Other events do not carry `call_id`. Attribute work to a frame by the open call stack between enter and exit.
+**`call_id` / `parent_id` appear on `FnEnter` / `FnExit` / `Call`.** Other events do not carry `call_id`. Attribute work to a frame by the open call stack between enter and exit.
 
 ### Variables
 
@@ -232,7 +233,7 @@ Note: pure assignment `nums[i] = x` does **not** emit a pre-store `ContainerLook
 | `sort` / `reverse` / `iota` / `partial_sum` | vector (via begin/end) | bulk rewrite; includes **`elems`** (after state, same shape as `Alloc.elems`) |
 | `numeric_limits::min` / `max` / `lowest` | — | treated as `int` limits (`INT_MIN`/`INT_MAX`) |
 
-Demos: `examples/two_sum.cpp` (`Solution::twoSum`), `examples/valid_parentheses.cpp` (`Solution::isValid` — stack events), `examples/dfs.cpp` (`Solution::countComponents`). Local `testing/` smoke: `cargo test -p rscpp-runtime --test corpus_run`.
+Demos: `examples/two_sum.cpp` (`Solution::twoSum`), `examples/valid_parentheses.cpp` (`Solution::isValid` — stack events), `examples/dfs.cpp` (`Solution::countComponents`), `examples/n_queens.cpp` (`Solution::solveNQueens`). Local `testing/` smoke: `cargo test -p rscpp-runtime --test corpus_run`.
 
 ---
 
@@ -246,15 +247,17 @@ on Alloc:
   if kind is map/set (unordered_*):     heap[id] = { type_name, entries: copy(entries) }
   // size is always present; elems is [] for maps/sets; entries is [] for sequences
 
-on Write Index:     heap[obj].elems[index] = value
-on Write MapEntry:  upsert heap[obj].entries by key
+on Write Index:     skip — prefer paired ContainerMod (index_assign)
+on Write MapEntry:  skip — prefer paired ContainerMod (map_default_insert / map_assign)
 on ContainerMod:    if elems present (bulk op): replace heap[id].elems
                     else apply op (push_back → append; map_assign → upsert; …)
 on Dealloc:         delete heap[id]
 on VarCreate/Assign / Write Local: env[name] = value   // if Object, name → id
 ```
 
-`VarAssign` and `Write { slot: Local }` are both emitted for the same local store — apply **one** (prefer `Write`) so you don't double-update.
+`VarAssign` and `Write { slot: Local }` are both emitted for the same local store — apply **one** (prefer `Write`) so you don't double-update. UI: silence `VarAssign`.
+
+`Write { slot: MapEntry|Index }` and `ContainerMod` are both emitted for the same container store — apply **one** (prefer `ContainerMod`). UI: silence that `Write`. Both map keys use `MapKey` / `ValueJson` shape.
 
 You do **not** need a separate `inspect(id)` API if you apply events in order.
 

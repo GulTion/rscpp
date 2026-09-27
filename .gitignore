@@ -1,6 +1,5 @@
 /target
 **/target
-Cargo.lock
 .idea/
 .vscode/
 *.swp
@@ -12,3 +11,15 @@ dist/
 *.tsbuildinfo
 .pnpm-store/
 .playwright-mcp/
+seeker-mockup-c-collapse.png
+SUPPORTED.md
+seeker-mockup-noisy.png
+seeker-mockup-b-rail.png
+seeker-mockup-a-structure.png
+seeker-mockup-a-clean.png
+ISSUES.md
+DSVIEWER.md
+docs/
+.superpowers/sdd/
+.vite/
+.gitoken

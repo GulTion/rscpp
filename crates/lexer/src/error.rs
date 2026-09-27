@@ -1,3 +1,4 @@
+use crate::diag::format_diagnostic;
 use crate::span::Span;
 use std::fmt;
 
@@ -14,6 +15,10 @@ impl LexError {
             span,
             message: message.into(),
         }
+    }
+
+    pub fn format_with_source(&self, source: &str) -> String {
+        format_diagnostic(source, self.span, "lex", &self.message)
     }
 }
 

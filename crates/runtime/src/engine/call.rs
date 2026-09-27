@@ -13,6 +13,8 @@ impl Engine {
         name: &str,
         args: &[Value],
         this: Option<Value>,
+        // When Some, emit a call-site Call event before FnEnter.
+        call_span: Option<Span>,
     ) -> Result<Value> {
         let func = self
             .functions
@@ -23,6 +25,15 @@ impl Engine {
         let parent_id = self.stack.last().map(|f| f.call_id);
         let call_id = self.next_call_id;
         self.next_call_id += 1;
+
+        if let Some(span) = call_span {
+            self.emit(Event::Call {
+                name: name.to_string(),
+                call_id,
+                args: args.to_vec(),
+                span,
+            });
+        }
 
         self.emit(Event::FnEnter {
             name: name.to_string(),
@@ -127,12 +138,18 @@ impl Engine {
     }
 
     pub(super) fn call_closure(&mut self, id: ObjId, args: &[Value], span: Span) -> Result<Value> {
-        let (params, body, captures) = match self.heap.get(id) {
+        let (display, params, body, captures) = match self.heap.get(id) {
             Some(Object::Closure {
+                name,
                 params,
                 body,
                 captures,
-            }) => (params.clone(), body.clone(), captures.clone()),
+            }) => (
+                name.clone().unwrap_or_else(|| "<lambda>".into()),
+                params.clone(),
+                body.clone(),
+                captures.clone(),
+            ),
             _ => return Err(RuntimeError::at(span, "not a closure")),
         };
         if params.len() != args.len() {
@@ -144,24 +161,31 @@ impl Engine {
         let parent_id = self.stack.last().map(|f| f.call_id);
         let call_id = self.next_call_id;
         self.next_call_id += 1;
+        let body_span = body.span;
+        self.emit(Event::Call {
+            name: display.clone(),
+            call_id,
+            args: args.to_vec(),
+            span, // call site
+        });
         self.emit(Event::FnEnter {
-            name: "<lambda>".into(),
+            name: display.clone(),
             call_id,
             parent_id,
             args: args.to_vec(),
-            span,
+            span: body_span,
         });
         let mut locals = captures;
-        for (n, a) in params.iter().zip(args.iter()) {
+        for ((n, pspan), a) in params.iter().zip(args.iter()) {
             locals.insert(n.clone(), a.clone());
             self.emit(Event::VarCreate {
                 name: n.clone(),
                 value: a.clone(),
-                span,
+                span: *pspan,
             });
         }
         self.stack.push(Frame {
-            name: "<lambda>".into(),
+            name: display.clone(),
             call_id,
             parent_id,
             locals,
@@ -175,16 +199,16 @@ impl Engine {
                 return Err(RuntimeError::new("break/continue outside loop"));
             }
         };
-        self.close_open_loops_on_return(span);
+        self.close_open_loops_on_return(body_span);
         if let Some(frame) = self.stack.pop() {
             self.dealloc_owned_locals(&frame.locals, Some(&ret));
         }
         self.emit(Event::FnExit {
-            name: "<lambda>".into(),
+            name: display,
             call_id,
             parent_id,
             ret: ret.clone(),
-            span,
+            span: body_span,
         });
         Ok(ret)
     }

@@ -59,6 +59,8 @@ pub struct Engine {
     events: Vec<Event>,
     /// Decremented on each statement / loop iter; 0 → error (browser safety).
     fuel: u64,
+    /// When true, `write_lvalue` mutates without emitting Write/ContainerMod (e.g. `swap`).
+    suppress_write_events: bool,
 }
 
 /// Default step budget for `run` / loops (browser-safe).
@@ -109,6 +111,7 @@ impl Engine {
             next_loop_id: 0,
             events: Vec::new(),
             fuel,
+            suppress_write_events: false,
         };
 
         let tu2 = parse(src)?;
@@ -156,9 +159,9 @@ impl Engine {
             });
             self.emit_alloc(id, class, Span::new(0, 0));
             let q = format!("{class}::{method}");
-            self.call_fn(&q, args, Some(Value::Object(id)))
+            self.call_fn(&q, args, Some(Value::Object(id)), None)
         } else {
-            self.call_fn(name, args, None)
+            self.call_fn(name, args, None, None)
         }
     }
 
@@ -217,6 +220,14 @@ impl Engine {
 
     fn emit(&mut self, e: Event) {
         self.events.push(e);
+    }
+
+    /// Heap/local mutation events skipped while `suppress_write_events` (used by `swap`).
+    fn emit_mutation(&mut self, e: Event) {
+        if self.suppress_write_events {
+            return;
+        }
+        self.emit(e);
     }
 
     /// Sequence `elems` snapshot (same shape as `Alloc.elems`) for bulk `ContainerMod`.

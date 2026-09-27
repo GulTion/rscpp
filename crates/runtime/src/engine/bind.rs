@@ -178,6 +178,19 @@ impl Engine {
                 } = &ty
                 {
                     let tname = path.segments.last().map(|s| s.name.as_str()).unwrap_or("");
+                    if tname == "bitset" {
+                        let n = Self::nttp_usize(targs).unwrap_or(0);
+                        let ulong = if args.is_empty() {
+                            0u64
+                        } else {
+                            self.eval_expr(&args[0])?
+                                .as_int()
+                                .map_err(RuntimeError::new)? as u64
+                        };
+                        let id = self.heap.alloc(Self::bitset_from_ulong(n, ulong));
+                        self.emit_alloc(id, "bitset", *span);
+                        return Ok(Value::Object(id));
+                    }
                     if tname == "vector" && (args.len() == 1 || args.len() == 2) {
                         // Prefer size ctor when first arg is an integer expression, not begin/end.
                         let first_is_range = matches!(
@@ -279,6 +292,35 @@ impl Engine {
                         ))
                     }
                 });
+            }
+            // `bitset<N> b = 0;` / `bitset<N> b(val);`
+            if let Type::Named {
+                path, args: targs, ..
+            } = &ty
+            {
+                let tname = path.segments.last().map(|s| s.name.as_str()).unwrap_or("");
+                if tname == "bitset" {
+                    let n = Self::nttp_usize(targs).unwrap_or(0);
+                    let ulong = match &v {
+                        Value::Int(i) => *i as u64,
+                        Value::Bool(b) => {
+                            if *b {
+                                1
+                            } else {
+                                0
+                            }
+                        }
+                        other => {
+                            return Err(RuntimeError::at(
+                                decl.span,
+                                format!("bitset init expects integer, got `{other}`"),
+                            ))
+                        }
+                    };
+                    let id = self.heap.alloc(Self::bitset_from_ulong(n, ulong));
+                    self.emit_alloc(id, "bitset", decl.span);
+                    return Ok(Value::Object(id));
+                }
             }
             return Ok(v);
         }

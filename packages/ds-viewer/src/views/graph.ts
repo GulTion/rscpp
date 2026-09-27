@@ -10,7 +10,7 @@ import {
 } from "../graphOpts.js";
 import type { WalkHighlight } from "../walk.js";
 import type { AccessHighlight } from "../access.js";
-import { EMPTY_ACCESS } from "../access.js";
+import { EMPTY_ACCESS, ensureAccessStyle } from "../access.js";
 import { applyMathFont } from "../math.js";
 
 const MAX_NODES = 200;
@@ -50,8 +50,10 @@ export function renderTree(
 ): void {
   host.innerHTML = "";
   ensureWalkStyle();
-  const cur = new Set(access.current.map(String));
-  const trail = new Set(access.trail.map(String));
+  ensureAccessStyle();
+  const process = new Set(access.process.map(String));
+  const write = new Set(access.write.map(String));
+  const read = new Set(access.read.map(String));
   const parents = (obj.elems ?? []).map((e) => (e.kind === "Int" ? e.value : -1));
   if (parents.length > MAX_NODES) {
     host.textContent = `tree too large (${parents.length} > ${MAX_NODES}); use table`;
@@ -114,8 +116,9 @@ export function renderTree(
     c.setAttribute("fill", "#e0f2fe");
     c.setAttribute("stroke", "#0284c7");
     c.setAttribute("data-testid", `ds-node-${d.data.id}`);
-    if (cur.has(id)) c.classList.add("ds-node-current");
-    else if (trail.has(id)) c.classList.add("ds-node-trail");
+    if (process.has(id)) c.classList.add("ds-access-process");
+    else if (write.has(id)) c.classList.add("ds-access-write");
+    else if (read.has(id)) c.classList.add("ds-access-read");
     const t = document.createElementNS(NS, "text");
     t.setAttribute("x", String(x));
     t.setAttribute("y", String(y + 4));

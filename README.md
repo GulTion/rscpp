@@ -66,7 +66,7 @@ const r3 = run_method(source, "Solution::isValid", ["()[]{}"]);
 // error: { message, span?: { start, end } }
 ```
 
-CLI demos: `examples/two_sum.cpp`, `examples/valid_parentheses.cpp`, `examples/dfs.cpp`.
+CLI demos: `examples/two_sum.cpp`, `examples/valid_parentheses.cpp`, `examples/dfs.cpp`, `examples/n_queens.cpp`.
 
 ## Scope
 

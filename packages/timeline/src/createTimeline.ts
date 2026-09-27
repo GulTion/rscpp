@@ -1,4 +1,5 @@
 import { reconstruct, cloneSnapshot } from "./reconstruct.js";
+import { isUiSilentAt, snapPlayheadIndex } from "./silent.js";
 import type {
   EventJson,
   HighlightRange,
@@ -9,7 +10,11 @@ import type {
 
 function rangesFromEvent(ev: EventJson | undefined): HighlightRange[] {
   if (!ev?.span) return [];
-  return [{ start: ev.span.start, end: ev.span.end, kind: ev.kind }];
+  let kind = ev.kind;
+  if (ev.kind === "Compare") {
+    kind = ev.result === true ? "CompareTrue" : "CompareFalse";
+  }
+  return [{ start: ev.span.start, end: ev.span.end, kind }];
 }
 
 export function createTimeline(opts: {
@@ -41,6 +46,17 @@ export function createTimeline(opts: {
     emit({ type: "highlight", ranges: currentHighlight() });
   }
 
+  /** Apply playhead without UI-silent snap (caller already chose the index). */
+  function applyIndex(next: number): void {
+    const clamped = Math.max(0, Math.min(Math.floor(next), events.length));
+    if (clamped === index) {
+      emit({ type: "highlight", ranges: currentHighlight() });
+      return;
+    }
+    index = clamped;
+    notify();
+  }
+
   const timeline: Timeline = {
     get length() {
       return events.length;
@@ -55,21 +71,32 @@ export function createTimeline(opts: {
       return events;
     },
     seek(t: number) {
-      const next = Math.max(0, Math.min(Math.floor(t), events.length));
-      if (next === index) {
-        emit({ type: "highlight", ranges: currentHighlight() });
-        return;
-      }
-      index = next;
-      notify();
+      applyIndex(snapPlayheadIndex(events, t));
     },
     step(delta: number) {
-      timeline.seek(index + delta);
+      const dir = delta === 0 ? 1 : Math.sign(delta);
+      let left = Math.abs(delta) || 1;
+      let i = index;
+      while (left > 0) {
+        const next = i + dir;
+        if (next < 0 || next > events.length) break;
+        i = next;
+        while (
+          i > 0 &&
+          i < events.length &&
+          isUiSilentAt(events, i - 1)
+        ) {
+          const n2 = i + dir;
+          if (n2 < 0 || n2 > events.length) break;
+          i = n2;
+        }
+        left--;
+      }
+      applyIndex(i);
     },
     play(opts?: { speed?: number }) {
       timeline.pause();
       const speed = Math.max(1, opts?.speed ?? 120);
-      // Batch steps when targeting high event rates so the UI isn't starved.
       const batch = Math.max(1, Math.ceil(speed / 250));
       const ticksPerSec = speed / batch;
       const ms = Math.max(4, Math.floor(1000 / ticksPerSec));
@@ -78,7 +105,8 @@ export function createTimeline(opts: {
           timeline.pause();
           return;
         }
-        timeline.seek(Math.min(index + batch, events.length));
+        timeline.step(batch);
+        if (index >= events.length) timeline.pause();
       }, ms);
     },
     pause() {

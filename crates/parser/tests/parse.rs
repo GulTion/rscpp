@@ -299,3 +299,17 @@ int f() {
     .unwrap();
     assert_eq!(tu.items.len(), 1);
 }
+
+#[test]
+fn c_style_array_declarator_message() {
+    let src = "int main() { int prime[]={2}; return 0; }";
+    let err = parse(src).unwrap_err();
+    assert!(
+        err.message.contains("array declarator") && err.message.contains("vector"),
+        "{}",
+        err.message
+    );
+    let fmt = err.format_with_source(src);
+    assert!(fmt.contains("--> 1:"), "{fmt}");
+    assert!(fmt.contains('^'), "{fmt}");
+}
